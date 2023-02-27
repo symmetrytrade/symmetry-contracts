@@ -104,7 +104,9 @@ contract Market is Ownable, Initializable {
                     lpNetValue += absDelta;
                 }
             }
-            positionMargin += (position.longSize + position.shortSize) * price;
+            positionMargin +=
+                (position.longSize + position.shortSize.abs()) *
+                price;
         }
         freeLpValue = lpNetValue - positionMargin;
     }
@@ -217,11 +219,15 @@ contract Market is Ownable, Initializable {
                 (nextSize < 0 && position.size < 0)
             ) {
                 // position direction is not changed
-                pnl = (nextSize - position.size).multiplyDecimal(int(_price));
+                pnl = (postion.size - nextSize).multiplyDecimal(
+                    int(_price) - int(position.avgPrice)
+                );
                 nextPrice = position.avgPrice;
             } else {
                 // position direction changed
-                pnl = position.size.multiplyDecimal(int(_price));
+                pnl = position.size.multiplyDecimal(
+                    int(_price) - int(position.avgPrice)
+                );
                 nextPrice = _price;
             }
             // settle p&l
