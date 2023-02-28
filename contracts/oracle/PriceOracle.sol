@@ -104,4 +104,23 @@ contract PriceOracle is Ownable {
                 (10 ** uint(int(PRICE_PRECISION) + price.expo));
         return (price.publishTime, normalizedPrice);
     }
+
+    /// @notice update pyth price, refund remaining fee to sender
+    /// @param _sender sender address
+    /// @param _priceUpdateData update data for pyth oracle
+    function updatePythPrice(
+        address _sender,
+        bytes[] calldata _priceUpdateData
+    ) external payable {
+        IPyth pythOracle_ = IPyth(pythOracle);
+
+        uint256 fee = pythOracle_.getUpdateFee(_priceUpdateData);
+        require(msg.value >= fee, "PriceOracle: insufficient fee");
+
+        pythOracle_.updatePriceFeeds{value: fee}(_priceUpdateData);
+
+        if (msg.value > fee) {
+            payable(_sender).transfer(msg.value - fee);
+        }
+    }
 }

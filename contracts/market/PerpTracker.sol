@@ -2,9 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "../access/Ownable.sol";
+import "../utils/SafeDecimalMath.sol";
 import "./Market.sol";
+import "./MarketSettings.sol";
 
 contract PerpTracker is Ownable {
+    using SignedSafeDecimalMath for int256;
+
+    // setting keys
+    bytes32 internal constant PERP_DOMAIN = "perpDomain";
+    bytes32 internal constant SKEW_SCALE = "skewScale";
+
     struct GlobalPosition {
         int256 longSize; // in underlying, positive, 18 decimals
         int256 shortSize; // in underlying, negative, 18 decimals
@@ -24,8 +32,7 @@ contract PerpTracker is Ownable {
     mapping(address => bool) public marketTokensListed;
 
     mapping(address => GlobalPosition) public globalPositions; // user global positions
-    mapping(address => uint256[]) private userPositions; // positions of single user
-    mapping(uint256 => Position) private positions; // positions
+    mapping(address => mapping(address => Position)) private userPositions; // positions of single user, user => token => position mapping
     mapping(address => uint256) public userMargin; // margin of user
 
     modifier onlyMarket() {
@@ -54,7 +61,7 @@ contract PerpTracker is Ownable {
         marketTokensList[_tokenIndex] = marketTokensList[len - 1];
     }
 
-    /* === view functions === */
+    /*=== view functions === */
 
     function getGlobalPosition(
         address token
@@ -66,17 +73,14 @@ contract PerpTracker is Ownable {
         return marketTokensList.length;
     }
 
-    function getUserPositions(
-        address _account
-    ) external view returns (uint256[] memory) {
-        return userPositions[_account];
+    function getPosition(
+        address _account,
+        address _token
+    ) external view returns (Position memory) {
+        return userPositions[_account][_token];
     }
 
-    function getPosition(uint256 _id) external view returns (Position memory) {
-        return positions[_id];
-    }
-
-    /* === update functions ===*/
+    /*=== update functions ===*/
 
     function addMargin(address _account, uint256 _amount) external onlyMarket {
         userMargin[_account] += _amount;
@@ -92,11 +96,47 @@ contract PerpTracker is Ownable {
     }
 
     function updatePosition(
-        uint256 _id,
+        address _account,
+        address _token,
         int256 _size,
         uint256 _avgPrice
     ) external onlyMarket {
-        positions[_id].size = _size;
-        positions[_id].avgPrice = _avgPrice;
+        Position storage position = userPositions[_account][_token];
+        position.size = _size;
+        position.avgPrice = _avgPrice;
+    }
+
+    /*=== perp ===*/
+    function marketKey(address _token) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_token, PERP_DOMAIN));
+    }
+
+    /// @notice compute the fill price of a trade
+    /// @param _token token to trade
+    /// @param _size trade size, positive for long, negative for short
+    /// @param _oraclePrice oracle price
+    /// @return the fill price
+    function computePerpFillPrice(
+        address _token,
+        int256 _size,
+        uint256 _oraclePrice
+    ) external view returns (uint256) {
+        // a temporary implementation based on global skew
+        GlobalPosition storage globalPosition = globalPositions[_token];
+        int globalSkew = globalPosition.longSize + globalPosition.shortSize;
+
+        MarketSettings settings_ = MarketSettings(Market(market).settings());
+        int256 skewScale = int(
+            settings_.getUintValsByMarket(marketKey(_token), SKEW_SCALE)
+        );
+
+        int pdBefore = globalSkew.divideDecimal(skewScale);
+        int pdAfter = (globalSkew + _size).divideDecimal(skewScale);
+        int priceBefore = int(_oraclePrice) +
+            int(_oraclePrice).multiplyDecimal(pdBefore);
+        int priceAfter = int(_oraclePrice) +
+            int(_oraclePrice).multiplyDecimal(pdAfter);
+
+        return uint(priceBefore + priceAfter) / 2;
     }
 }

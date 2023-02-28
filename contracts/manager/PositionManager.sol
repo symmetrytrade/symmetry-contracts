@@ -10,15 +10,23 @@ contract PositionManager is Ownable, Initializable {
     // states
     address public market;
 
+    enum OrderStatus {
+        Pending,
+        Executed,
+        Cancelled
+    }
+
     struct Order {
         address account;
         address token;
         int256 size;
         uint256 acceptablePrice;
         uint256 expiracy;
+        OrderStatus status;
     }
 
     mapping(uint256 => Order) private orders;
+    uint256 public orderCnt;
 
     event OrderSubmitted(uint256 orderId);
 
@@ -70,7 +78,7 @@ contract PositionManager is Ownable, Initializable {
         uint256 _acceptablePrice,
         uint256 _expiracy
     ) external {
-        require(_size > 0, "PositionManager: zero size");
+        require(_size != 0, "PositionManager: zero size");
         Market market_ = Market(market);
         require(
             PerpTracker(market_.perpTracker()).marketTokensListed(_token),
@@ -80,15 +88,69 @@ contract PositionManager is Ownable, Initializable {
             _expiracy > block.timestamp,
             "PositionManager: invalid expiracy"
         );
+        // put order
+        ++orderCnt;
+        Order memory order = Order({
+            account: msg.sender,
+            token: _token,
+            size: _size,
+            acceptablePrice: _acceptablePrice,
+            expiracy: _expiracy,
+            status: OrderStatus.Pending
+        });
+        orders[orderCnt] = order;
+        // TODO: simulate the order and revert it if needed?
     }
 
-    /// @notice execute an submitted execution order.
+    function _validateOrderLiveness(Order storage order) internal view {
+        require(order.account == msg.sender, "PositionManager: invalid sender");
+        require(
+            order.status == OrderStatus.Pending,
+            "PositionManager: order is not pending"
+        );
+        require(
+            order.expiracy > block.timestamp,
+            "PositionManager: order expired"
+        );
+    }
+
+    function cancelOrder(uint256 _id) external {
+        Order storage order = orders[_id];
+        _validateOrderLiveness(order);
+        order.status = OrderStatus.Cancelled;
+    }
+
+    /// @notice execute an submitted execution order, this function is payable for paying the oracle update fee
     /// @param _id order id
     /// @param _priceUpdateData price update data for pyth oracle
     function executeOrder(
         uint256 _id,
         bytes[] calldata _priceUpdateData
-    ) external {}
+    ) external payable {
+        Order storage order = orders[_id];
+        _validateOrderLiveness(order);
+
+        Market market_ = Market(market);
+        // update oracle price
+        PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
+            msg.sender,
+            _priceUpdateData
+        );
+
+        address token = order.token;
+        int256 size = order.size;
+        // trade
+        uint256 fillPrice = market_.computePerpFillPrice(token, size);
+        // update position
+        market_.updatePosition(msg.sender, token, size, fillPrice);
+        // ensure margin is sufficient after the trade
+        require(
+            !isLiquidatable(msg.sender),
+            "PositionManager: insufficient margin"
+        );
+        // update order
+        order.status = OrderStatus.Executed;
+    }
 
     //TODO: liquidate
 }

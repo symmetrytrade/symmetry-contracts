@@ -145,6 +145,23 @@ contract Market is Ownable, Initializable {
         PerpTracker(perpTracker).removeMargin(_account, _amount);
     }
 
+    /// @notice compute the fill price of a trade
+    /// @param _token token to trade
+    /// @param _size trade size, positive for long, negative for short
+    /// @return the fill price
+    function computePerpFillPrice(
+        address _token,
+        int256 _size
+    ) external view returns (uint256) {
+        uint256 oraclePrice = getPrice(_token, true);
+        return
+            PerpTracker(perpTracker).computePerpFillPrice(
+                _token,
+                _size,
+                oraclePrice
+            );
+    }
+
     /// @notice get user's margin status
     /// @param _account user address
     /// @return mtm maintenance margin including liquidation fee in usd
@@ -153,12 +170,15 @@ contract Market is Ownable, Initializable {
         address _account
     ) external view returns (uint256 mtm, int256 currentMargin) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        uint256[] memory positionIds = perpTracker_.getUserPositions(_account);
-        uint256 len = positionIds.length;
+        uint256 len = perpTracker_.marketTokensLength();
         int pnl = 0;
         for (uint i = 0; i < len; ++i) {
+            address token = perpTracker_.marketTokensList(i);
+            if (!perpTracker_.marketTokensListed(token)) continue;
+
             PerpTracker.Position memory position = perpTracker_.getPosition(
-                positionIds[i]
+                _account,
+                token
             );
             uint256 price = getPrice(position.token, false);
             // update mtm by position size
@@ -186,16 +206,21 @@ contract Market is Ownable, Initializable {
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
-    /// @param _id position id
+    /// @param _account user address
+    /// @param _token token to trade
     /// @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
     /// @param _price new trade price
     function updatePosition(
-        uint256 _id,
+        address _account,
+        address _token,
         int256 _sizeDelta,
         uint256 _price
     ) external onlyOperator {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        PerpTracker.Position memory position = perpTracker_.getPosition(_id);
+        PerpTracker.Position memory position = perpTracker_.getPosition(
+            _account,
+            _token
+        );
 
         int256 nextSize = position.size + _sizeDelta;
         uint256 nextPrice;
@@ -219,7 +244,7 @@ contract Market is Ownable, Initializable {
                 (nextSize < 0 && position.size < 0)
             ) {
                 // position direction is not changed
-                pnl = (postion.size - nextSize).multiplyDecimal(
+                pnl = (position.size - nextSize).multiplyDecimal(
                     int(_price) - int(position.avgPrice)
                 );
                 nextPrice = position.avgPrice;
@@ -241,7 +266,7 @@ contract Market is Ownable, Initializable {
             }
         }
         // write to state
-        perpTracker_.updatePosition(_id, nextSize, nextPrice);
+        perpTracker_.updatePosition(_account, _token, nextSize, nextPrice);
     }
 
     /*=== pricing ===*/
