@@ -4,8 +4,9 @@ pragma solidity ^0.8.0;
 import "../access/Ownable.sol";
 import "../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "../interfaces/pyth/IPyth.sol";
+import "../utils/Initializable.sol";
 
-contract PriceOracle is Ownable {
+contract PriceOracle is Ownable, Initializable {
     uint256 public constant PRICE_PRECISION = 18;
 
     // chainlink price feed aggregators
@@ -18,6 +19,13 @@ contract PriceOracle is Ownable {
     mapping(address => bytes32) public assetIds;
     // pyth oracle
     address public pythOracle;
+    
+    /*=== initialize ===*/
+    function initialize() external onlyInitializeOnce {
+        _transferOwnership(msg.sender);
+    }
+
+    /*=== owner ===*/
 
     function setChainlinkSequencerUptimeFeed(
         address _sequencerUptimeFeed,
@@ -42,6 +50,8 @@ contract PriceOracle is Ownable {
     function setPythOracle(address _pythOracle) external onlyOwner {
         pythOracle = _pythOracle;
     }
+
+    /*=== price ===*/
 
     function _checkSequencer() internal view {
         if (sequencerUptimeFeed != address(0)) {
