@@ -6,7 +6,6 @@
     "build": "hardhat compile",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
-    "deploy-all": "hardhat deploy-contracts --network",
     "deploy": "hardhat deploy --network",
     "lint": "yarn lint:sol && yarn lint:ts",
     "lint:sol": "solhint 'contracts/**/*.sol'",
@@ -15,7 +14,7 @@
     "fmt:ts": "prettier 'src/**/*.ts' 'test/**/*.ts' '*.ts' -w"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "^2.2.2",
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13",
     "@nomiclabs/hardhat-etherscan": "^3.1.6",
     "@typescript-eslint/eslint-plugin": "^5.52.0",
     "@typescript-eslint/parser": "^5.52.0",

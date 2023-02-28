@@ -1,5 +1,6 @@
 import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-etherscan";
+import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import "solidity-coverage";
 
@@ -24,6 +25,7 @@ const config: HardhatUserConfig = {
         artifacts: "build/artifacts",
         cache: "build/cache",
         sources: "contracts",
+        deploy: "src/deploy",
     },
     solidity: {
         compilers: [
