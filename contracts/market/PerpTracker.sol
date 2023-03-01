@@ -3,15 +3,16 @@ pragma solidity ^0.8.0;
 
 import "../access/Ownable.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/Initializable.sol";
 import "./Market.sol";
 import "./MarketSettings.sol";
 
-contract PerpTracker is Ownable {
+contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
 
     // setting keys
-    bytes32 internal constant PERP_DOMAIN = "perpDomain";
-    bytes32 internal constant SKEW_SCALE = "skewScale";
+    bytes32 public constant PERP_DOMAIN = "perpDomain";
+    bytes32 public constant SKEW_SCALE = "skewScale";
 
     struct GlobalPosition {
         int256 longSize; // in underlying, positive, 18 decimals
@@ -39,6 +40,16 @@ contract PerpTracker is Ownable {
         require(msg.sender == market, "PerpTracker: sender is not market");
         _;
     }
+
+    /*=== initialize ===*/
+
+    function initialize(address _market) external onlyInitializeOnce {
+        market = _market;
+
+        _transferOwnership(msg.sender);
+    }
+
+    /*=== owner ===*/
 
     function setMarket(address _market) external onlyOwner {
         market = _market;

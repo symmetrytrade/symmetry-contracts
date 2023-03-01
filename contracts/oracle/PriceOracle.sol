@@ -19,7 +19,7 @@ contract PriceOracle is Ownable, Initializable {
     mapping(address => bytes32) public assetIds;
     // pyth oracle
     address public pythOracle;
-    
+
     /*=== initialize ===*/
     function initialize() external onlyInitializeOnce {
         _transferOwnership(msg.sender);

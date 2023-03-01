@@ -17,10 +17,9 @@ contract Market is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
 
     // setting keys
-    bytes32 internal constant PYTH_MAX_AGE = "pythMaxAge";
-    bytes32 internal constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
-    bytes32 internal constant MAINTENANCE_MARGIN_RATIO =
-        "maintenanceMarginRatio";
+    bytes32 public constant PYTH_MAX_AGE = "pythMaxAge";
+    bytes32 public constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
+    bytes32 public constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
 
     // states
     address public baseToken; // liquidity token

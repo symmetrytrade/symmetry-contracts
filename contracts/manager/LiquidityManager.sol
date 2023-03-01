@@ -12,7 +12,7 @@ contract LiquidityManager is Ownable, Initializable {
     using SafeDecimalMath for uint256;
 
     // setting keys
-    bytes32 internal constant LIQUIDITY_REMOVE_COOLDOWN =
+    bytes32 public constant LIQUIDITY_REMOVE_COOLDOWN =
         "liquidityRemoveCooldown";
 
     // states
