@@ -10,15 +10,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
 
-    await deployInERC1967Proxy(hre, CONTRACTS.PriceOracle);
+    await deployInERC1967Proxy(hre, CONTRACTS.LPToken);
 
-    const oracle = await getProxyContract(hre, CONTRACTS.PriceOracle);
-    oracle.connect(deployer);
+    const lpToken = await getProxyContract(hre, CONTRACTS.LPToken);
+    lpToken.connect(deployer);
 
     // initialize
-    console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
-    await (await oracle.initialize()).wait();
+    console.log(`initializing ${CONTRACTS.LPToken.name}..`);
+    await (await lpToken.initialize("LPToken", "LP", 18)).wait();
 };
 
-deploy.tags = [CONTRACTS.PriceOracle.name, "prod", "test"];
+deploy.tags = [CONTRACTS.LPToken.name, "prod", "test"];
 export default deploy;
