@@ -4,6 +4,8 @@ import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 
 const ERC1967PROXY = "ERC1967Proxy";
+const UPGRADEABLE_BEACON = "UpgradeableBeacon";
+const BEACON_PROXY = "BeaconProxy";
 const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
 
 interface ContractMeta {
@@ -31,7 +33,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     USDC: { name: "USDC", contract: "FaucetToken" },
 };
 
-async function deployInERC1967Proxy(
+async function deployInBeaconProxy(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta
 ) {
@@ -46,11 +48,19 @@ async function deployInERC1967Proxy(
         log: true,
     });
     const implementation = await hre.ethers.getContract(`${contract.name}Impl`);
+    // deploy beacon
+    await deploy(`${contract.name}Beacon`, {
+        from: deployer,
+        contract: UPGRADEABLE_BEACON,
+        args: [implementation.address],
+        log: true,
+    });
+    const beacon = await hre.ethers.getContract(`${contract.name}Beacon`);
     // deploy proxy
     await deploy(contract.name, {
         from: deployer,
-        contract: ERC1967PROXY,
-        args: [implementation.address, []],
+        contract: BEACON_PROXY,
+        args: [beacon.address, []],
         log: true,
     });
 }
@@ -63,4 +73,4 @@ async function getProxyContract(
     return hre.ethers.getContractAt(contract.contract, address);
 }
 
-export { deployInERC1967Proxy, getProxyContract, CONTRACTS, MINTER_ROLE };
+export { deployInBeaconProxy, getProxyContract, CONTRACTS, MINTER_ROLE };
