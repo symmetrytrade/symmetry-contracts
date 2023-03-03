@@ -1,5 +1,7 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import hardhat from "hardhat";
+import "@nomiclabs/hardhat-ethers";
+import "hardhat-deploy";
 
 const ERC1967PROXY = "ERC1967Proxy";
 const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
