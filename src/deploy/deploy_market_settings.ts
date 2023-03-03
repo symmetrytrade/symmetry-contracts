@@ -5,6 +5,7 @@ import {
     deployInERC1967Proxy,
     getProxyContract,
 } from "../utils/utils";
+import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
@@ -18,6 +19,14 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.MarketSettings.name}..`);
     await (await settings.initialize()).wait();
+
+    // set uint values
+    const config = getConfig(hre.network.name);
+    for (const [term, rawValue] of Object.entries(config.marketConfig)) {
+        const key = hre.ethers.utils.formatBytes32String(term);
+        const value = hre.ethers.BigNumber.from(rawValue);
+        await (await settings.setUintVals(key, value)).wait();
+    }
 };
 
 deploy.tags = [CONTRACTS.MarketSettings.name, "prod", "test"];

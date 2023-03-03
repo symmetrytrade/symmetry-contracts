@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { GlobalConfig } from "../config";
+import { getConfig } from "../config";
 import { CONTRACTS } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -8,7 +8,8 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
     // skip if exists
-    if (GlobalConfig[hre.network.name].addresses?.USDC) return;
+    const config = getConfig(hre.network.name);
+    if (config.addresses?.USDC) return;
 
     await deploy(CONTRACTS.USDC.name, {
         from: deployer,

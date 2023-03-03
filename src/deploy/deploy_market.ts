@@ -5,13 +5,12 @@ import {
     deployInERC1967Proxy,
     getProxyContract,
 } from "../utils/utils";
-import { GlobalConfig } from "../config";
+import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const config =
-        hre.network.name in GlobalConfig ? GlobalConfig[hre.network.name] : {};
+    const config = getConfig(hre.network.name);
 
     await deployInERC1967Proxy(hre, CONTRACTS.Market);
 

@@ -18,6 +18,7 @@
     "@nomiclabs/hardhat-etherscan": "^3.1.6",
     "@typescript-eslint/eslint-plugin": "^5.52.0",
     "@typescript-eslint/parser": "^5.52.0",
+    "bignumber.js": "^9.1.1",
     "dotenv": "^16.0.3",
     "eslint": "^8.34.0",
     "eslint-config-prettier": "^8.6.0",
