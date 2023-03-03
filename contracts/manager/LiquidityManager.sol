@@ -129,6 +129,7 @@ contract LiquidityManager is Ownable, Initializable {
     ) internal returns (uint256) {
         Market market_ = Market(market);
         // check cooldown
+        // this cooldown is used to avoid front-run and flashloan that manipulating funding fee
         require(
             block.timestamp >=
                 latestMint[_account] +
