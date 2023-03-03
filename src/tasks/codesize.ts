@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 
 task("codesize", "show codesize of the contracts")
-    .addParam("name", "contract name", undefined, types.string, true)
+    .addParam("contractname", "contract name", undefined, types.string, true)
     .setAction(async (taskArgs, hre) => {
         const contracts = await hre.artifacts.getAllFullyQualifiedNames();
         const ans = [];

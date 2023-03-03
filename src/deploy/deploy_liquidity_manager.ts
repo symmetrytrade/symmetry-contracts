@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
     MINTER_ROLE,
-    deployInERC1967Proxy,
+    deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";
 
@@ -11,7 +11,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
 
-    await deployInERC1967Proxy(hre, CONTRACTS.LiquidityManager);
+    await deployInBeaconProxy(hre, CONTRACTS.LiquidityManager);
 
     const liquidityManager = await getProxyContract(
         hre,

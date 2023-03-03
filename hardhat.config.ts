@@ -2,6 +2,7 @@ import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
+import "@openzeppelin/hardhat-upgrades";
 import "solidity-coverage";
 
 // environment configs

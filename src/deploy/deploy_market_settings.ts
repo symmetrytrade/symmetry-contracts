@@ -2,7 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
-    deployInERC1967Proxy,
+    deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";
 import { getConfig } from "../config";
@@ -11,7 +11,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
 
-    await deployInERC1967Proxy(hre, CONTRACTS.MarketSettings);
+    await deployInBeaconProxy(hre, CONTRACTS.MarketSettings);
 
     const settings = await getProxyContract(hre, CONTRACTS.MarketSettings);
     settings.connect(deployer);
