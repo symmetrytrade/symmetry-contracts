@@ -5,6 +5,7 @@ import "../access/Ownable.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeERC20.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SafeCast.sol";
 import "../interfaces/IERC20.sol";
 import "../interfaces/IERC20Metadata.sol";
 import "../oracle/PriceOracle.sol";
@@ -15,6 +16,8 @@ contract Market is Ownable, Initializable {
     using SafeERC20 for IERC20;
     using SafeDecimalMath for uint256;
     using SignedSafeDecimalMath for int256;
+    using SafeCast for uint256;
+    using SafeCast for int256;
 
     // setting keys
     bytes32 public constant PYTH_MAX_AGE = "pythMaxAge";
@@ -28,9 +31,8 @@ contract Market is Ownable, Initializable {
     address public settings; // settings for markets
     mapping(address => bool) public isOperator; // operator contracts
 
-    // deposited liquidity(exclude funding fee & pnl)
-    // margin deposited by user is balanceOf(address(this)) - liquidityBalance
-    uint256 public liquidityBalance;
+    // liquidity margin (deposited liquidity + realized pnl)
+    int256 public liquidityBalance;
 
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
@@ -78,7 +80,7 @@ contract Market is Ownable, Initializable {
         view
         returns (int256 lpNetValue, int256 freeLpValue)
     {
-        lpNetValue = int(tokenToUsd(baseToken, liquidityBalance, false));
+        lpNetValue = tokenToUsd(baseToken, liquidityBalance, false);
         int256 positionMargin = 0;
 
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
@@ -90,7 +92,7 @@ contract Market is Ownable, Initializable {
             PerpTracker.GlobalPosition memory position = perpTracker_
                 .getGlobalPosition(token);
             int size = position.longSize + position.shortSize;
-            int256 price = int(getPrice(token, false));
+            int256 price = getPrice(token, false);
             if (size != 0) {
                 int256 delta = (price - position.avgPrice).multiplyDecimal(
                     size
@@ -117,7 +119,7 @@ contract Market is Ownable, Initializable {
         uint256 _amount
     ) external onlyOperator {
         IERC20(baseToken).safeTransferFrom(_account, address(this), _amount);
-        liquidityBalance += _amount;
+        liquidityBalance += _amount.toInt256();
     }
 
     function transferLiquidityOut(
@@ -125,7 +127,7 @@ contract Market is Ownable, Initializable {
         uint256 _amount
     ) external onlyOperator {
         IERC20(baseToken).safeTransfer(_account, _amount);
-        liquidityBalance -= _amount;
+        liquidityBalance -= _amount.toInt256();
     }
 
     function transferMarginIn(
@@ -151,8 +153,8 @@ contract Market is Ownable, Initializable {
     function computePerpFillPrice(
         address _token,
         int256 _size
-    ) external view returns (uint256) {
-        uint256 oraclePrice = getPrice(_token, true);
+    ) external view returns (int256) {
+        int256 oraclePrice = getPrice(_token, true);
         return
             PerpTracker(perpTracker).computePerpFillPrice(
                 _token,
@@ -167,7 +169,7 @@ contract Market is Ownable, Initializable {
     /// @return currentMargin user current margin including position p&l and funding fee in usd
     function accountMarginStatus(
         address _account
-    ) external view returns (uint256 mtm, int256 currentMargin) {
+    ) external view returns (int256 mtm, int256 currentMargin) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         uint256 len = perpTracker_.marketTokensLength();
         int pnl = 0;
@@ -179,93 +181,129 @@ contract Market is Ownable, Initializable {
                 _account,
                 token
             );
-            uint256 price = getPrice(position.token, false);
+            int256 price = getPrice(position.token, false);
             // update mtm by position size
             // TODO: add liquidation fees
             if (position.size < 0) {
-                mtm += uint(-position.size).multiplyDecimal(price);
+                mtm += (-position.size).multiplyDecimal(price);
             } else {
-                mtm += uint(position.size).multiplyDecimal(price);
+                mtm += (position.size).multiplyDecimal(price);
             }
             // update pnl by price
-            pnl += position.size.multiplyDecimal(
-                int(price) - int(position.avgPrice)
-            );
+            pnl += position.size.multiplyDecimal(price - position.avgPrice);
             // update pnl by funding fee
             // TODO
         }
         mtm = mtm.multiplyDecimal(
-            MarketSettings(settings).getUintVals(MAINTENANCE_MARGIN_RATIO)
+            MarketSettings(settings)
+                .getUintVals(MAINTENANCE_MARGIN_RATIO)
+                .toInt256()
         );
         currentMargin =
-            int(
-                tokenToUsd(baseToken, perpTracker_.userMargin(_account), false)
-            ) +
+            tokenToUsd(baseToken, perpTracker_.userMargin(_account), false) +
             pnl;
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
+    /// @dev make sure the funding rate is updated before calling this function.
     /// @param _account user address
     /// @param _token token to trade
     /// @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
     /// @param _price new trade price
-    function updatePosition(
+    function trade(
         address _account,
         address _token,
         int256 _sizeDelta,
-        uint256 _price
+        int256 _price
     ) external onlyOperator {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        PerpTracker.Position memory position = perpTracker_.getPosition(
-            _account,
-            _token
-        );
+        int256 latestAccFunding = perpTracker_.latestAccFunding(_token);
 
-        int256 nextSize = position.size + _sizeDelta;
-        uint256 nextPrice;
-        if (
-            (_sizeDelta > 0 && position.size >= 0) ||
-            (_sizeDelta < 0 && position.size <= 0)
-        ) {
-            // increase position
-            nextPrice = uint(
-                ((position.size *
-                    int(position.avgPrice) +
-                    _sizeDelta *
-                    int(_price)) / nextSize).abs()
+        // update user positions
+        {
+            PerpTracker.Position memory position = perpTracker_.getPosition(
+                _account,
+                _token
             );
-        } else {
-            // decrease position
-            // here position.size must be non-zero
-            int256 pnl;
-            if (
-                (nextSize > 0 && position.size > 0) ||
-                (nextSize < 0 && position.size < 0)
-            ) {
-                // position direction is not changed
-                pnl = (position.size - nextSize).multiplyDecimal(
-                    int(_price) - int(position.avgPrice)
-                );
-                nextPrice = position.avgPrice;
-            } else {
-                // position direction changed
-                pnl = position.size.multiplyDecimal(
-                    int(_price) - int(position.avgPrice)
-                );
-                nextPrice = _price;
-            }
-            // settle p&l
-            uint256 tokenAmount = usdToToken(baseToken, uint(pnl.abs()), false);
-            if (pnl > 0) {
-                liquidityBalance -= tokenAmount;
+            (int256 nextPrice, int256 pnlAndFunding) = _computeTrade(
+                position.size,
+                position.avgPrice,
+                position.accFunding,
+                _sizeDelta,
+                _price,
+                latestAccFunding
+            );
+            // settle p&l and funding
+            uint256 tokenAmount = usdToToken(
+                baseToken,
+                pnlAndFunding.abs(),
+                false
+            ).toUint256();
+            if (pnlAndFunding > 0) {
                 perpTracker_.addMargin(position.account, tokenAmount);
-            } else {
-                liquidityBalance += tokenAmount;
+            } else if (pnlAndFunding < 0) {
                 perpTracker_.removeMargin(position.account, tokenAmount);
             }
+            // write to state
+            perpTracker_.updatePosition(
+                _account,
+                _token,
+                position.size + _sizeDelta,
+                nextPrice
+            );
         }
-        // write to state
-        perpTracker_.updatePosition(_account, _token, nextSize, nextPrice);
+
+        // update global positions
+        {
+            PerpTracker.GlobalPosition memory position = perpTracker_
+                .getGlobalPosition(_token);
+            (int256 nextPrice, int256 pnlAndFunding) = _computeTrade(
+                position.longSize + position.shortSize,
+                position.avgPrice,
+                position.accFunding,
+                _sizeDelta,
+                _price,
+                latestAccFunding
+            );
+            // settle p&l and funding
+            liquidityBalance += usdToToken(baseToken, pnlAndFunding, false);
+            // write to state
+            perpTracker_.updateGlobalPosition(_token, _sizeDelta, nextPrice);
+        }
+    }
+
+    function _computeTrade(
+        int256 _size,
+        int256 _avgPrice,
+        int256 _accFunding,
+        int256 _sizeDelta,
+        int256 _price,
+        int256 _latestAccFunding
+    ) internal pure returns (int256 nextPrice, int256 pnlAndFunding) {
+        int256 nextSize = _size + _sizeDelta;
+        if ((_sizeDelta > 0 && _size >= 0) || (_sizeDelta < 0 && _size <= 0)) {
+            // increase position
+            nextPrice = ((_size * _avgPrice + _sizeDelta * _price) / nextSize)
+                .abs();
+        } else {
+            // decrease position
+            // here _size must be non-zero
+            if ((nextSize > 0 && _size > 0) || (nextSize < 0 && _size < 0)) {
+                // position direction is not changed
+                pnlAndFunding = (_size - nextSize).multiplyDecimal(
+                    _price - _avgPrice
+                );
+                nextPrice = _avgPrice;
+            } else {
+                // position direction changed
+                pnlAndFunding = _size.multiplyDecimal(_price - _avgPrice);
+                nextPrice = _price;
+            }
+        }
+        // funding
+        pnlAndFunding += (_latestAccFunding - _accFunding).multiplyDecimal(
+            _size
+        );
     }
 
     /*=== pricing ===*/
@@ -275,46 +313,46 @@ contract Market is Ownable, Initializable {
     function getPrice(
         address _token,
         bool _usePyth
-    ) public view returns (uint256) {
+    ) public view returns (int256) {
         PriceOracle priceOracle_ = PriceOracle(priceOracle);
         (, uint256 chainlinkPrice) = priceOracle_.getLatestChainlinkPrice(
             _token
         );
         if (_usePyth) {
             MarketSettings settings_ = MarketSettings(settings);
-            (, uint256 pythPrice) = priceOracle_.getPythPrice(
+            (, int256 pythPrice) = priceOracle_.getPythPrice(
                 _token,
                 settings_.getUintVals(PYTH_MAX_AGE)
             );
-            uint256 divergence = chainlinkPrice > pythPrice
-                ? chainlinkPrice.divideDecimal(pythPrice)
-                : pythPrice.divideDecimal(chainlinkPrice);
+            uint256 divergence = chainlinkPrice > pythPrice.toUint256()
+                ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
+                : pythPrice.toUint256().divideDecimal(chainlinkPrice);
             require(
                 divergence < settings_.getUintVals(MAX_PRICE_DIVERGENCE),
                 "Market: oracle price divergence too large"
             );
             return pythPrice;
         }
-        return chainlinkPrice;
+        return int256(chainlinkPrice);
     }
 
     function tokenToUsd(
         address _token,
-        uint256 _amount,
+        int256 _amount,
         bool _usePyth
-    ) public view returns (uint256) {
+    ) public view returns (int256) {
         return
             (getPrice(_token, _usePyth) * _amount) /
-            (10 ** IERC20Metadata(_token).decimals());
+            int(10 ** IERC20Metadata(_token).decimals());
     }
 
     function usdToToken(
         address _token,
-        uint256 _amount,
+        int256 _amount,
         bool _usePyth
-    ) public view returns (uint256) {
+    ) public view returns (int256) {
         return
-            (_amount * (10 ** IERC20Metadata(_token).decimals())) /
+            (_amount * int(10 ** IERC20Metadata(_token).decimals())) /
             getPrice(_token, _usePyth);
     }
 }

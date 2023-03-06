@@ -4,12 +4,15 @@ pragma solidity ^0.8.0;
 import "../market/Market.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
 import "../tokenomics/LPToken.sol";
 
 contract LiquidityManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
     using SafeDecimalMath for uint256;
+    using SafeCast for int256;
+    using SafeCast for uint256;
 
     // setting keys
     bytes32 public constant LIQUIDITY_REMOVE_COOLDOWN =
@@ -83,11 +86,9 @@ contract LiquidityManager is Ownable, Initializable {
     ) internal returns (uint256) {
         Market market_ = Market(market);
         // usd value check
-        uint256 usdAmount = market_.tokenToUsd(
-            market_.baseToken(),
-            _amount,
-            false
-        );
+        uint256 usdAmount = market_
+            .tokenToUsd(market_.baseToken(), _amount.toInt256(), false)
+            .toUint256();
         require(
             usdAmount >= _minUsd,
             "LiquidityManager: insufficient usd amount"
@@ -142,8 +143,8 @@ contract LiquidityManager is Ownable, Initializable {
         (int lpNetValue, int freeLpValue) = market_.getLpStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
-        int256 burnValue = (lpNetValue * int(_amount)) /
-            int(lpToken_.totalSupply()); // must be non-negative
+        int256 burnValue = (lpNetValue * _amount.toInt256()) /
+            lpToken_.totalSupply().toInt256(); // must be non-negative
         require(
             freeLpValue >= burnValue,
             "LiquidityManager: insufficient free lp"
@@ -151,11 +152,9 @@ contract LiquidityManager is Ownable, Initializable {
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
-        uint256 amountOut = market_.usdToToken(
-            market_.baseToken(),
-            uint(burnValue),
-            false
-        );
+        uint256 amountOut = market_
+            .usdToToken(market_.baseToken(), burnValue, false)
+            .toUint256();
         require(
             amountOut >= _minOut,
             "LiquidityManager: insufficient amountOut"
@@ -166,7 +165,7 @@ contract LiquidityManager is Ownable, Initializable {
             _account,
             _amount,
             lpNetValue,
-            uint(burnValue),
+            burnValue.toUint256(),
             amountOut
         );
 
