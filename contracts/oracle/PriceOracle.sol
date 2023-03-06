@@ -5,6 +5,7 @@ import "../access/Ownable.sol";
 import "../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "../interfaces/pyth/IPyth.sol";
 import "../utils/Initializable.sol";
+import "../utils/SafeCast.sol";
 
 contract PriceOracle is Ownable, Initializable {
     uint256 public constant PRICE_PRECISION = 18;
@@ -95,7 +96,7 @@ contract PriceOracle is Ownable, Initializable {
     function getPythPrice(
         address _token,
         uint256 age
-    ) external view returns (uint256, uint256) {
+    ) external view returns (uint256, int256) {
         bytes32 assetId = assetIds[_token];
         require(assetId != bytes32(0), "PriceOracle: undefined pyth asset");
         PythStructs.Price memory price = IPyth(pythOracle).getPriceNoOlderThan(
@@ -103,15 +104,15 @@ contract PriceOracle is Ownable, Initializable {
             age
         );
         require(price.price > 0, "PriceOracle: invalid Pyth price");
-        uint256 normalizedPrice = uint256(uint64(price.price));
+        int256 normalizedPrice = int256(price.price);
         if (price.expo < -int(PRICE_PRECISION))
             normalizedPrice =
                 normalizedPrice /
-                (10 ** uint(-price.expo - int(PRICE_PRECISION)));
+                int(10 ** uint(-price.expo - int(PRICE_PRECISION)));
         else if (price.expo > -int(PRICE_PRECISION))
             normalizedPrice =
                 normalizedPrice *
-                (10 ** uint(int(PRICE_PRECISION) + price.expo));
+                int(10 ** uint(int(PRICE_PRECISION) + price.expo));
         return (price.publishTime, normalizedPrice);
     }
 

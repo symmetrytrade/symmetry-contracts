@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "../market/Market.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
 
 contract PositionManager is Ownable, Initializable {
@@ -60,9 +61,9 @@ contract PositionManager is Ownable, Initializable {
     }
 
     function isLiquidatable(address _account) public view returns (bool) {
-        (uint256 maintenanceMargin, int256 currentMargin) = Market(market)
+        (int256 maintenanceMargin, int256 currentMargin) = Market(market)
             .accountMarginStatus(_account);
-        return int(maintenanceMargin) <= currentMargin;
+        return maintenanceMargin <= currentMargin;
     }
 
     /*=== position ===*/
@@ -139,10 +140,10 @@ contract PositionManager is Ownable, Initializable {
 
         address token = order.token;
         int256 size = order.size;
-        // trade
-        uint256 fillPrice = market_.computePerpFillPrice(token, size);
-        // update position
-        market_.updatePosition(msg.sender, token, size, fillPrice);
+        // calculate fill price
+        int256 fillPrice = market_.computePerpFillPrice(token, size);
+        // do trade
+        market_.trade(msg.sender, token, size, fillPrice);
         // ensure margin is sufficient after the trade
         require(
             !isLiquidatable(msg.sender),
