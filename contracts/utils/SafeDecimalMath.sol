@@ -22,6 +22,14 @@ library SafeDecimalMath {
     ) internal pure returns (uint256) {
         return (x * UNIT) / y;
     }
+
+    function min(uint256 x, uint256 y) internal pure returns (uint256) {
+        return x < y ? x : y;
+    }
+
+    function max(uint256 x, uint256 y) internal pure returns (uint256) {
+        return x < y ? y : x;
+    }
 }
 
 library SignedSafeDecimalMath {
@@ -45,5 +53,13 @@ library SignedSafeDecimalMath {
 
     function abs(int256 x) internal pure returns (int256) {
         return x < 0 ? -x : x;
+    }
+
+    function min(int256 x, int256 y) internal pure returns (int256) {
+        return x < y ? x : y;
+    }
+
+    function max(int256 x, int256 y) internal pure returns (int256) {
+        return x < y ? y : x;
     }
 }

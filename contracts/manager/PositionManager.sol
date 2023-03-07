@@ -8,6 +8,8 @@ import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
 
 contract PositionManager is Ownable, Initializable {
+    using SignedSafeDecimalMath for int256;
+
     // states
     address public market;
 
@@ -130,6 +132,8 @@ contract PositionManager is Ownable, Initializable {
     ) external payable {
         Order storage order = orders[_id];
         _validateOrderLiveness(order);
+        address token = order.token;
+        int256 size = order.size;
 
         Market market_ = Market(market);
         // update oracle price
@@ -137,11 +141,19 @@ contract PositionManager is Ownable, Initializable {
             msg.sender,
             _priceUpdateData
         );
-
-        address token = order.token;
-        int256 size = order.size;
+        // update funding
+        (, int freeLpValue) = market_.updateFunding(
+            token,
+            market_.getPrice(token, true)
+        );
         // calculate fill price
         int256 fillPrice = market_.computePerpFillPrice(token, size);
+        // ensure free lp is sufficient to do this trade
+        // TODO: risk control: make a lowerbound?
+        require(
+            freeLpValue >= fillPrice.multiplyDecimal(size),
+            "PositionManager: insufficient liquidity"
+        );
         // do trade
         market_.trade(msg.sender, token, size, fillPrice);
         // ensure margin is sufficient after the trade
