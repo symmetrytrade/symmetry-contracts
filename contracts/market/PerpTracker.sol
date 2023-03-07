@@ -35,11 +35,14 @@ contract PerpTracker is Ownable, Initializable {
     address[] public marketTokensList; // market tokens
     mapping(address => bool) public marketTokensListed;
 
-    mapping(address => GlobalPosition) public globalPositions; // user global positions
+    mapping(address => GlobalPosition) public globalPositions; // lp global positions
     mapping(address => mapping(address => Position)) private userPositions; // positions of single user, user => token => position mapping
     mapping(address => int256) public userMargin; // margin(include realized pnl) of user
 
     mapping(address => int256) public latestAccFunding; // the latest accumulate funding fee for unit position size
+    mapping(address => int256) public latestFundingRate; // the latest funding rate
+    mapping(address => int256) public latestFundingUpdateTime; // the latest funding rate update time
+    mapping(address => int256) public latestLpNetValue; // lp net value
 
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -67,6 +70,8 @@ contract PerpTracker is Ownable, Initializable {
             marketTokensListed[_token] = true;
             marketTokensList.push(_token);
         }
+        if (latestFundingUpdateTime[_token] == 0)
+            latestFundingUpdateTime[_token] = int(block.timestamp);
     }
 
     function removeToken(uint256 _tokenIndex) external onlyOwner {
@@ -136,9 +141,30 @@ contract PerpTracker is Ownable, Initializable {
         position.accFunding = latestAccFunding[_token];
     }
 
+    function updateFunding(
+        address _token,
+        int256 _nextFundingRate,
+        int256 _nextAccFunding,
+        int256 _lpNetValue
+    ) external onlyMarket {
+        latestAccFunding[_token] = _nextAccFunding;
+        latestFundingRate[_token] = _nextFundingRate;
+        latestFundingUpdateTime[_token] = int(block.timestamp);
+        latestLpNetValue[_token] = _lpNetValue;
+    }
+
     /*=== perp ===*/
     function marketKey(address _token) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_token, PERP_DOMAIN));
+    }
+
+    /**
+     * @notice get the current skew of a market(in underlying size)
+     * @param _token token address
+     */
+    function currentSkew(address _token) external view returns (int256) {
+        GlobalPosition storage globalPosition = globalPositions[_token];
+        return -(globalPosition.longSize + globalPosition.shortSize);
     }
 
     /// @notice compute the fill price of a trade
