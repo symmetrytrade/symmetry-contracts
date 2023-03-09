@@ -161,9 +161,14 @@ contract Market is Ownable, Initializable {
     /// @param _account user address
     /// @return mtm maintenance margin including liquidation fee in usd
     /// @return currentMargin user current margin including position p&l and funding fee in usd
+    /// @return positionNotional notional value of all user positions
     function accountMarginStatus(
         address _account
-    ) external view returns (int256 mtm, int256 currentMargin) {
+    )
+        external
+        view
+        returns (int256 mtm, int256 currentMargin, int256 positionNotional)
+    {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         uint256 len = perpTracker_.marketTokensLength();
         int pnlAndFunding = 0;
@@ -176,9 +181,8 @@ contract Market is Ownable, Initializable {
                 token
             );
             int256 price = getPrice(position.token, false);
-            // update mtm by position size
-            // TODO: add liquidation fees
-            mtm += position.size.abs().multiplyDecimal(price);
+            // update notional value
+            positionNotional += position.size.abs().multiplyDecimal(price);
             // update pnl by price
             pnlAndFunding += position.size.multiplyDecimal(
                 price - position.avgPrice
@@ -189,7 +193,8 @@ contract Market is Ownable, Initializable {
                 nextAccFunding - position.accFunding
             );
         }
-        mtm = mtm.multiplyDecimal(
+        // TODO: add buffer & liquidation fee to maintenance margin
+        mtm = positionNotional.multiplyDecimal(
             MarketSettings(settings)
                 .getUintVals(MAINTENANCE_MARGIN_RATIO)
                 .toInt256()

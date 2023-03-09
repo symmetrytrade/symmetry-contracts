@@ -10,6 +10,9 @@ import "../utils/Initializable.sol";
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
 
+    // setting keys
+    bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
+
     // states
     address public market;
 
@@ -57,15 +60,29 @@ contract PositionManager is Ownable, Initializable {
         Market market_ = Market(market);
         market_.transferMarginOut(msg.sender, _amount);
         require(
-            !isLiquidatable(msg.sender),
-            "PositionManager: insufficient margin"
+            !leverageRatioExceeded(msg.sender),
+            "PositionManager: leverage ratio too large"
         );
     }
 
     function isLiquidatable(address _account) public view returns (bool) {
-        (int256 maintenanceMargin, int256 currentMargin) = Market(market)
+        (int256 maintenanceMargin, int256 currentMargin, ) = Market(market)
             .accountMarginStatus(_account);
         return maintenanceMargin <= currentMargin;
+    }
+
+    function leverageRatioExceeded(
+        address _account
+    ) public view returns (bool) {
+        (, int256 currentMargin, int256 positionNotional) = Market(market)
+            .accountMarginStatus(_account);
+        int256 maxLeverageRatio = int(
+            MarketSettings(Market(market).settings()).getUintVals(
+                MAX_LEVERAGE_RATIO
+            )
+        );
+        return
+            positionNotional.divideDecimal(maxLeverageRatio) <= currentMargin;
     }
 
     /*=== position ===*/
@@ -156,10 +173,10 @@ contract PositionManager is Ownable, Initializable {
         );
         // do trade
         market_.trade(msg.sender, token, size, fillPrice);
-        // ensure margin is sufficient after the trade
+        // ensure leverage ratio is higher than max laverage ratio
         require(
-            !isLiquidatable(msg.sender),
-            "PositionManager: insufficient margin"
+            !leverageRatioExceeded(msg.sender),
+            "PositionManager: leverage ratio too large"
         );
         // update order
         order.status = OrderStatus.Executed;
