@@ -93,16 +93,24 @@ contract PriceOracle is Ownable, Initializable {
         return (roundID, normalizedPrice);
     }
 
+    /**
+     * @dev get pyth price updated within a time range
+     * @param _token token to query
+     * @param _age required price update time range
+     * @return success, price publish time, normalized price
+     */
     function getPythPrice(
         address _token,
-        uint256 age
-    ) external view returns (uint256, int256) {
+        uint256 _age
+    ) external view returns (bool, uint256, int256) {
         bytes32 assetId = assetIds[_token];
         require(assetId != bytes32(0), "PriceOracle: undefined pyth asset");
-        PythStructs.Price memory price = IPyth(pythOracle).getPriceNoOlderThan(
-            assetId,
-            age
+        PythStructs.Price memory price = IPyth(pythOracle).getPriceUnsafe(
+            assetId
         );
+        if (price.publishTime + _age < block.timestamp) {
+            return (false, 0, int(0));
+        }
         require(price.price > 0, "PriceOracle: invalid Pyth price");
         int256 normalizedPrice = int256(price.price);
         if (price.expo < -int(PRICE_PRECISION))
@@ -113,7 +121,7 @@ contract PriceOracle is Ownable, Initializable {
             normalizedPrice =
                 normalizedPrice *
                 int(10 ** uint(int(PRICE_PRECISION) + price.expo));
-        return (price.publishTime, normalizedPrice);
+        return (true, price.publishTime, normalizedPrice);
     }
 
     /// @notice update pyth price, refund remaining fee to sender
