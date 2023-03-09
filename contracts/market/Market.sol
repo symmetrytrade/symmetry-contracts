@@ -37,6 +37,8 @@ contract Market is Ownable, Initializable {
 
     // liquidity margin (deposited liquidity + realized pnl)
     int256 public liquidityBalance;
+    // insurance, collection of liquidation penalty
+    uint256 public insuranceBalance;
 
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
@@ -139,6 +141,45 @@ contract Market is Ownable, Initializable {
         freeLpValue = lpNetValue - positionMargin;
     }
 
+    /*=== insurance ===*/
+
+    /**
+     * @param _fee fee to pay in usd
+     * @param _receiver fee receiver
+     */
+    function deductFeeFromInsurance(
+        uint256 _fee,
+        address _receiver
+    ) external onlyOperator {
+        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
+            .toUint256();
+        IERC20(baseToken).safeTransfer(_receiver, amount);
+        if (insuranceBalance >= _fee) {
+            insuranceBalance -= _fee;
+        } else {
+            // if insurance is insufficient, pay rest fee by lp
+            _fee -= insuranceBalance;
+            insuranceBalance = 0;
+            liquidityBalance -= int(_fee);
+        }
+    }
+
+    function fillExceedingLoss(
+        address _account,
+        uint256 _loss
+    ) external onlyOperator {
+        uint256 amount = usdToToken(baseToken, _loss.toInt256(), false)
+            .toUint256();
+        PerpTracker(perpTracker).addMargin(_account, amount);
+        if (insuranceBalance > amount) {
+            insuranceBalance -= amount;
+        } else {
+            amount -= insuranceBalance;
+            insuranceBalance = 0;
+            liquidityBalance -= int(amount);
+        }
+    }
+
     /*=== margin ===*/
 
     function transferMarginIn(
@@ -155,6 +196,36 @@ contract Market is Ownable, Initializable {
     ) external onlyOperator {
         IERC20(baseToken).safeTransfer(_account, _amount);
         PerpTracker(perpTracker).removeMargin(_account, _amount);
+    }
+
+    /**
+     * @param _account account to pay the fee
+     * @param _fee fee to pay in usd
+     * @param _receiver fee receiver
+     */
+    function deductFeeFromAccount(
+        address _account,
+        uint256 _fee,
+        address _receiver
+    ) external onlyOperator {
+        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
+            .toUint256();
+        IERC20(baseToken).safeTransfer(_receiver, amount);
+        PerpTracker(perpTracker).removeMargin(_account, amount);
+    }
+
+    /**
+     * @param _account account to pay the fee
+     * @param _fee fee to pay in usd
+     */
+    function deductPenaltyToInsurance(
+        address _account,
+        uint256 _fee
+    ) external onlyOperator {
+        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
+            .toUint256();
+        PerpTracker(perpTracker).removeMargin(_account, amount);
+        insuranceBalance += amount;
     }
 
     /// @notice get user's margin status
@@ -322,6 +393,30 @@ contract Market is Ownable, Initializable {
             nextFundingRate,
             nextAccFunding,
             lpNetValue
+        );
+    }
+
+    /*=== liquidation ===*/
+    /**
+     * @notice compute the liquidation price of a user position
+     * @param _account account to liquidate
+     * @param _token token to liquidate
+     * @return liquidation price, liquidation size
+     */
+    function computePerpLiquidatePrice(
+        address _account,
+        address _token
+    ) external view returns (int256, int256) {
+        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        int256 oraclePrice = getPrice(_token, true);
+        int256 size = perpTracker_.getPositionSize(_account, _token);
+        return (
+            PerpTracker(perpTracker).computePerpFillPrice(
+                _token,
+                size,
+                oraclePrice
+            ),
+            size
         );
     }
 

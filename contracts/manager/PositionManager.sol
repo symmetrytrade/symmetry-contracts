@@ -9,9 +9,13 @@ import "../utils/Initializable.sol";
 
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
+    using SafeCast for int256;
 
     // setting keys
     bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
+    bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
+    bytes32 public constant LIQUIDATION_PENALTY_RATIO =
+        "liquidationPenaltyRatio";
 
     // states
     address public market;
@@ -182,5 +186,103 @@ contract PositionManager is Ownable, Initializable {
         order.status = OrderStatus.Executed;
     }
 
-    //TODO: liquidate
+    /**
+     * @notice liquidate an account by closing the whole position of a token
+     * @param _account account to liquidate
+     * @param _token position to liquidate
+     * @param _priceUpdateData price update data for pyth oracle
+     */
+    function liquidatePosition(
+        address _account,
+        address _token,
+        bytes[] calldata _priceUpdateData
+    ) external payable {
+        Market market_ = Market(market);
+        // update oracle price
+        PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
+            msg.sender,
+            _priceUpdateData
+        );
+        // update funding
+        market_.updateFunding(_token, market_.getPrice(_token, true));
+        // validate liquidation
+        require(
+            isLiquidatable(_account),
+            "PositionManager: account is not liquidatable"
+        );
+        // compute liquidate price
+        (int256 liquidationPrice, int256 size) = market_
+            .computePerpLiquidatePrice(_account, _token);
+        // close position
+        market_.trade(_account, _token, size, liquidationPrice);
+        // post trade margin
+        (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
+        // deduct liquidation fee to liquidator
+        {
+            int256 liquidationFeeRatio = int(
+                MarketSettings(Market(market).settings()).getUintVals(
+                    LIQUIDATION_FEE_RATIO
+                )
+            );
+            int256 liquidationFee = liquidationPrice
+                .multiplyDecimal(size.abs())
+                .multiplyDecimal(liquidationFeeRatio);
+            if (currentMargin >= liquidationFee) {
+                // margin is sufficient to pay liquidation fee
+                market_.deductFeeFromAccount(
+                    _account,
+                    liquidationFee.toUint256(),
+                    msg.sender
+                );
+                currentMargin -= liquidationFee;
+            } else {
+                // margin is insufficient, deduct fee from user margin, then from insurance, lp
+                if (currentMargin > 0) {
+                    liquidationFee -= currentMargin;
+                    market_.deductFeeFromAccount(
+                        _account,
+                        currentMargin.toUint256(),
+                        msg.sender
+                    );
+                    currentMargin = 0;
+                }
+                market_.deductFeeFromInsurance(
+                    liquidationFee.toUint256(),
+                    msg.sender
+                );
+            }
+        }
+        // deduct liquidation penalty to insurance account
+        {
+            int256 liquidationPenaltyRatio = int(
+                MarketSettings(Market(market).settings()).getUintVals(
+                    LIQUIDATION_PENALTY_RATIO
+                )
+            );
+            int256 liquidationPenalty = liquidationPrice
+                .multiplyDecimal(size.abs())
+                .multiplyDecimal(liquidationPenaltyRatio);
+            if (currentMargin >= liquidationPenalty) {
+                // margin is sufficient
+                market_.deductPenaltyToInsurance(
+                    _account,
+                    liquidationPenalty.toUint256()
+                );
+            } else {
+                // margin is insufficient, deduct fee from user margin, then from insurance, lp
+                if (currentMargin > 0) {
+                    liquidationPenalty -= currentMargin;
+                    market_.deductPenaltyToInsurance(
+                        _account,
+                        currentMargin.toUint256()
+                    );
+                    currentMargin = 0;
+                }
+            }
+        }
+        // fill the exceeding loss from insurance account
+        if (currentMargin < 0) {
+            market_.fillExceedingLoss(_account, uint256(-currentMargin));
+        }
+    }
 }

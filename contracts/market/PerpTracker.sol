@@ -101,6 +101,13 @@ contract PerpTracker is Ownable, Initializable {
         return userPositions[_account][_token];
     }
 
+    function getPositionSize(
+        address _account,
+        address _token
+    ) external view returns (int256) {
+        return userPositions[_account][_token].size;
+    }
+
     /*=== update functions ===*/
 
     function addMargin(address _account, uint256 _amount) external onlyMarket {
