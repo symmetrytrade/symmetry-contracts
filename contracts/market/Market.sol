@@ -444,21 +444,22 @@ contract Market is Ownable, Initializable {
     /*=== pricing ===*/
     /// @notice get token's normalized usd price
     /// @param _token token address
-    /// @param _usePyth use price from pyth or not
+    /// @param _mustUsePyth use price from pyth or not
     function getPrice(
         address _token,
-        bool _usePyth
+        bool _mustUsePyth
     ) public view returns (int256) {
         PriceOracle priceOracle_ = PriceOracle(priceOracle);
         (, uint256 chainlinkPrice) = priceOracle_.getLatestChainlinkPrice(
             _token
         );
-        if (_usePyth) {
-            MarketSettings settings_ = MarketSettings(settings);
-            (, int256 pythPrice) = priceOracle_.getPythPrice(
-                _token,
-                settings_.getUintVals(PYTH_MAX_AGE)
-            );
+        MarketSettings settings_ = MarketSettings(settings);
+        (bool success, , int256 pythPrice) = priceOracle_.getPythPrice(
+            _token,
+            settings_.getUintVals(PYTH_MAX_AGE)
+        );
+        require(!_mustUsePyth || success, "Market: pyth price too stale");
+        if (success) {
             uint256 divergence = chainlinkPrice > pythPrice.toUint256()
                 ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
                 : pythPrice.toUint256().divideDecimal(chainlinkPrice);
