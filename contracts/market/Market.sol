@@ -100,7 +100,7 @@ contract Market is Ownable, Initializable {
         liquidityBalance -= _amount.toInt256();
     }
 
-    /// @notice get the lp funds usage
+    /// @notice get the lp net value and open interest of all positions
     /// @return lpNetValue the usd value of assets lp holds(including position p&l)
     /// @return longOpenInterest the open interest of long position
     /// @return shortOpenInterest the open interest of short position

@@ -183,7 +183,13 @@ contract PositionManager is Ownable, Initializable {
             .updateGlobalInfo(token);
         if (
             (prevSize <= 0 && size < 0 && shortOpenInterest >= lpNetValue) ||
-            (prevSize >= 0 && size > 0 && longOpenInterest >= lpNetValue)
+            (prevSize >= 0 && size > 0 && longOpenInterest >= lpNetValue) ||
+            (prevSize < 0 &&
+                prevSize + size > 0 &&
+                longOpenInterest >= lpNetValue) ||
+            (prevSize > 0 &&
+                prevSize + size < 0 &&
+                shortOpenInterest >= lpNetValue)
         ) {
             revert("PositionManager: open interest exceed hardlimit");
         }
