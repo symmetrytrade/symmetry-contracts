@@ -153,35 +153,40 @@ contract PositionManager is Ownable, Initializable {
     ) external payable {
         Order storage order = orders[_id];
         _validateOrderLiveness(order);
+        address account = order.account;
         address token = order.token;
         int256 size = order.size;
 
         Market market_ = Market(market);
+        int256 prevSize = PerpTracker(market_.perpTracker()).getPositionSize(
+            account,
+            token
+        );
         // update oracle price
         PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
             _priceUpdateData
         );
-        // update funding
-        (, int freeLpValue) = market_.updateFunding(
-            token,
-            market_.getPrice(token, true)
-        );
+        // update fees
+        market_.updateFee(token);
         // calculate fill price
         int256 fillPrice = market_.computePerpFillPrice(token, size);
-        // ensure free lp is sufficient to do this trade
-        // TODO: risk control: make a lowerbound?
-        require(
-            freeLpValue >= fillPrice.multiplyDecimal(size),
-            "PositionManager: insufficient liquidity"
-        );
         // do trade
-        market_.trade(msg.sender, token, size, fillPrice);
+        market_.trade(account, token, size, fillPrice);
         // ensure leverage ratio is higher than max laverage ratio
         require(
-            !leverageRatioExceeded(msg.sender),
+            !leverageRatioExceeded(account),
             "PositionManager: leverage ratio too large"
         );
+        // check open interest
+        (int lpNetValue, int longOpenInterest, int shortOpenInterest) = market_
+            .updateGlobalInfo(token);
+        if (
+            (prevSize <= 0 && size < 0 && shortOpenInterest >= lpNetValue) ||
+            (prevSize >= 0 && size > 0 && longOpenInterest >= lpNetValue)
+        ) {
+            revert("PositionManager: open interest exceed hardlimit");
+        }
         // update order
         order.status = OrderStatus.Executed;
     }
@@ -203,8 +208,8 @@ contract PositionManager is Ownable, Initializable {
             msg.sender,
             _priceUpdateData
         );
-        // update funding
-        market_.updateFunding(_token, market_.getPrice(_token, true));
+        // update fees
+        market_.updateFee(_token);
         // validate liquidation
         require(
             isLiquidatable(_account),
@@ -215,12 +220,14 @@ contract PositionManager is Ownable, Initializable {
             .computePerpLiquidatePrice(_account, _token);
         // close position
         market_.trade(_account, _token, size, liquidationPrice);
+        // update global info
+        market_.updateGlobalInfo(_token);
         // post trade margin
         (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
         // deduct liquidation fee to liquidator
         {
             int256 liquidationFeeRatio = int(
-                MarketSettings(Market(market).settings()).getUintVals(
+                MarketSettings(market_.settings()).getUintVals(
                     LIQUIDATION_FEE_RATIO
                 )
             );
@@ -255,7 +262,7 @@ contract PositionManager is Ownable, Initializable {
         // deduct liquidation penalty to insurance account
         {
             int256 liquidationPenaltyRatio = int(
-                MarketSettings(Market(market).settings()).getUintVals(
+                MarketSettings(market_.settings()).getUintVals(
                     LIQUIDATION_PENALTY_RATIO
                 )
             );
