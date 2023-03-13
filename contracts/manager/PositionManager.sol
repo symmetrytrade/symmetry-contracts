@@ -178,18 +178,26 @@ contract PositionManager is Ownable, Initializable {
             !leverageRatioExceeded(account),
             "PositionManager: leverage ratio too large"
         );
-        // check open interest
+        // update global market info
         (int lpNetValue, int longOpenInterest, int shortOpenInterest) = market_
             .updateGlobalInfo(token);
+        // hard limit of open interest for long/short = max(lp_net_value, counterparty_open_interest)
+        // check the hard limit after the order execution:
+        // 1. the order increases the old position
+        // 2. the order decreases the old position entirely and open a new position of counterpaty side
         if (
-            (prevSize <= 0 && size < 0 && shortOpenInterest >= lpNetValue) ||
-            (prevSize >= 0 && size > 0 && longOpenInterest >= lpNetValue) ||
+            (prevSize <= 0 &&
+                size < 0 &&
+                shortOpenInterest >= lpNetValue.max(longOpenInterest)) ||
+            (prevSize >= 0 &&
+                size > 0 &&
+                longOpenInterest >= lpNetValue.max(shortOpenInterest)) ||
             (prevSize < 0 &&
                 prevSize + size > 0 &&
-                longOpenInterest >= lpNetValue) ||
+                longOpenInterest >= lpNetValue.max(shortOpenInterest)) ||
             (prevSize > 0 &&
                 prevSize + size < 0 &&
-                shortOpenInterest >= lpNetValue)
+                shortOpenInterest >= lpNetValue.max(longOpenInterest))
         ) {
             revert("PositionManager: open interest exceed hardlimit");
         }
