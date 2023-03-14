@@ -21,6 +21,8 @@ contract PerpTracker is Ownable, Initializable {
         int256 shortSize; // in underlying, negative, 18 decimals
         int256 avgPrice; // average price for the net position (long + short)
         int256 accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
+        int256 accLongOIFee; // accumulate long open interest fee for unit position size at the latest position modification
+        int256 accShortOIFee; // accumulate long open interest fee for unit position size at the latest position modification
     }
 
     struct Position {
@@ -93,6 +95,7 @@ contract PerpTracker is Ownable, Initializable {
         address token = marketTokensList[_tokenIndex];
         delete marketTokensListed[token];
         marketTokensList[_tokenIndex] = marketTokensList[len - 1];
+        marketTokensList.pop();
     }
 
     /*=== view functions === */
@@ -197,6 +200,8 @@ contract PerpTracker is Ownable, Initializable {
         }
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
+        position.accLongOIFee = feeInfos[_token].accLongOIFee;
+        position.accShortOIFee = feeInfos[_token].accShortOIFee;
     }
 
     function updateFee(
@@ -222,7 +227,7 @@ contract PerpTracker is Ownable, Initializable {
      * @notice get the current skew of a market(in underlying size)
      * @param _token token address
      */
-    function currentSkew(address _token) external view returns (int256) {
+    function currentSkew(address _token) public view returns (int256) {
         GlobalPosition storage globalPosition = globalPositions[_token];
         return -(globalPosition.longSize + globalPosition.shortSize);
     }
@@ -238,8 +243,7 @@ contract PerpTracker is Ownable, Initializable {
         int256 _oraclePrice
     ) external view returns (int256) {
         // a temporary implementation based on global skew
-        GlobalPosition storage globalPosition = globalPositions[_token];
-        int globalSkew = globalPosition.longSize + globalPosition.shortSize;
+        int globalSkew = currentSkew(_token);
 
         MarketSettings settings_ = MarketSettings(Market(market).settings());
         int256 skewScale = settings_
