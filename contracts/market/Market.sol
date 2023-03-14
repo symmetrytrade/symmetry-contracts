@@ -114,7 +114,6 @@ contract Market is Ownable, Initializable {
         )
     {
         lpNetValue = tokenToUsd(baseToken, liquidityBalance, false);
-        int256 positionMargin = 0;
 
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         uint256 len = perpTracker_.marketTokensLength();
@@ -130,29 +129,24 @@ contract Market is Ownable, Initializable {
             longOpenInterest += position.shortSize.multiplyDecimal(price).abs();
             shortOpenInterest += position.longSize.multiplyDecimal(price);
             // pnl
-            if (size != 0) {
-                int256 delta = (price - position.avgPrice).multiplyDecimal(
-                    size
-                );
-                int256 absDelta = delta.abs();
-                if ((delta < 0 && size < 0) || (delta > 0 && size > 0)) {
-                    // user global position is profitable
-                    lpNetValue -= absDelta;
-                } else {
-                    lpNetValue += absDelta;
-                }
-            }
+            lpNetValue += (price - position.avgPrice).multiplyDecimal(size);
+            // funding fee
             {
-                // funding fee
                 (, int256 nextAccFunding) = _nextAccFunding(token, price);
                 lpNetValue -= size.multiplyDecimal(
                     nextAccFunding - position.accFunding
                 );
             }
-            // margin
-            positionMargin +=
-                (position.longSize + position.shortSize.abs()) *
-                price;
+            // open interest fee
+            {
+                (int nextAccLongOIFee, int nextAccShortOIFee) = perpTracker_
+                    .latestAccOIFee(token);
+                lpNetValue += (nextAccLongOIFee - position.accLongOIFee)
+                    .multiplyDecimal(position.shortSize)
+                    .abs();
+                lpNetValue += (nextAccShortOIFee - position.accShortOIFee)
+                    .multiplyDecimal(position.longSize);
+            }
         }
     }
 
@@ -535,7 +529,7 @@ contract Market is Ownable, Initializable {
 
     /*=== liquidation ===*/
     /**
-     * @notice compute the liquidation price of a user position
+     * @notice compute the fill price of liquidation
      * @param _account account to liquidate
      * @param _token token to liquidate
      * @return liquidation price, liquidation size
