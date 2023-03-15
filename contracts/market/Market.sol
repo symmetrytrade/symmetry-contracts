@@ -129,9 +129,9 @@ contract Market is Ownable, Initializable {
             // open interest, note here position is lp position(counter party of user)
             netOpenInterest += position
                 .shortSize
-                .multiplyDecimal(price)
                 .abs()
-                .max(position.longSize.multiplyDecimal(price));
+                .max(position.longSize)
+                .multiplyDecimal(price);
             // pnl
             lpNetValue += (price - position.avgPrice).multiplyDecimal(size);
             // funding fee
