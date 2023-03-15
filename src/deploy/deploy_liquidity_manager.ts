@@ -40,6 +40,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ).wait();
 };
 
-deploy.tags = [CONTRACTS.LiquidityManager.name, "prod", "test"];
+deploy.tags = [CONTRACTS.LiquidityManager.name, "prod"];
 deploy.dependencies = [CONTRACTS.Market.name, CONTRACTS.LPToken.name];
 export default deploy;

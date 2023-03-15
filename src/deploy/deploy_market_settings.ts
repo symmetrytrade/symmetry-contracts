@@ -29,5 +29,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 };
 
-deploy.tags = [CONTRACTS.MarketSettings.name, "prod", "test"];
+deploy.tags = [CONTRACTS.MarketSettings.name, "prod"];
 export default deploy;
