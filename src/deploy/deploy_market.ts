@@ -33,10 +33,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ).wait();
 };
 
-deploy.tags = [CONTRACTS.Market.name, "prod", "test"];
+deploy.tags = [CONTRACTS.Market.name, "prod"];
 deploy.dependencies = [
     CONTRACTS.PriceOracle.name,
     CONTRACTS.MarketSettings.name,
-    CONTRACTS.USDC.name,
+    "mock",
 ];
 export default deploy;

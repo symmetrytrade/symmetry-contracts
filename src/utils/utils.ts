@@ -3,7 +3,7 @@ import hardhat from "hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 
-const ERC1967PROXY = "ERC1967Proxy";
+// const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
 const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
@@ -31,6 +31,25 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     PerpTracker: { name: "PerpTracker", contract: "PerpTracker" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
+    WETH: { name: "WETH", contract: "FaucetToken" },
+    WBTC: { name: "WBTC", contract: "FaucetToken" },
+    ChainlinkAggregatorSequencer: {
+        name: "ChainlinkAggregatorSequencer",
+        contract: "ChainlinkMock",
+    },
+    ChainlinkAggregatorUSDC: {
+        name: "ChainlinkAggregatorUSDC",
+        contract: "ChainlinkMock",
+    },
+    ChainlinkAggregatorWETH: {
+        name: "ChainlinkAggregatorWETH",
+        contract: "ChainlinkMock",
+    },
+    ChainlinkAggregatorWBTC: {
+        name: "ChainlinkAggregatorWBTC",
+        contract: "ChainlinkMock",
+    },
+    Pyth: { name: "Pyth", contract: "PythMock" },
 };
 
 async function deployInBeaconProxy(

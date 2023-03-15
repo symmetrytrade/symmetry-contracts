@@ -21,6 +21,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await perpTracker.initialize(market.address)).wait();
 };
 
-deploy.tags = [CONTRACTS.PerpTracker.name, "prod", "test"];
+deploy.tags = [CONTRACTS.PerpTracker.name, "prod"];
 deploy.dependencies = [CONTRACTS.Market.name];
 export default deploy;

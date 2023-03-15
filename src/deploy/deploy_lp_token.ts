@@ -20,5 +20,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await lpToken.initialize("LPToken", "LP", 18)).wait();
 };
 
-deploy.tags = [CONTRACTS.LPToken.name, "prod", "test"];
+deploy.tags = [CONTRACTS.LPToken.name, "prod"];
 export default deploy;

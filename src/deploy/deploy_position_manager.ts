@@ -29,6 +29,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await market.setOperator(positionManager.address, true)).wait();
 };
 
-deploy.tags = [CONTRACTS.PositionManager.name, "prod", "test"];
+deploy.tags = [CONTRACTS.PositionManager.name, "prod"];
 deploy.dependencies = [CONTRACTS.Market.name];
 export default deploy;
