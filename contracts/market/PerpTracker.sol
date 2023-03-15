@@ -21,8 +21,7 @@ contract PerpTracker is Ownable, Initializable {
         int256 shortSize; // in underlying, negative, 18 decimals
         int256 avgPrice; // average price for the net position (long + short)
         int256 accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
-        int256 accLongOIFee; // accumulate long open interest fee for unit position size at the latest position modification
-        int256 accShortOIFee; // accumulate long open interest fee for unit position size at the latest position modification
+        int256 accHoldingFee; // accumulate holding fee for unit position size at the latest position modification
     }
 
     struct Position {
@@ -30,22 +29,21 @@ contract PerpTracker is Ownable, Initializable {
         address token;
         int256 size; // position size, positive for long, negative for short, 18 decimals
         int256 accFunding; // accumulate funding fee for unit position size at the latest position modification
-        int256 accOIFee; // accumulate open interest fee for unit position size at the latest position modification
+        int256 accHoldingFee; // accumulate holding fee for unit position size at the latest position modification
         int256 avgPrice;
     }
 
     struct FeeInfo {
         int256 accFunding; // the latest accumulate funding fee for unit position size
         int256 fundingRate; // the latest funding rate
-        int256 accLongOIFee; // the latest open interest fee for long positions
-        int256 accShortOIFee; // the latest open interest fee for short positions
+        int256 accHoldingFee; // the latest holding fee
         int256 updateTime; // the latest fee update time
     }
 
-    struct GlobalInfo {
-        int256 lpNetValue; // latest lp net value
-        int256 longOpenInterest; // latest open interest of long positions
-        int256 shortOpenInterest; // latest open interest of short positions
+    struct TokenInfo {
+        int256 lpNetValue; // latest lp net value when any position of the token is updated
+        int256 netOpenInterest; // latest net open interest when any position of the token is updated
+        int256 skew; // latest token skew(in USD) when any position of the token is updated
     }
 
     address public market;
@@ -57,7 +55,7 @@ contract PerpTracker is Ownable, Initializable {
     mapping(address => int256) public userMargin; // margin(include realized pnl) of user
 
     mapping(address => FeeInfo) private feeInfos;
-    mapping(address => GlobalInfo) private globalInfos;
+    mapping(address => TokenInfo) private tokenInfos;
 
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -101,9 +99,22 @@ contract PerpTracker is Ownable, Initializable {
     /*=== view functions === */
 
     function getGlobalPosition(
-        address token
+        address _token
     ) external view returns (GlobalPosition memory) {
-        return globalPositions[token];
+        return globalPositions[_token];
+    }
+
+    /**
+     * @notice get user net position of a token
+     * @return long position size, short position size
+     */
+    function getGlobalPositionSize(
+        address _token
+    ) external view returns (int256, int256) {
+        return (
+            -globalPositions[_token].shortSize,
+            -globalPositions[_token].longSize
+        );
     }
 
     function marketTokensLength() external view returns (uint256) {
@@ -132,10 +143,10 @@ contract PerpTracker is Ownable, Initializable {
         return feeInfos[_token].fundingRate;
     }
 
-    function latestAccOIFee(
+    function latestAccHoldingFee(
         address _token
-    ) external view returns (int256, int256) {
-        return (feeInfos[_token].accLongOIFee, feeInfos[_token].accShortOIFee);
+    ) external view returns (int256) {
+        return feeInfos[_token].accHoldingFee;
     }
 
     function latestFeeUpdateTime(
@@ -145,16 +156,17 @@ contract PerpTracker is Ownable, Initializable {
     }
 
     function latestLpNetValue(address _token) external view returns (int256) {
-        return globalInfos[_token].lpNetValue;
+        return tokenInfos[_token].lpNetValue;
     }
 
-    function latestOpenInterest(
+    function latestSkew(address _token) external view returns (int256) {
+        return tokenInfos[_token].skew;
+    }
+
+    function latestNetOpenInterest(
         address _token
-    ) external view returns (int256, int256) {
-        return (
-            globalInfos[_token].longOpenInterest,
-            globalInfos[_token].shortOpenInterest
-        );
+    ) external view returns (int256) {
+        return tokenInfos[_token].netOpenInterest;
     }
 
     /*=== update functions ===*/
@@ -180,11 +192,7 @@ contract PerpTracker is Ownable, Initializable {
         position.size = _size;
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        if (_size > 0) {
-            position.accOIFee = feeInfos[_token].accLongOIFee;
-        } else {
-            position.accOIFee = feeInfos[_token].accShortOIFee;
-        }
+        position.accHoldingFee = feeInfos[_token].accHoldingFee;
     }
 
     function updateGlobalPosition(
@@ -200,8 +208,7 @@ contract PerpTracker is Ownable, Initializable {
         }
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accLongOIFee = feeInfos[_token].accLongOIFee;
-        position.accShortOIFee = feeInfos[_token].accShortOIFee;
+        position.accHoldingFee = feeInfos[_token].accHoldingFee;
     }
 
     function updateFee(
@@ -211,11 +218,11 @@ contract PerpTracker is Ownable, Initializable {
         feeInfos[_token] = _feeInfo;
     }
 
-    function updateGlobalInfo(
+    function updateTokenInfo(
         address _token,
-        GlobalInfo memory _globalInfo
+        TokenInfo memory _tokenInfo
     ) external onlyMarket {
-        globalInfos[_token] = _globalInfo;
+        tokenInfos[_token] = _tokenInfo;
     }
 
     /*=== perp ===*/
