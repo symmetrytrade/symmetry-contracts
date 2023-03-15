@@ -158,10 +158,10 @@ contract PositionManager is Ownable, Initializable {
         int256 size = order.size;
 
         Market market_ = Market(market);
-        int256 prevSize = PerpTracker(market_.perpTracker()).getPositionSize(
-            account,
-            token
-        );
+        PerpTracker perpTracker_ = PerpTracker(market_.perpTracker());
+
+        // operation type check
+        int prevSize = perpTracker_.getPositionSize(account, token);
         // update oracle price
         PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
@@ -178,28 +178,24 @@ contract PositionManager is Ownable, Initializable {
             !leverageRatioExceeded(account),
             "PositionManager: leverage ratio too large"
         );
-        // update global market info
-        (int lpNetValue, int longOpenInterest, int shortOpenInterest) = market_
-            .updateGlobalInfo(token);
-        // hard limit of open interest for long/short = max(lp_net_value, counterparty_open_interest)
-        // check the hard limit after the order execution:
-        // 1. the order increases the old position
-        // 2. the order decreases the old position entirely and open a new position of counterpaty side
-        if (
-            (prevSize <= 0 &&
-                size < 0 &&
-                shortOpenInterest >= lpNetValue.max(longOpenInterest)) ||
-            (prevSize >= 0 &&
-                size > 0 &&
-                longOpenInterest >= lpNetValue.max(shortOpenInterest)) ||
-            (prevSize < 0 &&
-                prevSize + size > 0 &&
-                longOpenInterest >= lpNetValue.max(shortOpenInterest)) ||
-            (prevSize > 0 &&
-                prevSize + size < 0 &&
-                shortOpenInterest >= lpNetValue.max(longOpenInterest))
-        ) {
-            revert("PositionManager: open interest exceed hardlimit");
+        // update token market info
+        (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(token);
+        // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
+        if (netOpenInterest > lpNetValue) {
+            (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
+                token
+            );
+            // 1. the order increases the old position and the position side become the overweight side
+            // 2. the order decreases the old position entirely and open a new position of counterparty side,
+            //    the counterparty side become the overweight side
+            if (
+                (prevSize <= 0 && size < 0 && shortSize > longSize) ||
+                (prevSize >= 0 && size > 0 && longSize > shortSize) ||
+                (prevSize < 0 && prevSize + size > 0 && longSize > shortSize) ||
+                (prevSize > 0 && prevSize + size < 0 && shortSize > longSize)
+            ) {
+                revert("PositionManager: open interest exceed hardlimit");
+            }
         }
         // update order
         order.status = OrderStatus.Executed;
@@ -235,7 +231,7 @@ contract PositionManager is Ownable, Initializable {
         // close position
         market_.trade(_account, _token, size, liquidationPrice);
         // update global info
-        market_.updateGlobalInfo(_token);
+        market_.updateTokenInfo(_token);
         // post trade margin
         (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
         // deduct liquidation fee to liquidator

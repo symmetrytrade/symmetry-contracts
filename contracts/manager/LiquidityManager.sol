@@ -101,7 +101,7 @@ contract LiquidityManager is Ownable, Initializable {
         uint256 mintAmount = usdAmount;
         int256 lpNetValue = 0;
         if (lpSupply > 0) {
-            (lpNetValue, , ) = market_.globalStatus();
+            (lpNetValue, ) = market_.globalStatus();
             if (lpNetValue > 0)
                 mintAmount = (lpSupply * usdAmount) / uint256(lpNetValue);
         }
@@ -140,14 +140,13 @@ contract LiquidityManager is Ownable, Initializable {
             "LiquidityManager: remove is in cooldown"
         );
         // check lp token price and free lp value
-        (int lpNetValue, int longOpenInterest, int shortOpenInterest) = market_
-            .globalStatus();
+        (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
         int256 burnValue = (lpNetValue * _amount.toInt256()) /
             lpToken_.totalSupply().toInt256(); // must be non-negative
         require(
-            lpNetValue - longOpenInterest.max(shortOpenInterest) >= burnValue,
+            lpNetValue - netOpenInterest >= burnValue,
             "LiquidityManager: insufficient free lp"
         );
         // burn lp
