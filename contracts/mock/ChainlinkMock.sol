@@ -12,8 +12,8 @@ contract ChainlinkMock {
     }
 
     function feed(int256 _answer) external {
-        answers[roundId] = _answer;
         ++roundId;
+        answers[roundId] = _answer;
     }
 
     function latestRoundData()
