@@ -52,6 +52,15 @@ contract PriceOracle is Ownable, Initializable {
         pythOracle = _pythOracle;
     }
 
+    function setPythIds(
+        address[] calldata _tokens,
+        bytes32[] calldata _ids
+    ) external onlyOwner {
+        require(_tokens.length == _ids.length, "PriceOracle: length not match");
+        for (uint i = 0; i < _tokens.length; ++i)
+            assetIds[_tokens[i]] = _ids[i];
+    }
+
     /*=== price ===*/
 
     function _checkSequencer() internal view {
