@@ -6,6 +6,7 @@
 !.yarn/sdks
 !.yarn/versions
 .env
+.DS_Store
 build
 node_modules
 deployments
