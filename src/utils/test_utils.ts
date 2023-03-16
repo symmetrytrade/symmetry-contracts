@@ -1,6 +1,15 @@
 import hardhat from "hardhat";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const abiCoder = new hardhat.ethers.utils.AbiCoder();
+
+export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
+    return (
+        await hre.ethers.provider.getBlock(
+            await hre.ethers.provider.getBlockNumber()
+        )
+    ).timestamp;
+}
 
 export function pythDataEncode(
     id: string,
@@ -17,7 +26,7 @@ export function pythDataEncode(
 export const chainlinkAggregators = [
     { name: "Sequencer", decimals: 0 },
     { name: "USDC", decimals: 6 },
-    { name: "WETH", decimals: 18 },
+    { name: "WETH", decimals: 20 },
     { name: "WBTC", decimals: 8 },
 ];
 
