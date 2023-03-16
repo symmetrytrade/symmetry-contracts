@@ -3,6 +3,8 @@ import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-gas-reporter";
 import "solidity-coverage";
 
 // environment configs
@@ -57,6 +59,9 @@ const config: HardhatUserConfig = {
     },
     etherscan: {
         apiKey: ETHERSCAN_API_KEY,
+    },
+    gasReporter: {
+        enabled: process.env.REPORT_GAS ? true : false,
     },
 };
 if (NODE_URL && config.networks) {
