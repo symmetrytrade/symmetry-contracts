@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { CONTRACTS, getProxyContract } from "../src/utils/utils";
 import {
     chainlinkAggregators,
+    latestBlockTimestamp,
     pythDataEncode,
     tokens,
 } from "../src/utils/test_utils";
@@ -21,7 +22,7 @@ describe("PriceOracle", () => {
     };
 
     const pythPrices: { [key: string]: number } = {
-        USDC: 0.98,
+        USDC: 0.998,
         WETH: 1499,
         WBTC: 19999,
     };
@@ -84,7 +85,7 @@ describe("PriceOracle", () => {
             const price = new BigNumber(pythPrices[token.symbol])
                 .multipliedBy(10 ** -token.expo)
                 .toString(10);
-            const publishTime = Math.floor(Date.now() / 1000);
+            const publishTime = await latestBlockTimestamp(hre);
             const data = pythDataEncode(
                 token.pythId,
                 price,
@@ -120,10 +121,7 @@ describe("PriceOracle", () => {
             // check answer
             const tokenAddress = (await hre.ethers.getContract(token.symbol))
                 .address;
-            const answer = await priceOracle_.getPythPrice(
-                tokenAddress,
-                100000
-            );
+            let answer = await priceOracle_.getPythPrice(tokenAddress, 100);
             expect(answer[0]).to.be.eq(true);
             expect(answer[1].eq(publishTime)).to.be.eq(true);
             expect(
@@ -133,6 +131,8 @@ describe("PriceOracle", () => {
                         .toString(10)
                 )
             ).to.be.eq(true);
+            answer = await priceOracle_.getPythPrice(tokenAddress, 0);
+            expect(answer[0]).to.be.eq(false);
         }
     });
 });
