@@ -7,6 +7,7 @@ import "hardhat-deploy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
 const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
+export const UNIT = "1000000000000000000";
 
 interface ContractMeta {
     name: string;

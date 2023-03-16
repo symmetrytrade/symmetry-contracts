@@ -6,6 +6,7 @@ import {
     getProxyContract,
 } from "../utils/utils";
 import { getConfig } from "../config";
+import { tokens } from "../utils/test_utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
@@ -40,12 +41,13 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`set chainlink aggregators..`);
     if (hre.network.name === "hardhat") {
-        // local test
-        const tokens = ["USDC", "WBTC", "WETH"];
         for (const token of tokens) {
-            const tokenAddress = (await hre.ethers.getContract(token)).address;
+            const tokenAddress = (await hre.ethers.getContract(token.symbol))
+                .address;
             const aggregator = (
-                await hre.ethers.getContract(`ChainlinkAggregator${token}`)
+                await hre.ethers.getContract(
+                    `ChainlinkAggregator${token.symbol}`
+                )
             ).address;
             await (
                 await oracle.setChainlinkAggregators(
@@ -82,6 +84,35 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         : (await hre.ethers.getContract(`Pyth`)).address;
     console.log(`set pyth pricefeed..`);
     await (await oracle.setPythOracle(pyth)).wait();
+
+    console.log(`set pyth asset ids..`);
+    if (hre.network.name == "hardhat") {
+        for (const token of tokens) {
+            const tokenAddress = (await hre.ethers.getContract(token.symbol))
+                .address;
+            await (
+                await oracle.setPythIds([tokenAddress], [token.pythId])
+            ).wait();
+        }
+    } else if (config.pyth?.assetIds) {
+        const assetIds = config.pyth.assetIds;
+        let tokens = [];
+        let ids = [];
+        for (const [token, id] of Object.entries(assetIds)) {
+            tokens.push(token);
+            ids.push(id);
+            if (tokens.length == 5) {
+                await (await oracle.setPythIds(tokens, ids)).wait();
+                tokens = [];
+                ids = [];
+            }
+        }
+        if (tokens.length > 0) {
+            await (await oracle.setPythIds(tokens, ids)).wait();
+            tokens = [];
+            ids = [];
+        }
+    }
 };
 
 deploy.tags = [CONTRACTS.PriceOracle.name, "prod"];
