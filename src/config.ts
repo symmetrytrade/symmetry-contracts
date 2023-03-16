@@ -13,6 +13,7 @@ interface ChainlinkConfig {
 
 interface PythConfig {
     priceFeed: string;
+    assetIds: { [key: string]: string };
 }
 
 interface MarketConfig {
@@ -52,6 +53,9 @@ const GlobalConfig: { [key: string]: NetworkConfigs } = {
         },
         pyth: {
             priceFeed: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
+            assetIds: {
+                USDC: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+            },
         },
     },
     hardhat: DefaultConfig,

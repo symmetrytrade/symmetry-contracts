@@ -1,6 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CONTRACTS } from "../utils/utils";
+import { chainlinkAggregators, tokens } from "../utils/test_utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre;
@@ -11,11 +12,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         return;
     }
 
-    const tokens = [
-        { name: "USD Coin", symbol: "USDC" },
-        { name: "Wrapped Ether", symbol: "WETH" },
-        { name: "Wrapped Bitcoin", symbol: "WBTC" },
-    ];
     // deploy test tokens
     for (const token of tokens) {
         await deploy(CONTRACTS[token.symbol].name, {
@@ -26,13 +22,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         });
     }
     // deploy chainlink aggregators
-    const aggregators = [
-        { name: "Sequencer", decimals: 0 },
-        { name: "USDC", decimals: 6 },
-        { name: "WETH", decimals: 18 },
-        { name: "WBTC", decimals: 8 },
-    ];
-    for (const aggregator of aggregators) {
+    for (const aggregator of chainlinkAggregators) {
         const name = `ChainlinkAggregator${aggregator.name}`;
         await deploy(CONTRACTS[name].name, {
             from: deployer,
