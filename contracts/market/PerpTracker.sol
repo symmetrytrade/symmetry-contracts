@@ -197,7 +197,9 @@ contract PerpTracker is Ownable, Initializable {
         position.size = _size;
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accHoldingFee = position.size > 0 ? feeInfos[_token].accLongHoldingFee : feeInfos[_token].accShortHoldingFee;
+        position.accHoldingFee = position.size > 0
+            ? feeInfos[_token].accLongHoldingFee
+            : feeInfos[_token].accShortHoldingFee;
     }
 
     function updateGlobalPosition(
