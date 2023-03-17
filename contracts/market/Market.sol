@@ -33,7 +33,7 @@ contract Market is Ownable, Initializable {
     bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant OPEN_INTEREST_FEE_RATE = "openInterestFeeRate";
-    bytes32 public constant SKEW_BALANCE_BUFFER = "skewBalanceBuffer";
+    bytes32 public constant HOLDING_FEE_BOUND = "holdingFeeBound";
 
     // states
     address public baseToken; // liquidity token
@@ -436,10 +436,11 @@ contract Market is Ownable, Initializable {
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
                 _token
             );
-            if (
-                longSize.divideDecimal(shortSize).abs() >
-                int(MarketSettings(settings).getUintVals(SKEW_BALANCE_BUFFER))
-            ) {
+            int divergence = longSize.divideDecimal(shortSize).abs();
+            int bound = int(
+                MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND)
+            );
+            if (divergence > bound || divergence < _UNIT.divideDecimal(bound)) {
                 // not balance, charge fee from the larger side
                 int256 feeRate = MarketSettings(settings)
                     .getUintVals(OPEN_INTEREST_FEE_RATE)
