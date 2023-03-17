@@ -4,6 +4,7 @@ import {
     CONTRACTS,
     deployInBeaconProxy,
     getProxyContract,
+    mustGetKey,
 } from "../utils/utils";
 import { getConfig } from "../config";
 import { tokens } from "../utils/test_utils";
@@ -61,7 +62,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         let tokens = [];
         let addresses = [];
         for (const [token, aggregator] of Object.entries(aggregators)) {
-            tokens.push(token);
+            tokens.push(mustGetKey(config.addresses, token));
             addresses.push(aggregator);
             if (tokens.length === 5) {
                 await (
@@ -99,7 +100,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         let tokens = [];
         let ids = [];
         for (const [token, id] of Object.entries(assetIds)) {
-            tokens.push(token);
+            tokens.push(mustGetKey(config.addresses, token));
             ids.push(id);
             if (tokens.length == 5) {
                 await (await oracle.setPythIds(tokens, ids)).wait();
