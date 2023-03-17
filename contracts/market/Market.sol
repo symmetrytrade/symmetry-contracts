@@ -32,7 +32,7 @@ contract Market is Ownable, Initializable {
         "liquidationPenaltyRatio";
     bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
-    bytes32 public constant OPEN_INTEREST_FEE_RATE = "openInterestFeeRate";
+    bytes32 public constant MAX_HOLDING_FEE_RATE = "maxHoldingFeeRate";
     bytes32 public constant HOLDING_FEE_BOUND = "holdingFeeBound";
 
     // states
@@ -422,37 +422,54 @@ contract Market is Ownable, Initializable {
         view
         returns (int nextAccLongHoldingFee, int nextAccShortHoldingFee)
     {
-        int softLimit = _getHoldingFeeSoftLimit(_token);
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        int netOpenInterest = perpTracker_.latestNetOpenInterest(_token);
         (nextAccLongHoldingFee, nextAccShortHoldingFee) = perpTracker_
             .latestAccHoldingFee(_token);
-        int256 timeElapsed = (int(block.timestamp) -
-            perpTracker_.latestFeeUpdateTime(_token)).max(0).divideDecimal(
-                1 days
-            );
-        // charge fee
-        if (netOpenInterest > softLimit) {
+        // check soft limit
+        if (
+            perpTracker_.latestNetOpenInterest(_token) >
+            _getHoldingFeeSoftLimit(_token)
+        ) {
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
                 _token
             );
-            int divergence = longSize.divideDecimal(shortSize).abs();
-            int bound = int(
-                MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND)
-            );
-            if (divergence > bound || divergence < _UNIT.divideDecimal(bound)) {
-                // not balance, charge fee from the larger side
-                int256 feeRate = MarketSettings(settings)
-                    .getUintVals(OPEN_INTEREST_FEE_RATE)
+            {
+                int divergence = longSize.divideDecimal(-shortSize);
+                int bound = int(
+                    MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND)
+                );
+                if (
+                    divergence <= bound ||
+                    divergence >= _UNIT.divideDecimal(bound)
+                ) return (nextAccLongHoldingFee, nextAccShortHoldingFee);
+            }
+            // not balance, charge fee from the larger side
+            int feeDelta = 0;
+            {
+                int256 timeElapsed = (int(block.timestamp) -
+                    perpTracker_.latestFeeUpdateTime(_token))
+                    .max(0)
+                    .divideDecimal(1 days);
+                // fee rate = min(|skew| / lp_net_value, 1) * max_fee_rate
+                int256 lpNetValue = perpTracker_.latestLpNetValue(_token);
+                int skew = perpTracker_.latestSkew(_token);
+                int256 maxFeeRate = MarketSettings(settings)
+                    .getUintVals(MAX_HOLDING_FEE_RATE)
                     .toInt256();
-                if (longSize > shortSize.abs()) {
-                    nextAccLongHoldingFee += feeRate
-                        .multiplyDecimal(timeElapsed)
-                        .multiplyDecimal(_price);
+                int256 feeRate = skew
+                    .abs()
+                    .divideDecimal(lpNetValue)
+                    .min(_UNIT)
+                    .multiplyDecimal(maxFeeRate);
+                feeDelta = feeRate.multiplyDecimal(timeElapsed).multiplyDecimal(
+                    _price
+                );
+            }
+            if (feeDelta > 0) {
+                if (longSize > -shortSize) {
+                    nextAccLongHoldingFee += feeDelta;
                 } else {
-                    nextAccShortHoldingFee += feeRate
-                        .multiplyDecimal(timeElapsed)
-                        .multiplyDecimal(_price);
+                    nextAccShortHoldingFee += feeDelta;
                 }
             }
         }

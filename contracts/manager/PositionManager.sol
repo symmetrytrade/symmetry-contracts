@@ -173,9 +173,10 @@ contract PositionManager is Ownable, Initializable {
         int256 fillPrice = market_.computePerpFillPrice(token, size);
         // do trade
         market_.trade(account, token, size, fillPrice);
-        // ensure leverage ratio is higher than max laverage ratio
+        // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(
-            !leverageRatioExceeded(account),
+            !leverageRatioExceeded(account) ||
+                (prevSize + size).multiplyDecimal(size) <= 0,
             "PositionManager: leverage ratio too large"
         );
         // update token market info
