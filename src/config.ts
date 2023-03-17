@@ -16,26 +16,55 @@ interface PythConfig {
     assetIds: { [key: string]: string };
 }
 
-interface MarketConfig {
+interface MarketGeneralConfig {
     pythMaxAge: number;
     maxPriceDivergence: string;
     maintenanceMarginRatio: string;
+    maxLeverageRatio: string;
+    liquidationFeeRatio: string;
+    liquidationPenaltyRatio: string;
+    liquidityRemoveCooldown: number;
+    maxSoftLimit: string;
+    softLimitThreshold: string;
+    maxHoldingFeeRate: string;
+    holdingFeeBound: string;
 }
 
-interface NetworkConfigs {
+interface MarketConfig {
+    maxFundingVelocity: string;
+}
+
+export interface NetworkConfigs {
     addresses?: { [key: string]: string };
     chainlink?: ChainlinkConfig;
     pyth?: PythConfig;
     gracePeriodTime: number;
-    marketConfig: MarketConfig;
+    marketGeneralConfig: MarketGeneralConfig;
+    marketConfig: { [key: string]: MarketConfig };
 }
 
 const DefaultConfig: NetworkConfigs = {
     gracePeriodTime: 0,
-    marketConfig: {
+    marketGeneralConfig: {
         pythMaxAge: 180, // 3 minutes
         maxPriceDivergence: normalized(0.005), // 0.5%
-        maintenanceMarginRatio: normalized(0.01), // 1%
+        maintenanceMarginRatio: normalized(0.02), // 2%
+        maxLeverageRatio: normalized(0.04), // 4%, 25x
+        liquidationFeeRatio: normalized(0.001), // 0.1%
+        liquidationPenaltyRatio: normalized(0.001), // 0.1%
+        liquidityRemoveCooldown: 1, // seconds
+        maxSoftLimit: normalized(1000000), // 1 mio usd
+        softLimitThreshold: normalized(0.5), // 50% of lp net value
+        maxHoldingFeeRate: normalized(100), // 100% per day
+        holdingFeeBound: normalized(1.005), // charge holding fee when long / short is not within [1/1.005, 1.005]
+    },
+    marketConfig: {
+        WBTC: {
+            maxFundingVelocity: normalized(300),
+        },
+        WETH: {
+            maxFundingVelocity: normalized(300),
+        },
     },
 };
 
