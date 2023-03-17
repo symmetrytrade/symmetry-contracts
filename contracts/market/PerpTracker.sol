@@ -17,11 +17,12 @@ contract PerpTracker is Ownable, Initializable {
     bytes32 public constant SKEW_SCALE = "skewScale";
 
     struct GlobalPosition {
-        int256 longSize; // in underlying, positive, 18 decimals
-        int256 shortSize; // in underlying, negative, 18 decimals
-        int256 avgPrice; // average price for the net position (long + short)
+        int256 longSize; // long position hold by lp in underlying, positive, 18 decimals
+        int256 shortSize; // short position hold by lp in underlying, negative, 18 decimals
+        int256 avgPrice; // average price for the lp net position (long + short)
         int256 accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
-        int256 accHoldingFee; // accumulate holding fee for unit position size at the latest position modification
+        int256 accLongHoldingFee; // accumulate long holding fee for unit position size at the latest position modification
+        int256 accShortHoldingFee; // accumulate short holding fee for unit position size at the latest position modification
     }
 
     struct Position {
@@ -36,7 +37,8 @@ contract PerpTracker is Ownable, Initializable {
     struct FeeInfo {
         int256 accFunding; // the latest accumulate funding fee for unit position size
         int256 fundingRate; // the latest funding rate
-        int256 accHoldingFee; // the latest holding fee
+        int256 accLongHoldingFee; // the latest long holding fee
+        int256 accShortHoldingFee; // the latest short holding fee
         int256 updateTime; // the latest fee update time
     }
 
@@ -145,8 +147,11 @@ contract PerpTracker is Ownable, Initializable {
 
     function latestAccHoldingFee(
         address _token
-    ) external view returns (int256) {
-        return feeInfos[_token].accHoldingFee;
+    ) external view returns (int256, int256) {
+        return (
+            feeInfos[_token].accLongHoldingFee,
+            feeInfos[_token].accShortHoldingFee
+        );
     }
 
     function latestFeeUpdateTime(
@@ -192,7 +197,7 @@ contract PerpTracker is Ownable, Initializable {
         position.size = _size;
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accHoldingFee = feeInfos[_token].accHoldingFee;
+        position.accHoldingFee = position.size > 0 ? feeInfos[_token].accLongHoldingFee : feeInfos[_token].accShortHoldingFee;
     }
 
     function updateGlobalPosition(
@@ -208,7 +213,8 @@ contract PerpTracker is Ownable, Initializable {
         }
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accHoldingFee = feeInfos[_token].accHoldingFee;
+        position.accLongHoldingFee = feeInfos[_token].accLongHoldingFee;
+        position.accShortHoldingFee = feeInfos[_token].accShortHoldingFee;
     }
 
     function updateFee(
