@@ -16,6 +16,7 @@ contract PositionManager is Ownable, Initializable {
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
+    bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
 
     // states
     address public market;
@@ -32,6 +33,7 @@ contract PositionManager is Ownable, Initializable {
         int256 size;
         uint256 acceptablePrice;
         uint256 expiracy;
+        uint256 submitTime;
         OrderStatus status;
     }
 
@@ -120,13 +122,14 @@ contract PositionManager is Ownable, Initializable {
             size: _size,
             acceptablePrice: _acceptablePrice,
             expiracy: _expiracy,
+            submitTime: block.timestamp,
             status: OrderStatus.Pending
         });
         orders[orderCnt] = order;
         // TODO: simulate the order and revert it if needed?
     }
 
-    function _validateOrderLiveness(Order storage order) internal view {
+    function _validateOrderLiveness(Order memory order) internal view {
         require(order.account == msg.sender, "PositionManager: invalid sender");
         require(
             order.status == OrderStatus.Pending,
@@ -139,9 +142,9 @@ contract PositionManager is Ownable, Initializable {
     }
 
     function cancelOrder(uint256 _id) external {
-        Order storage order = orders[_id];
+        Order memory order = orders[_id];
         _validateOrderLiveness(order);
-        order.status = OrderStatus.Cancelled;
+        orders[_id].status = OrderStatus.Cancelled;
     }
 
     /// @notice execute an submitted execution order, this function is payable for paying the oracle update fee
@@ -151,55 +154,68 @@ contract PositionManager is Ownable, Initializable {
         uint256 _id,
         bytes[] calldata _priceUpdateData
     ) external payable {
-        Order storage order = orders[_id];
+        Order memory order = orders[_id];
         _validateOrderLiveness(order);
-        address account = order.account;
-        address token = order.token;
-        int256 size = order.size;
 
         Market market_ = Market(market);
         PerpTracker perpTracker_ = PerpTracker(market_.perpTracker());
 
-        // operation type check
-        int prevSize = perpTracker_.getPositionSize(account, token);
+        require(
+            order.submitTime +
+                MarketSettings(market_.settings()).getUintVals(
+                    MIN_ORDER_DELAY
+                ) <
+                block.timestamp,
+            "PositionManager: delay"
+        );
+        int prevSize = perpTracker_.getPositionSize(order.account, order.token);
         // update oracle price
         PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
             _priceUpdateData
         );
         // update fees
-        market_.updateFee(token);
+        market_.updateFee(order.token);
         // calculate fill price
-        int256 fillPrice = market_.computePerpFillPrice(token, size);
+        int256 fillPrice = market_.computePerpFillPrice(
+            order.token,
+            order.size
+        );
         // do trade
-        market_.trade(account, token, size, fillPrice);
+        market_.trade(order.account, order.token, order.size, fillPrice);
         // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(
-            !leverageRatioExceeded(account) ||
-                (prevSize + size).multiplyDecimal(size) <= 0,
+            !leverageRatioExceeded(order.account) ||
+                (prevSize + order.size) * order.size <= 0,
             "PositionManager: leverage ratio too large"
         );
         // update token market info
-        (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(token);
+        (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(
+            order.token
+        );
         // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
         if (netOpenInterest > lpNetValue) {
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
-                token
+                order.token
             );
             // 1. the order increases the old position and the position side become the overweight side
             // 2. the order decreases the old position entirely and open a new position of counterparty side,
             //    the counterparty side become the overweight side
             if (
-                (prevSize <= 0 && size < 0 && shortSize > longSize) ||
-                (prevSize >= 0 && size > 0 && longSize > shortSize) ||
-                (prevSize < 0 && prevSize + size > 0 && longSize > shortSize) ||
-                (prevSize > 0 && prevSize + size < 0 && shortSize > longSize)
+                (prevSize <= 0 && order.size < 0 && shortSize > longSize) ||
+                (prevSize >= 0 && order.size > 0 && longSize > shortSize) ||
+                (prevSize < 0 &&
+                    prevSize + order.size > 0 &&
+                    longSize > shortSize) ||
+                (prevSize > 0 &&
+                    prevSize + order.size < 0 &&
+                    shortSize > longSize)
             ) {
                 revert("PositionManager: open interest exceed hardlimit");
             }
         }
         // update order
-        order.status = OrderStatus.Executed;
+        orders[_id].status = OrderStatus.Executed;
     }
 
     /**
