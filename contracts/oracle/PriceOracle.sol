@@ -78,15 +78,16 @@ contract PriceOracle is Ownable, Initializable {
 
     /// @notice get latest price from chainlink
     /// @param _token token address
-    /// @return round id, normalized price
+    /// @return round id, updatedAt, normalized price
     function getLatestChainlinkPrice(
         address _token
-    ) external view returns (uint80, uint256) {
+    ) external view returns (uint80, uint256, uint256) {
         _checkSequencer();
         AggregatorV2V3Interface aggregator = AggregatorV2V3Interface(
             aggregators[_token]
         );
-        (uint80 roundID, int price, , , ) = aggregator.latestRoundData();
+        (uint80 roundID, int price, , uint256 updatedAt, ) = aggregator
+            .latestRoundData();
         require(price > 0, "PriceOracle: invalid Chainlink price");
         uint256 normalizedPrice = uint256(price);
         uint8 decimals = aggregator.decimals();
@@ -99,27 +100,22 @@ contract PriceOracle is Ownable, Initializable {
                 normalizedPrice *
                 (10 ** (PRICE_PRECISION - decimals));
         }
-        return (roundID, normalizedPrice);
+        return (roundID, updatedAt, normalizedPrice);
     }
 
     /**
      * @dev get pyth price updated within a time range
      * @param _token token to query
-     * @param _age required price update time range
      * @return success, price publish time, normalized price
      */
     function getPythPrice(
-        address _token,
-        uint256 _age
-    ) external view returns (bool, uint256, int256) {
+        address _token
+    ) external view returns (uint256, int256) {
         bytes32 assetId = assetIds[_token];
         require(assetId != bytes32(0), "PriceOracle: undefined pyth asset");
         PythStructs.Price memory price = IPyth(pythOracle).getPriceUnsafe(
             assetId
         );
-        if (price.publishTime + _age < block.timestamp) {
-            return (false, 0, int(0));
-        }
         require(price.price > 0, "PriceOracle: invalid Pyth price");
         int256 normalizedPrice = int256(price.price);
         if (price.expo < -int(PRICE_PRECISION))
@@ -130,7 +126,7 @@ contract PriceOracle is Ownable, Initializable {
             normalizedPrice =
                 normalizedPrice *
                 int(10 ** uint(int(PRICE_PRECISION) + price.expo));
-        return (true, price.publishTime, normalizedPrice);
+        return (price.publishTime, normalizedPrice);
     }
 
     /// @notice update pyth price, refund remaining fee to sender
@@ -140,6 +136,10 @@ contract PriceOracle is Ownable, Initializable {
         address _sender,
         bytes[] calldata _priceUpdateData
     ) external payable {
+        if (_priceUpdateData.length == 0) {
+            payable(_sender).transfer(msg.value);
+            return;
+        }
         IPyth pythOracle_ = IPyth(pythOracle);
 
         uint256 fee = pythOracle_.getUpdateFee(_priceUpdateData);
