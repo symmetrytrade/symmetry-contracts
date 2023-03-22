@@ -14,8 +14,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.Market);
 
-    const market = await getProxyContract(hre, CONTRACTS.Market);
-    market.connect(deployer);
+    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.Market.name}..`);
@@ -29,7 +28,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
     ).address;
     await (
-        await market.initialize(baseToken, priceOracle, marketSettigs)
+        await market_.initialize(baseToken, priceOracle, marketSettigs)
     ).wait();
 };
 

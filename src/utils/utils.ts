@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import hardhat from "hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
+import { ethers } from "ethers";
 
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
@@ -109,10 +110,11 @@ async function deployInBeaconProxy(
 
 async function getProxyContract(
     hre: HardhatRuntimeEnvironment,
-    contract: ContractMeta
+    contract: ContractMeta,
+    signer: ethers.Signer | string
 ) {
     const address = (await hre.ethers.getContract(contract.name)).address;
-    return hre.ethers.getContractAt(contract.contract, address);
+    return hre.ethers.getContractAt(contract.contract, address, signer);
 }
 
 export { deployInBeaconProxy, getProxyContract, CONTRACTS, MINTER_ROLE };

@@ -13,30 +13,28 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.LiquidityManager);
 
-    const liquidityManager = await getProxyContract(
+    const liquidityManager_ = await getProxyContract(
         hre,
-        CONTRACTS.LiquidityManager
+        CONTRACTS.LiquidityManager,
+        deployer
     );
-    liquidityManager.connect(deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityManager.name}..`);
-    const market = await getProxyContract(hre, CONTRACTS.Market);
-    const lpToken = await getProxyContract(hre, CONTRACTS.LPToken);
+    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
+    const lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, deployer);
     await (
-        await liquidityManager.initialize(market.address, lpToken.address)
+        await liquidityManager_.initialize(market_.address, lpToken_.address)
     ).wait();
 
     // add operator
     console.log(`adding operator role for LiquidityManager to market..`);
-    market.connect(deployer);
-    await (await market.setOperator(liquidityManager.address, true)).wait();
+    await (await market_.setOperator(liquidityManager_.address, true)).wait();
 
     // set minter role
     console.log(`set minter role of lp token for LiquidityManager..`);
-    lpToken.connect(deployer);
     await (
-        await lpToken.grantRole(MINTER_ROLE, liquidityManager.address)
+        await lpToken_.grantRole(MINTER_ROLE, liquidityManager_.address)
     ).wait();
 };
 

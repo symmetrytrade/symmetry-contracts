@@ -15,12 +15,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.PriceOracle);
 
-    const oracle = await getProxyContract(hre, CONTRACTS.PriceOracle);
-    oracle.connect(deployer);
+    const oracle_ = await getProxyContract(
+        hre,
+        CONTRACTS.PriceOracle,
+        deployer
+    );
 
     // initialize
     console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
-    await (await oracle.initialize()).wait();
+    await (await oracle_.initialize()).wait();
 
     // set chainlink
     const config = getConfig(hre.network.name);
@@ -34,7 +37,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
           ).address;
     console.log(`set chainlink ${hre.network.name} uptime feed..`);
     await (
-        await oracle.setChainlinkSequencerUptimeFeed(
+        await oracle_.setChainlinkSequencerUptimeFeed(
             sequencerUptimeFeed,
             config.gracePeriodTime
         )
@@ -51,7 +54,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                 )
             ).address;
             await (
-                await oracle.setChainlinkAggregators(
+                await oracle_.setChainlinkAggregators(
                     [tokenAddress],
                     [aggregator]
                 )
@@ -66,7 +69,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             addresses.push(aggregator);
             if (tokens.length === 5) {
                 await (
-                    await oracle.setChainlinkAggregators(tokens, addresses)
+                    await oracle_.setChainlinkAggregators(tokens, addresses)
                 ).wait();
                 tokens = [];
                 addresses = [];
@@ -74,7 +77,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
         if (tokens.length > 0) {
             await (
-                await oracle.setChainlinkAggregators(tokens, addresses)
+                await oracle_.setChainlinkAggregators(tokens, addresses)
             ).wait();
         }
     }
@@ -84,7 +87,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         ? config.pyth?.priceFeed
         : (await hre.ethers.getContract(`Pyth`)).address;
     console.log(`set pyth pricefeed..`);
-    await (await oracle.setPythOracle(pyth)).wait();
+    await (await oracle_.setPythOracle(pyth)).wait();
 
     console.log(`set pyth asset ids..`);
     if (hre.network.name == "hardhat") {
@@ -92,7 +95,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             const tokenAddress = (await hre.ethers.getContract(token.symbol))
                 .address;
             await (
-                await oracle.setPythIds([tokenAddress], [token.pythId])
+                await oracle_.setPythIds([tokenAddress], [token.pythId])
             ).wait();
         }
     } else if (config.pyth?.assetIds) {
@@ -103,13 +106,13 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             tokens.push(mustGetKey(config.addresses, token));
             ids.push(id);
             if (tokens.length == 5) {
-                await (await oracle.setPythIds(tokens, ids)).wait();
+                await (await oracle_.setPythIds(tokens, ids)).wait();
                 tokens = [];
                 ids = [];
             }
         }
         if (tokens.length > 0) {
-            await (await oracle.setPythIds(tokens, ids)).wait();
+            await (await oracle_.setPythIds(tokens, ids)).wait();
             tokens = [];
             ids = [];
         }
