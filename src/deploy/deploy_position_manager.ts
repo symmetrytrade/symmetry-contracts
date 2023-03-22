@@ -12,21 +12,20 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.PositionManager);
 
-    const positionManager = await getProxyContract(
+    const positionManager_ = await getProxyContract(
         hre,
-        CONTRACTS.PositionManager
+        CONTRACTS.PositionManager,
+        deployer
     );
-    positionManager.connect(deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.PositionManager.name}..`);
-    const market = await getProxyContract(hre, CONTRACTS.Market);
-    await (await positionManager.initialize(market.address)).wait();
+    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
+    await (await positionManager_.initialize(market_.address)).wait();
 
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
-    market.connect(deployer);
-    await (await market.setOperator(positionManager.address, true)).wait();
+    await (await market_.setOperator(positionManager_.address, true)).wait();
 };
 
 deploy.tags = [CONTRACTS.PositionManager.name, "prod"];

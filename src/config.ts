@@ -28,6 +28,7 @@ interface MarketGeneralConfig {
     softLimitThreshold: string;
     maxHoldingFeeRate: string;
     holdingFeeBound: string;
+    minOrderDelay: number;
 }
 
 interface MarketConfig {
@@ -47,7 +48,7 @@ const DefaultConfig: NetworkConfigs = {
     gracePeriodTime: 0,
     marketGeneralConfig: {
         pythMaxAge: 180, // 3 minutes
-        maxPriceDivergence: normalized(0.005), // 0.5%
+        maxPriceDivergence: normalized(1.005), // 0.5%
         maintenanceMarginRatio: normalized(0.02), // 2%
         maxLeverageRatio: normalized(0.04), // 4%, 25x
         liquidationFeeRatio: normalized(0.001), // 0.1%
@@ -57,6 +58,7 @@ const DefaultConfig: NetworkConfigs = {
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         maxHoldingFeeRate: normalized(100), // 100% per day
         holdingFeeBound: normalized(1.005), // charge holding fee when long / short is not within [1/1.005, 1.005]
+        minOrderDelay: 60, // 1 minute
     },
     marketConfig: {
         WBTC: {

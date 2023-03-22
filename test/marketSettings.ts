@@ -1,4 +1,4 @@
-import hre from "hardhat";
+import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import { CONTRACTS, getProxyContract, perpMarketKey } from "../src/utils/utils";
 import { ethers } from "ethers";
@@ -9,7 +9,13 @@ describe("MarketSettings", () => {
     let config: NetworkConfigs;
 
     before(async () => {
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings);
+        await deployments.fixture();
+        const account1 = (await hre.ethers.getSigners())[1];
+        marketSettings_ = await getProxyContract(
+            hre,
+            CONTRACTS.MarketSettings,
+            account1
+        );
         config = getConfig(hre.network.name);
     });
 

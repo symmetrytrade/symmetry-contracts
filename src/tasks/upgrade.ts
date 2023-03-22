@@ -26,8 +26,10 @@ task("upgrade", "upgrade contract")
         true
     )
     .setAction(async (taskArgs, hre) => {
+        const { deployer } = await hre.getNamedAccounts();
         const beacon = await hre.ethers.getContract(
-            `${taskArgs.proxy_name}Beacon`
+            `${taskArgs.proxy_name}Beacon`,
+            deployer
         );
         const newImpl = await hre.ethers.getContractFactory(
             taskArgs.impl_artifact
@@ -36,8 +38,6 @@ task("upgrade", "upgrade contract")
 
         if (taskArgs.execute) {
             // settle on chain
-            const { deployer } = await hre.getNamedAccounts();
-            beacon.connect(deployer);
             await (await beacon.upgradeTo(newImpl)).wait();
         } else {
             console.log("data:");

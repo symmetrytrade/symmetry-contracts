@@ -6,32 +6,37 @@ import {
     latestBlockTimestamp,
     pythDataEncode,
     tokens,
+    updateChainlinkPrice,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import BigNumber from "bignumber.js";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+
+const chainlinkPrices: { [key: string]: number } = {
+    Sequencer: 0,
+    USDC: 1,
+    WETH: 1500,
+    WBTC: 20000,
+};
+
+const pythPrices: { [key: string]: number } = {
+    USDC: 0.998,
+    WETH: 1499,
+    WBTC: 19999,
+};
 
 describe("PriceOracle", () => {
     let priceOracle_: ethers.Contract;
     let account1: ethers.Signer;
 
-    const chainlinkPrices: { [key: string]: number } = {
-        Sequencer: 0,
-        USDC: 1,
-        WETH: 1500,
-        WBTC: 20000,
-    };
-
-    const pythPrices: { [key: string]: number } = {
-        USDC: 0.998,
-        WETH: 1499,
-        WBTC: 19999,
-    };
-
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle);
-        priceOracle_ = priceOracle_.connect(account1);
+        priceOracle_ = await getProxyContract(
+            hre,
+            CONTRACTS.PriceOracle,
+            account1
+        );
     });
 
     it("chainlink sequencer", async () => {
@@ -39,7 +44,7 @@ describe("PriceOracle", () => {
             "ChainlinkAggregatorSequencer",
             account1
         );
-        await (await aggregator_.feed(1)).wait();
+        await (await aggregator_.feed(1, helpers.time.latest())).wait();
         await expect(
             priceOracle_.getLatestChainlinkPrice(
                 (
@@ -51,12 +56,12 @@ describe("PriceOracle", () => {
 
     it("chainlink feed price", async () => {
         for (const aggregator of chainlinkAggregators) {
-            const name = `ChainlinkAggregator${aggregator.name}`;
-            const aggregator_ = await hre.ethers.getContract(name, account1);
-            const price = new BigNumber(chainlinkPrices[aggregator.name])
-                .times(10 ** aggregator.decimals)
-                .toString(10);
-            await (await aggregator_.feed(price)).wait();
+            await updateChainlinkPrice(
+                hre,
+                aggregator.name,
+                chainlinkPrices[aggregator.name],
+                account1
+            );
             if (aggregator.name !== "Sequencer") {
                 const tokenAddress = (
                     await hre.ethers.getContract(aggregator.name)
@@ -66,7 +71,7 @@ describe("PriceOracle", () => {
                 );
                 expect(answer[0].eq(1)).to.be.eq(true);
                 expect(
-                    answer[1].eq(
+                    answer[2].eq(
                         new BigNumber(chainlinkPrices[aggregator.name])
                             .times(1e18)
                             .toString(10)
@@ -121,18 +126,15 @@ describe("PriceOracle", () => {
             // check answer
             const tokenAddress = (await hre.ethers.getContract(token.symbol))
                 .address;
-            let answer = await priceOracle_.getPythPrice(tokenAddress, 100);
-            expect(answer[0]).to.be.eq(true);
-            expect(answer[1].eq(publishTime)).to.be.eq(true);
+            const answer = await priceOracle_.getPythPrice(tokenAddress);
+            expect(answer[0].eq(publishTime)).to.be.eq(true);
             expect(
-                answer[2].eq(
+                answer[1].eq(
                     new BigNumber(1e18)
                         .times(pythPrices[token.symbol])
                         .toString(10)
                 )
             ).to.be.eq(true);
-            answer = await priceOracle_.getPythPrice(tokenAddress, 0);
-            expect(answer[0]).to.be.eq(false);
         }
     });
 });

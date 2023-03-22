@@ -12,12 +12,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.LPToken);
 
-    const lpToken = await getProxyContract(hre, CONTRACTS.LPToken);
-    lpToken.connect(deployer);
+    const lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.LPToken.name}..`);
-    await (await lpToken.initialize("LPToken", "LP", 18)).wait();
+    await (await lpToken_.initialize("LPToken", "LP", 18)).wait();
 };
 
 deploy.tags = [CONTRACTS.LPToken.name, "prod"];

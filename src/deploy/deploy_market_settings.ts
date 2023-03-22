@@ -15,19 +15,22 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.MarketSettings);
 
-    const settings = await getProxyContract(hre, CONTRACTS.MarketSettings);
-    settings.connect(deployer);
+    const settings_ = await getProxyContract(
+        hre,
+        CONTRACTS.MarketSettings,
+        deployer
+    );
 
     // initialize
     console.log(`initializing ${CONTRACTS.MarketSettings.name}..`);
-    await (await settings.initialize()).wait();
+    await (await settings_.initialize()).wait();
 
     // set general config
     const config = getConfig(hre.network.name);
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
         const key = hre.ethers.utils.formatBytes32String(term);
         const value = hre.ethers.BigNumber.from(rawValue);
-        await (await settings.setUintVals(key, value)).wait();
+        await (await settings_.setUintVals(key, value)).wait();
     }
 
     // set market specific config
@@ -41,7 +44,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             console.log(k);
             const key = perpConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);
-            await (await settings.setUintVals(key, value)).wait();
+            await (await settings_.setUintVals(key, value)).wait();
         }
     }
 };
