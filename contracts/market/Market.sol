@@ -434,13 +434,12 @@ contract Market is Ownable, Initializable {
                 _token
             );
             {
-                int divergence = longSize.divideDecimal(-shortSize);
-                int bound = int(
-                    MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND)
-                );
+                int divergence = longSize > -shortSize
+                    ? longSize.divideDecimal(-shortSize)
+                    : (-shortSize).divideDecimal(longSize);
                 if (
-                    divergence <= bound ||
-                    divergence >= _UNIT.divideDecimal(bound)
+                    divergence <=
+                    int(MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND))
                 ) return (nextAccLongHoldingFee, nextAccShortHoldingFee);
             }
             // not balance, charge fee from the larger side
@@ -731,16 +730,19 @@ contract Market is Ownable, Initializable {
         bool _mustUsePyth
     ) public view returns (int256) {
         PriceOracle priceOracle_ = PriceOracle(priceOracle);
-        (, uint256 chainlinkPrice) = priceOracle_.getLatestChainlinkPrice(
+        (, uint256 updatedAt, uint256 chainlinkPrice) = priceOracle_
+            .getLatestChainlinkPrice(_token);
+        MarketSettings settings_ = MarketSettings(settings);
+        (uint256 publishTime, int256 pythPrice) = priceOracle_.getPythPrice(
             _token
         );
-        MarketSettings settings_ = MarketSettings(settings);
-        (bool success, , int256 pythPrice) = priceOracle_.getPythPrice(
-            _token,
-            settings_.getUintVals(PYTH_MAX_AGE)
+        require(
+            !_mustUsePyth ||
+                publishTime + settings_.getUintVals(PYTH_MAX_AGE) >
+                block.timestamp,
+            "Market: pyth price too stale"
         );
-        require(!_mustUsePyth || success, "Market: pyth price too stale");
-        if (success) {
+        if (publishTime > updatedAt) {
             uint256 divergence = chainlinkPrice > pythPrice.toUint256()
                 ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
                 : pythPrice.toUint256().divideDecimal(chainlinkPrice);
@@ -756,20 +758,20 @@ contract Market is Ownable, Initializable {
     function tokenToUsd(
         address _token,
         int256 _amount,
-        bool _usePyth
+        bool _mustUsePyth
     ) public view returns (int256) {
         return
-            (getPrice(_token, _usePyth) * _amount) /
+            (getPrice(_token, _mustUsePyth) * _amount) /
             int(10 ** IERC20Metadata(_token).decimals());
     }
 
     function usdToToken(
         address _token,
         int256 _amount,
-        bool _usePyth
+        bool _mustUsePyth
     ) public view returns (int256) {
         return
             (_amount * int(10 ** IERC20Metadata(_token).decimals())) /
-            getPrice(_token, _usePyth);
+            getPrice(_token, _mustUsePyth);
     }
 }
