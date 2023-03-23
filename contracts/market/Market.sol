@@ -33,7 +33,6 @@ contract Market is Ownable, Initializable {
     bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant MAX_HOLDING_FEE_RATE = "maxHoldingFeeRate";
-    bytes32 public constant HOLDING_FEE_BOUND = "holdingFeeBound";
 
     // states
     address public baseToken; // liquidity token
@@ -125,6 +124,7 @@ contract Market is Ownable, Initializable {
 
             PerpTracker.GlobalPosition memory position = perpTracker_
                 .getGlobalPosition(token);
+            if (position.longSize == 0 && position.shortSize == 0) continue;
             int size = position.longSize + position.shortSize;
             int256 price = getPrice(token, false);
             // open interest, note here position is lp position(counter party of user)
@@ -327,12 +327,19 @@ contract Market is Ownable, Initializable {
                 MAX_FUNDING_VELOCITY
             )
             .toInt256();
-        return
-            skew
-                .divideDecimal(lpNetValue)
-                .max(-_UNIT)
-                .min(_UNIT)
-                .multiplyDecimal(maxVelocity);
+        if (lpNetValue > 0) {
+            return
+                skew
+                    .divideDecimal(lpNetValue)
+                    .max(-_UNIT)
+                    .min(_UNIT)
+                    .multiplyDecimal(maxVelocity);
+        } else {
+            return
+                (skew * _UNIT).max(-_UNIT).min(_UNIT).multiplyDecimal(
+                    maxVelocity
+                );
+        }
     }
 
     /**
@@ -425,6 +432,9 @@ contract Market is Ownable, Initializable {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         (nextAccLongHoldingFee, nextAccShortHoldingFee) = perpTracker_
             .latestAccHoldingFee(_token);
+        if (perpTracker_.latestFeeUpdateTime(_token) >= int(block.timestamp)) {
+            return (nextAccLongHoldingFee, nextAccShortHoldingFee);
+        }
         // check soft limit
         if (
             perpTracker_.latestNetOpenInterest(_token) >
@@ -433,16 +443,7 @@ contract Market is Ownable, Initializable {
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
                 _token
             );
-            {
-                int divergence = longSize > -shortSize
-                    ? longSize.divideDecimal(-shortSize)
-                    : (-shortSize).divideDecimal(longSize);
-                if (
-                    divergence <=
-                    int(MarketSettings(settings).getUintVals(HOLDING_FEE_BOUND))
-                ) return (nextAccLongHoldingFee, nextAccShortHoldingFee);
-            }
-            // not balance, charge fee from the larger side
+            // charge fee from the larger side
             int feeDelta = 0;
             {
                 int256 timeElapsed = (int(block.timestamp) -
@@ -455,11 +456,13 @@ contract Market is Ownable, Initializable {
                 int256 maxFeeRate = MarketSettings(settings)
                     .getUintVals(MAX_HOLDING_FEE_RATE)
                     .toInt256();
-                int256 feeRate = skew
-                    .abs()
-                    .divideDecimal(lpNetValue)
-                    .min(_UNIT)
-                    .multiplyDecimal(maxFeeRate);
+                int256 feeRate = lpNetValue > 0
+                    ? skew
+                        .abs()
+                        .divideDecimal(lpNetValue)
+                        .min(_UNIT)
+                        .multiplyDecimal(maxFeeRate)
+                    : maxFeeRate;
                 feeDelta = feeRate.multiplyDecimal(timeElapsed).multiplyDecimal(
                     _price
                 );
