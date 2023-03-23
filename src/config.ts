@@ -27,7 +27,6 @@ interface MarketGeneralConfig {
     maxSoftLimit: string;
     softLimitThreshold: string;
     maxHoldingFeeRate: string;
-    holdingFeeBound: string;
     minOrderDelay: number;
 }
 
@@ -53,11 +52,10 @@ const DefaultConfig: NetworkConfigs = {
         maxLeverageRatio: normalized(0.04), // 4%, 25x
         liquidationFeeRatio: normalized(0.001), // 0.1%
         liquidationPenaltyRatio: normalized(0.001), // 0.1%
-        liquidityRemoveCooldown: 1, // seconds
+        liquidityRemoveCooldown: 10, // seconds
         maxSoftLimit: normalized(1000000), // 1 mio usd
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         maxHoldingFeeRate: normalized(100), // 100% per day
-        holdingFeeBound: normalized(1.005), // charge holding fee when long / short is not within [1/1.005, 1.005]
         minOrderDelay: 60, // 1 minute
     },
     marketConfig: {

@@ -11,6 +11,8 @@ const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
 export const PERP_DOMAIN =
     hardhat.ethers.utils.formatBytes32String("perpDomain");
 export const UNIT = "1000000000000000000";
+export const MAX_UINT256 =
+    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
