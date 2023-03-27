@@ -51,6 +51,12 @@ library SignedSafeDecimalMath {
         return (x * UNIT) / y;
     }
 
+    function sign(int256 x) internal pure returns (int256) {
+        if (x > 0) return UNIT;
+        if (x < 0) return -UNIT;
+        return 0;
+    }
+
     function abs(int256 x) internal pure returns (int256) {
         return x < 0 ? -x : x;
     }

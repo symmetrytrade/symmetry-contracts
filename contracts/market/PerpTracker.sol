@@ -15,30 +15,33 @@ contract PerpTracker is Ownable, Initializable {
     // setting keys
     bytes32 public constant PERP_DOMAIN = "perpDomain";
     bytes32 public constant SKEW_SCALE = "skewScale";
+    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
+    bytes32 public constant K_PREMIUM = "kPremium";
+
+    // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
+    int256 private constant _UNIT = int(10 ** 18);
 
     struct GlobalPosition {
         int256 longSize; // long position hold by lp in underlying, positive, 18 decimals
         int256 shortSize; // short position hold by lp in underlying, negative, 18 decimals
         int256 avgPrice; // average price for the lp net position (long + short)
         int256 accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
-        int256 accLongHoldingFee; // accumulate long holding fee for unit position size at the latest position modification
-        int256 accShortHoldingFee; // accumulate short holding fee for unit position size at the latest position modification
+        int256 accLongFinancingFee; // accumulate long financing fee for unit position size at the latest position modification
+        int256 accShortFinancingFee; // accumulate short financing fee for unit position size at the latest position modification
     }
 
     struct Position {
-        address account;
-        address token;
         int256 size; // position size, positive for long, negative for short, 18 decimals
         int256 accFunding; // accumulate funding fee for unit position size at the latest position modification
-        int256 accHoldingFee; // accumulate holding fee for unit position size at the latest position modification
+        int256 accFinancingFee; // accumulate financing fee for unit position size at the latest position modification
         int256 avgPrice;
     }
 
     struct FeeInfo {
         int256 accFunding; // the latest accumulate funding fee for unit position size
         int256 fundingRate; // the latest funding rate
-        int256 accLongHoldingFee; // the latest long holding fee
-        int256 accShortHoldingFee; // the latest short holding fee
+        int256 accLongFinancingFee; // the latest long financing fee
+        int256 accShortFinancingFee; // the latest short financing fee
         int256 updateTime; // the latest fee update time
     }
 
@@ -145,12 +148,12 @@ contract PerpTracker is Ownable, Initializable {
         return feeInfos[_token].fundingRate;
     }
 
-    function latestAccHoldingFee(
+    function latestAccFinancingFee(
         address _token
     ) external view returns (int256, int256) {
         return (
-            feeInfos[_token].accLongHoldingFee,
-            feeInfos[_token].accShortHoldingFee
+            feeInfos[_token].accLongFinancingFee,
+            feeInfos[_token].accShortFinancingFee
         );
     }
 
@@ -197,9 +200,9 @@ contract PerpTracker is Ownable, Initializable {
         position.size = _size;
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accHoldingFee = position.size > 0
-            ? feeInfos[_token].accLongHoldingFee
-            : feeInfos[_token].accShortHoldingFee;
+        position.accFinancingFee = position.size > 0
+            ? feeInfos[_token].accLongFinancingFee
+            : feeInfos[_token].accShortFinancingFee;
     }
 
     function updateGlobalPosition(
@@ -215,8 +218,8 @@ contract PerpTracker is Ownable, Initializable {
         }
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
-        position.accLongHoldingFee = feeInfos[_token].accLongHoldingFee;
-        position.accShortHoldingFee = feeInfos[_token].accShortHoldingFee;
+        position.accLongFinancingFee = feeInfos[_token].accLongFinancingFee;
+        position.accShortFinancingFee = feeInfos[_token].accShortFinancingFee;
     }
 
     function updateFee(
@@ -245,6 +248,92 @@ contract PerpTracker is Ownable, Initializable {
     function currentSkew(address _token) public view returns (int256) {
         GlobalPosition storage globalPosition = globalPositions[_token];
         return -(globalPosition.longSize + globalPosition.shortSize);
+    }
+
+    /**
+     * @dev calculate price coefficient when trade _size on _skew.
+     *      Here _size and _skew have the same sign.
+     *      avgPrice = priceCoefficient * oraclePrice
+     */
+    function _computePriceCoefficient(
+        int _skew,
+        int _size,
+        int _kLP,
+        int _lambda
+    ) internal pure returns (int priceCoefficient) {
+        if (_skew.abs() >= _kLP) {
+            priceCoefficient = (_UNIT + (_skew > 0 ? _lambda : -_lambda));
+        } else if ((_skew + _size).abs() <= _kLP) {
+            priceCoefficient = (_UNIT +
+                (_skew + _size / 2).divideDecimal(_kLP).multiplyDecimal(
+                    _lambda
+                ));
+        } else {
+            // |skew| < kLP, |skew + size| > kLP
+            int kLPSigned = _skew > 0 ? _kLP : -_kLP;
+            int numerator = (_UNIT +
+                (_skew + kLPSigned).divideDecimal(2 * _kLP).multiplyDecimal(
+                    _lambda
+                )).multiplyDecimal(kLPSigned - _skew);
+            numerator += (_UNIT + (_skew > 0 ? _lambda : -_lambda))
+                .multiplyDecimal(_skew + _size - kLPSigned);
+            priceCoefficient = numerator.divideDecimal(_size);
+        }
+    }
+
+    /**
+     * @notice compute the fill price of a trade
+     * @dev premium = lambda * clamp(skew / (k * LP / price), -1, 1)
+     *      fill price is the average price of trading _size at current market
+     * @param _token token to trade
+     * @param _size trade size, positive for long, negative for short
+     * @param _oraclePrice oracle price
+     * @param _lpNetValue lp net value
+     * @return avgPrice the fill price
+     */
+    function computePerpFillPrice(
+        address _token,
+        int256 _size,
+        int256 _oraclePrice,
+        int256 _lpNetValue
+    ) external view returns (int256 avgPrice) {
+        require(_lpNetValue > 0, "PerpTracker: non-positive lp net value");
+
+        MarketSettings settings_ = MarketSettings(Market(market).settings());
+
+        int lambda = settings_
+            .getUintValsByMarket(marketKey(_token), LAMBDA_PREMIUM)
+            .toInt256();
+        int skew = currentSkew(_token);
+        int kLP = settings_
+            .getUintValsByMarket(marketKey(_token), K_PREMIUM)
+            .toInt256();
+        kLP = kLP.multiplyDecimal(_lpNetValue).divideDecimal(_oraclePrice);
+
+        if ((skew >= 0 && _size >= 0) || (skew <= 0 && _size <= 0)) {
+            // trade direction is the same as skew
+            avgPrice = _computePriceCoefficient(skew, _size, kLP, lambda)
+                .multiplyDecimal(_oraclePrice);
+        } else if (
+            (skew >= 0 && skew + _size >= 0) || (skew <= 0 && skew + _size <= 0)
+        ) {
+            // trade direction is different from skew but won't flip skew
+            avgPrice = _computePriceCoefficient(
+                skew + _size,
+                -_size,
+                kLP,
+                lambda
+            ).multiplyDecimal(_oraclePrice);
+        } else {
+            // trade direction is different from skew and will flip skew
+            int numerator = _computePriceCoefficient(0, skew, kLP, lambda)
+                .multiplyDecimal(skew.abs());
+            numerator += _computePriceCoefficient(0, skew + _size, kLP, lambda)
+                .multiplyDecimal((skew + _size).abs());
+            avgPrice = numerator.divideDecimal(_size.abs()).multiplyDecimal(
+                _oraclePrice
+            );
+        }
     }
 
     /// @notice compute the fill price of a trade
