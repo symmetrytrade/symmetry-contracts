@@ -32,7 +32,7 @@ contract Market is Ownable, Initializable {
         "liquidationPenaltyRatio";
     bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
-    bytes32 public constant MAX_HOLDING_FEE_RATE = "maxHoldingFeeRate";
+    bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
 
     // states
     address public baseToken; // liquidity token
@@ -142,18 +142,18 @@ contract Market is Ownable, Initializable {
                     nextAccFunding - position.accFunding
                 );
             }
-            // holding fee
+            // financing fee
             {
                 (
-                    int nextAccLongHoldingFee,
-                    int nextAccShortHoldingFee
-                ) = _nextAccHoldingFee(token, price);
-                lpNetValue += (nextAccLongHoldingFee -
-                    position.accLongHoldingFee).multiplyDecimal(
+                    int nextAccLongFinancingFee,
+                    int nextAccShortFinancingFee
+                ) = _nextAccFinancingFee(token, price);
+                lpNetValue += (nextAccLongFinancingFee -
+                    position.accLongFinancingFee).multiplyDecimal(
                         position.shortSize.abs()
                     );
-                lpNetValue += (nextAccShortHoldingFee -
-                    position.accShortHoldingFee).multiplyDecimal(
+                lpNetValue += (nextAccShortFinancingFee -
+                    position.accShortFinancingFee).multiplyDecimal(
                         position.longSize
                     );
             }
@@ -270,7 +270,9 @@ contract Market is Ownable, Initializable {
                 _account,
                 token
             );
-            int256 price = getPrice(position.token, false);
+            if (position.size == 0) continue;
+
+            int256 price = getPrice(token, false);
             // update notional value
             positionNotional += position.size.abs().multiplyDecimal(price);
             // update pnl by price
@@ -282,16 +284,16 @@ contract Market is Ownable, Initializable {
                     nextAccFunding - position.accFunding
                 );
             }
-            // update pnl by holding fee
+            // update pnl by financing fee
             {
                 (
-                    int nextAccLongHoldingFee,
-                    int nextAccShortHoldingFee
-                ) = _nextAccHoldingFee(token, price);
+                    int nextAccLongFinancingFee,
+                    int nextAccShortFinancingFee
+                ) = _nextAccFinancingFee(token, price);
                 pnl -= position.size.abs().multiplyDecimal(
                     position.size > 0
-                        ? nextAccLongHoldingFee - position.accHoldingFee
-                        : nextAccShortHoldingFee - position.accHoldingFee
+                        ? nextAccLongFinancingFee - position.accFinancingFee
+                        : nextAccShortFinancingFee - position.accFinancingFee
                 );
             }
         }
@@ -306,7 +308,7 @@ contract Market is Ownable, Initializable {
             pnl;
     }
 
-    /*=== funding & holding fees ===*/
+    /*=== funding & financing fees ===*/
 
     /**
      * @dev compute funding velocity:
@@ -335,10 +337,7 @@ contract Market is Ownable, Initializable {
                     .min(_UNIT)
                     .multiplyDecimal(maxVelocity);
         } else {
-            return
-                (skew * _UNIT).max(-_UNIT).min(_UNIT).multiplyDecimal(
-                    maxVelocity
-                );
+            return skew.sign().multiplyDecimal(maxVelocity);
         }
     }
 
@@ -405,10 +404,10 @@ contract Market is Ownable, Initializable {
     }
 
     /**
-     * @dev get current soft limit, if open interest > soft limit, holding fee will be charged
+     * @dev get current soft limit, if open interest > soft limit, financing fee will be charged
      *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
      */
-    function _getHoldingFeeSoftLimit(
+    function _getFinancingFeeSoftLimit(
         address _token
     ) internal view returns (int) {
         int lpNetValue = PerpTracker(perpTracker).latestLpNetValue(_token);
@@ -421,24 +420,24 @@ contract Market is Ownable, Initializable {
         return lpNetValue.multiplyDecimal(threshold).min(maxSoftLimit);
     }
 
-    function _nextAccHoldingFee(
+    function _nextAccFinancingFee(
         address _token,
         int256 _price
     )
         internal
         view
-        returns (int nextAccLongHoldingFee, int nextAccShortHoldingFee)
+        returns (int nextAccLongFinancingFee, int nextAccShortFinancingFee)
     {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        (nextAccLongHoldingFee, nextAccShortHoldingFee) = perpTracker_
-            .latestAccHoldingFee(_token);
+        (nextAccLongFinancingFee, nextAccShortFinancingFee) = perpTracker_
+            .latestAccFinancingFee(_token);
         if (perpTracker_.latestFeeUpdateTime(_token) >= int(block.timestamp)) {
-            return (nextAccLongHoldingFee, nextAccShortHoldingFee);
+            return (nextAccLongFinancingFee, nextAccShortFinancingFee);
         }
         // check soft limit
         if (
             perpTracker_.latestNetOpenInterest(_token) >
-            _getHoldingFeeSoftLimit(_token)
+            _getFinancingFeeSoftLimit(_token)
         ) {
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
                 _token
@@ -454,7 +453,7 @@ contract Market is Ownable, Initializable {
                 int256 lpNetValue = perpTracker_.latestLpNetValue(_token);
                 int skew = perpTracker_.latestSkew(_token);
                 int256 maxFeeRate = MarketSettings(settings)
-                    .getUintVals(MAX_HOLDING_FEE_RATE)
+                    .getUintVals(MAX_FINANCING_FEE_RATE)
                     .toInt256();
                 int256 feeRate = lpNetValue > 0
                     ? skew
@@ -469,9 +468,9 @@ contract Market is Ownable, Initializable {
             }
             if (feeDelta > 0) {
                 if (longSize > -shortSize) {
-                    nextAccLongHoldingFee += feeDelta;
+                    nextAccLongFinancingFee += feeDelta;
                 } else {
-                    nextAccShortHoldingFee += feeDelta;
+                    nextAccShortFinancingFee += feeDelta;
                 }
             }
         }
@@ -506,16 +505,16 @@ contract Market is Ownable, Initializable {
             price
         );
         (
-            int nextAccLongHoldingFee,
-            int nextAccShortHoldingFee
-        ) = _nextAccHoldingFee(_token, price);
+            int nextAccLongFinancingFee,
+            int nextAccShortFinancingFee
+        ) = _nextAccFinancingFee(_token, price);
         PerpTracker(perpTracker).updateFee(
             _token,
             PerpTracker.FeeInfo(
                 nextAccFunding,
                 nextFundingRate,
-                nextAccLongHoldingFee,
-                nextAccShortHoldingFee,
+                nextAccLongFinancingFee,
+                nextAccShortFinancingFee,
                 int(block.timestamp)
             )
         );
@@ -532,7 +531,7 @@ contract Market is Ownable, Initializable {
     }
 
     /**
-     * @notice update global data used to calculate funding velocity and holding fee
+     * @notice update global data used to calculate funding velocity and financing fee
      * @dev this function should be called after every position modification / liquidation
      * @param _token token address
      * @return lp net value, net open interest
@@ -605,7 +604,7 @@ contract Market is Ownable, Initializable {
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
-    /// @dev make sure the funding & holding fee is updated before calling this function.
+    /// @dev make sure the funding & financing fee is updated before calling this function.
     /// @param _account user address
     /// @param _token token to trade
     /// @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
@@ -640,25 +639,25 @@ contract Market is Ownable, Initializable {
                 false
             ).toUint256();
             if (pnlAndFunding > 0) {
-                perpTracker_.addMargin(position.account, tokenAmount);
+                perpTracker_.addMargin(_account, tokenAmount);
             } else if (pnlAndFunding < 0) {
-                perpTracker_.removeMargin(position.account, tokenAmount);
+                perpTracker_.removeMargin(_account, tokenAmount);
             }
-            // settle holding fee
+            // settle financing fee
             {
                 (
-                    int nextAccLongHoldingFee,
-                    int nextAccShortHoldingFee
-                ) = perpTracker_.latestAccHoldingFee(_token);
+                    int nextAccLongFinancingFee,
+                    int nextAccShortFinancingFee
+                ) = perpTracker_.latestAccFinancingFee(_token);
                 int openInterestFee = position.size.abs().multiplyDecimal(
                     position.size > 0
-                        ? nextAccLongHoldingFee - position.accHoldingFee
-                        : nextAccShortHoldingFee - position.accHoldingFee
+                        ? nextAccLongFinancingFee - position.accFinancingFee
+                        : nextAccShortFinancingFee - position.accFinancingFee
                 );
                 if (openInterestFee > 0) {
                     tokenAmount = usdToToken(baseToken, openInterestFee, false)
                         .toUint256();
-                    perpTracker_.removeMargin(position.account, tokenAmount);
+                    perpTracker_.removeMargin(_account, tokenAmount);
                     liquidityBalance += int(tokenAmount);
                 }
             }

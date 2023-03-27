@@ -40,7 +40,7 @@ contract PositionManager is Ownable, Initializable {
     mapping(uint256 => Order) private orders;
     uint256 public orderCnt;
 
-    event OrderSubmitted(uint256 orderId);
+    event OrderStatusChanged(uint256 orderId, OrderStatus status);
 
     /*=== initialize ===*/
 
@@ -115,7 +115,6 @@ contract PositionManager is Ownable, Initializable {
             "PositionManager: invalid expiracy"
         );
         // put order
-        ++orderCnt;
         Order memory order = Order({
             account: msg.sender,
             token: _token,
@@ -125,12 +124,12 @@ contract PositionManager is Ownable, Initializable {
             submitTime: block.timestamp,
             status: OrderStatus.Pending
         });
-        orders[orderCnt] = order;
+        orders[orderCnt++] = order;
+        emit OrderStatusChanged(orderCnt - 1, OrderStatus.Pending);
         // TODO: simulate the order and revert it if needed?
     }
 
     function _validateOrderLiveness(Order memory order) internal view {
-        require(order.account == msg.sender, "PositionManager: invalid sender");
         require(
             order.status == OrderStatus.Pending,
             "PositionManager: order is not pending"
@@ -143,8 +142,10 @@ contract PositionManager is Ownable, Initializable {
 
     function cancelOrder(uint256 _id) external {
         Order memory order = orders[_id];
+        require(order.account == msg.sender, "PositionManager: forbid");
         _validateOrderLiveness(order);
         orders[_id].status = OrderStatus.Cancelled;
+        emit OrderStatusChanged(_id, OrderStatus.Cancelled);
     }
 
     /// @notice execute an submitted execution order, this function is payable for paying the oracle update fee
@@ -216,6 +217,7 @@ contract PositionManager is Ownable, Initializable {
         }
         // update order
         orders[_id].status = OrderStatus.Executed;
+        emit OrderStatusChanged(_id, OrderStatus.Executed);
     }
 
     /**
