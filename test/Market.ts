@@ -1,37 +1,90 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getProxyContract } from "../src/utils/utils";
-import { setupPrices } from "../src/utils/test_utils";
+import {
+    CONTRACTS,
+    MAX_UINT256,
+    UNIT,
+    getProxyContract,
+} from "../src/utils/utils";
+import { getPythUpdateData, setupPrices } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
-    USDC: 1,
+    USDC: 0.98,
     WETH: 1500,
     WBTC: 20000,
 };
 
 const pythPrices: { [key: string]: number } = {
-    USDC: 0.998,
+    USDC: 0.98,
     WETH: 1499,
-    WBTC: 19999,
+    WBTC: 20000,
 };
 
 describe("Market", () => {
     let account1: ethers.Signer;
+    let deployer: ethers.Signer;
     let config: NetworkConfigs;
     let market_: ethers.Contract;
+    let perpTracker_: ethers.Contract;
+    let positionManager_: ethers.Contract;
+    let liquidityManager_: ethers.Contract;
+    let lpToken_: ethers.Contract;
     let WETH: string;
+    let WBTC: string;
+    let USDC_: ethers.Contract;
 
     before(async () => {
+        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH = (await hre.ethers.getContract("WETH")).address;
+        WBTC = (await hre.ethers.getContract("WBTC")).address;
+        USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
+        perpTracker_ = await getProxyContract(
+            hre,
+            CONTRACTS.PerpTracker,
+            account1
+        );
+        lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);
+        liquidityManager_ = await getProxyContract(
+            hre,
+            CONTRACTS.LiquidityManager,
+            account1
+        );
+        positionManager_ = await getProxyContract(
+            hre,
+            CONTRACTS.PositionManager,
+            account1
+        );
         config = getConfig(hre.network.name);
+
+        await (
+            await USDC_.transfer(
+                await account1.getAddress(),
+                hre.ethers.BigNumber.from(100000000).mul(UNIT)
+            )
+        ).wait();
+
+        // add liquidity
+        USDC_ = USDC_.connect(account1);
+        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
+        const amount = hre.ethers.BigNumber.from(1000000).mul(UNIT);
+        const minUsd = hre.ethers.BigNumber.from(980000).mul(UNIT);
+        const minLp = hre.ethers.BigNumber.from(980000).mul(UNIT);
+        await (
+            await liquidityManager_.addLiquidity(
+                amount,
+                minUsd,
+                minLp,
+                await account1.getAddress()
+            )
+        ).wait();
     });
 
     it("getPrice", async () => {
@@ -92,5 +145,55 @@ describe("Market", () => {
             false
         );
         expect(tokenAmount.div(UNIT).eq(-5)).to.be.eq(true);
+    });
+
+    it("trade", async () => {
+        await (
+            await positionManager_.depositMargin(
+                hre.ethers.BigNumber.from(1500).mul(UNIT)
+            )
+        ).wait();
+
+        await (
+            await positionManager_.submitOrder(
+                WETH,
+                hre.ethers.BigNumber.from(10).mul(UNIT),
+                hre.ethers.BigNumber.from(1550).mul(UNIT),
+                (await helpers.time.latest()) + 100
+            )
+        ).wait();
+        const orderId = (await positionManager_.orderCnt()).sub(1);
+
+        await helpers.time.increase(config.marketGeneralConfig.minOrderDelay);
+
+        const pythUpdateData = await getPythUpdateData(hre, { WETH: 1500 });
+        await (
+            await positionManager_.executeOrder(
+                orderId,
+                pythUpdateData.updateData,
+                { value: pythUpdateData.fee }
+            )
+        ).wait();
+        const position = await perpTracker_.getPosition(
+            await account1.getAddress(),
+            WETH
+        );
+        for (const [k, v] of Object.entries(position)) {
+            console.log(`${k}: ${v.toString()}`);
+        }
+        const status = await market_.accountMarginStatus(
+            await account1.getAddress()
+        );
+        for (const [k, v] of Object.entries(status)) {
+            console.log(`${k}: ${v.toString()}`);
+        }
+        const globalPosition = await perpTracker_.getGlobalPosition(WETH);
+        for (const [k, v] of Object.entries(globalPosition)) {
+            console.log(`${k}: ${v.toString()}`);
+        }
+        const globalStatus = await market_.globalStatus();
+        for (const [k, v] of Object.entries(globalStatus)) {
+            console.log(`${k}: ${v.toString()}`);
+        }
     });
 });

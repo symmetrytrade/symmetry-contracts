@@ -80,6 +80,28 @@ export async function updateChainlinkPrice(
     ).wait();
 }
 
+export async function getPythUpdateData(
+    hre: HardhatRuntimeEnvironment,
+    pythPrices: { [key: string]: number }
+) {
+    const updateData = [];
+    for (const [token, value] of Object.entries(pythPrices)) {
+        const info = getPythInfo(token);
+        const price = new BigNumber(value)
+            .multipliedBy(10 ** -info.expo)
+            .toString(10);
+        const publishTime = await helpers.time.latest();
+        const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
+        updateData.push(data);
+    }
+    const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name);
+    const fee = await pyth_.getUpdateFee(updateData);
+    return {
+        updateData: updateData,
+        fee: fee,
+    };
+}
+
 export async function setupPrices(
     hre: HardhatRuntimeEnvironment,
     chainlinkPrices: { [key: string]: number },

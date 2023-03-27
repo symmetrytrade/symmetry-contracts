@@ -26,12 +26,13 @@ interface MarketGeneralConfig {
     liquidityRemoveCooldown: number;
     maxSoftLimit: string;
     softLimitThreshold: string;
-    maxHoldingFeeRate: string;
+    maxFinancingFeeRate: string;
     minOrderDelay: number;
 }
 
 interface MarketConfig {
     maxFundingVelocity: string;
+    skewScale: string;
 }
 
 export interface NetworkConfigs {
@@ -55,15 +56,17 @@ const DefaultConfig: NetworkConfigs = {
         liquidityRemoveCooldown: 10, // seconds
         maxSoftLimit: normalized(1000000), // 1 mio usd
         softLimitThreshold: normalized(0.5), // 50% of lp net value
-        maxHoldingFeeRate: normalized(100), // 100% per day
+        maxFinancingFeeRate: normalized(100), // 100% per day
         minOrderDelay: 60, // 1 minute
     },
     marketConfig: {
         WBTC: {
             maxFundingVelocity: normalized(300),
+            skewScale: normalized(1000000), // 100w
         },
         WETH: {
             maxFundingVelocity: normalized(300),
+            skewScale: normalized(1000000), // 100w
         },
     },
 };

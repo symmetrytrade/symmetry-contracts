@@ -152,4 +152,20 @@ describe("Liquidity", () => {
         expect(globalStatus.lpNetValue.eq(0)).to.be.eq(true);
         expect(globalStatus.netOpenInterest.eq(0)).to.be.eq(true);
     });
+
+    it("deposit&remove at non-zero skew", async () => {
+        // first deposit
+        const amount = hre.ethers.BigNumber.from(100000).mul(UNIT);
+        const minUsd = hre.ethers.BigNumber.from(99800).mul(UNIT);
+        const minLp = hre.ethers.BigNumber.from(99800).mul(UNIT);
+        await (
+            await liquidityManager_.addLiquidity(
+                amount,
+                minUsd,
+                minLp,
+                await account1.getAddress()
+            )
+        ).wait();
+        // trade
+    });
 });
