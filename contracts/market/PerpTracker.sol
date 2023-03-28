@@ -270,14 +270,54 @@ contract PerpTracker is Ownable, Initializable {
                 ));
         } else {
             // |skew| < kLP, |skew + size| > kLP
-            int kLPSigned = _skew > 0 ? _kLP : -_kLP;
+            int kLPSigned = _skew + _size > 0 ? _kLP : -_kLP;
             int numerator = (_UNIT +
                 (_skew + kLPSigned).divideDecimal(2 * _kLP).multiplyDecimal(
                     _lambda
                 )).multiplyDecimal(kLPSigned - _skew);
-            numerator += (_UNIT + (_skew > 0 ? _lambda : -_lambda))
+            numerator += (_UNIT + (_skew + _size > 0 ? _lambda : -_lambda))
                 .multiplyDecimal(_skew + _size - kLPSigned);
             priceCoefficient = numerator.divideDecimal(_size);
+        }
+    }
+
+    function computePerpFillPriceRaw(
+        int256 _skew,
+        int256 _size,
+        int256 _oraclePrice,
+        int256 _kLP,
+        int256 _lambda
+    ) public pure returns (int256 avgPrice) {
+        require(_kLP > 0, "PerpTracker: non-positive kLP");
+
+        if ((_skew >= 0 && _size >= 0) || (_skew <= 0 && _size <= 0)) {
+            // trade direction is the same as skew
+            avgPrice = _computePriceCoefficient(_skew, _size, _kLP, _lambda)
+                .multiplyDecimal(_oraclePrice);
+        } else if (
+            (_skew >= 0 && _skew + _size >= 0) ||
+            (_skew <= 0 && _skew + _size <= 0)
+        ) {
+            // trade direction is different from skew but won't flip skew
+            avgPrice = _computePriceCoefficient(
+                _skew + _size,
+                -_size,
+                _kLP,
+                _lambda
+            ).multiplyDecimal(_oraclePrice);
+        } else {
+            // trade direction is different from skew and will flip skew
+            int numerator = _computePriceCoefficient(0, _skew, _kLP, _lambda)
+                .multiplyDecimal(_skew.abs());
+            numerator += _computePriceCoefficient(
+                0,
+                _skew + _size,
+                _kLP,
+                _lambda
+            ).multiplyDecimal((_skew + _size).abs());
+            avgPrice = numerator.divideDecimal(_size.abs()).multiplyDecimal(
+                _oraclePrice
+            );
         }
     }
 
@@ -297,8 +337,6 @@ contract PerpTracker is Ownable, Initializable {
         int256 _oraclePrice,
         int256 _lpNetValue
     ) external view returns (int256 avgPrice) {
-        require(_lpNetValue > 0, "PerpTracker: non-positive lp net value");
-
         MarketSettings settings_ = MarketSettings(Market(market).settings());
 
         int lambda = settings_
@@ -310,55 +348,6 @@ contract PerpTracker is Ownable, Initializable {
             .toInt256();
         kLP = kLP.multiplyDecimal(_lpNetValue).divideDecimal(_oraclePrice);
 
-        if ((skew >= 0 && _size >= 0) || (skew <= 0 && _size <= 0)) {
-            // trade direction is the same as skew
-            avgPrice = _computePriceCoefficient(skew, _size, kLP, lambda)
-                .multiplyDecimal(_oraclePrice);
-        } else if (
-            (skew >= 0 && skew + _size >= 0) || (skew <= 0 && skew + _size <= 0)
-        ) {
-            // trade direction is different from skew but won't flip skew
-            avgPrice = _computePriceCoefficient(
-                skew + _size,
-                -_size,
-                kLP,
-                lambda
-            ).multiplyDecimal(_oraclePrice);
-        } else {
-            // trade direction is different from skew and will flip skew
-            int numerator = _computePriceCoefficient(0, skew, kLP, lambda)
-                .multiplyDecimal(skew.abs());
-            numerator += _computePriceCoefficient(0, skew + _size, kLP, lambda)
-                .multiplyDecimal((skew + _size).abs());
-            avgPrice = numerator.divideDecimal(_size.abs()).multiplyDecimal(
-                _oraclePrice
-            );
-        }
-    }
-
-    /// @notice compute the fill price of a trade
-    /// @param _token token to trade
-    /// @param _size trade size, positive for long, negative for short
-    /// @param _oraclePrice oracle price
-    /// @return the fill price
-    function computePerpFillPrice(
-        address _token,
-        int256 _size,
-        int256 _oraclePrice
-    ) external view returns (int256) {
-        // a temporary implementation based on global skew
-        int globalSkew = currentSkew(_token);
-
-        MarketSettings settings_ = MarketSettings(Market(market).settings());
-        int256 skewScale = settings_
-            .getUintValsByMarket(marketKey(_token), SKEW_SCALE)
-            .toInt256();
-
-        int pdBefore = globalSkew.divideDecimal(skewScale);
-        int pdAfter = (globalSkew + _size).divideDecimal(skewScale);
-        int priceBefore = _oraclePrice + _oraclePrice.multiplyDecimal(pdBefore);
-        int priceAfter = _oraclePrice + _oraclePrice.multiplyDecimal(pdAfter);
-
-        return (priceBefore + priceAfter) / 2;
+        return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
     }
 }

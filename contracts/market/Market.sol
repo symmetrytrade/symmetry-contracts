@@ -574,11 +574,13 @@ contract Market is Ownable, Initializable {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         int256 oraclePrice = getPrice(_token, true);
         int256 size = perpTracker_.getPositionSize(_account, _token);
+        (int lpNetValue, ) = globalStatus();
         return (
             PerpTracker(perpTracker).computePerpFillPrice(
                 _token,
                 size,
-                oraclePrice
+                oraclePrice,
+                lpNetValue
             ),
             size
         );
@@ -595,11 +597,13 @@ contract Market is Ownable, Initializable {
         int256 _size
     ) external view returns (int256) {
         int256 oraclePrice = getPrice(_token, true);
+        (int lpNetValue, ) = globalStatus();
         return
             PerpTracker(perpTracker).computePerpFillPrice(
                 _token,
                 _size,
-                oraclePrice
+                oraclePrice,
+                lpNetValue
             );
     }
 
