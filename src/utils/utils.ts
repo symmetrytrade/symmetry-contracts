@@ -3,6 +3,7 @@ import hardhat from "hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import { ethers } from "ethers";
+import { BigNumber } from "bignumber.js";
 
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
@@ -13,6 +14,10 @@ export const PERP_DOMAIN =
 export const UNIT = "1000000000000000000";
 export const MAX_UINT256 =
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+export function normalized(x: number) {
+    return new BigNumber(x).multipliedBy(UNIT).toString(10);
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {

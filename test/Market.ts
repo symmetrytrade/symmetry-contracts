@@ -178,22 +178,27 @@ describe("Market", () => {
             await account1.getAddress(),
             WETH
         );
+        /*
+        console.log("Position:");
         for (const [k, v] of Object.entries(position)) {
             console.log(`${k}: ${v.toString()}`);
         }
         const status = await market_.accountMarginStatus(
             await account1.getAddress()
         );
+        console.log("Margin Status:");
         for (const [k, v] of Object.entries(status)) {
             console.log(`${k}: ${v.toString()}`);
         }
+        console.log("global position:");
         const globalPosition = await perpTracker_.getGlobalPosition(WETH);
         for (const [k, v] of Object.entries(globalPosition)) {
             console.log(`${k}: ${v.toString()}`);
         }
+        console.log("global status:");
         const globalStatus = await market_.globalStatus();
         for (const [k, v] of Object.entries(globalStatus)) {
             console.log(`${k}: ${v.toString()}`);
-        }
+        }*/
     });
 });
