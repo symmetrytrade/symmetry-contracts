@@ -1,10 +1,4 @@
-import { BigNumber } from "bignumber.js";
-
-const UNIT = new BigNumber("1000000000000000000");
-
-function normalized(x: number) {
-    return UNIT.times(x).toString(10);
-}
+import { normalized } from "./utils/utils";
 
 interface ChainlinkConfig {
     sequencerUptimeFeed?: string;
@@ -33,6 +27,8 @@ interface MarketGeneralConfig {
 interface MarketConfig {
     maxFundingVelocity: string;
     skewScale: string;
+    kPremium: string;
+    lambdaPremium: string;
 }
 
 export interface NetworkConfigs {
@@ -63,10 +59,14 @@ const DefaultConfig: NetworkConfigs = {
         WBTC: {
             maxFundingVelocity: normalized(300),
             skewScale: normalized(1000000), // 100w
+            kPremium: normalized(1),
+            lambdaPremium: normalized(0.5),
         },
         WETH: {
             maxFundingVelocity: normalized(300),
             skewScale: normalized(1000000), // 100w
+            kPremium: normalized(1),
+            lambdaPremium: normalized(0.5),
         },
     },
 };
