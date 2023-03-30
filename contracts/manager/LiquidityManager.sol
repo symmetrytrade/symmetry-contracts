@@ -143,17 +143,19 @@ contract LiquidityManager is Ownable, Initializable {
         (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
-        int256 burnValue = (lpNetValue * _amount.toInt256()) /
+        int256 redeemValue = (lpNetValue * _amount.toInt256()) /
             lpToken_.totalSupply().toInt256(); // must be non-negative
         require(
-            lpNetValue - netOpenInterest >= burnValue,
+            lpNetValue - netOpenInterest >= redeemValue,
             "LiquidityManager: insufficient free lp"
         );
+        redeemValue -= market_.redeemFee(lpNetValue, redeemValue);
+        require(redeemValue > 0, "LiquidityManager: non-positive redeem value");
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
         uint256 amountOut = market_
-            .usdToToken(market_.baseToken(), burnValue, false)
+            .usdToToken(market_.baseToken(), redeemValue, false)
             .toUint256();
         require(
             amountOut >= _minOut,
@@ -165,10 +167,10 @@ contract LiquidityManager is Ownable, Initializable {
             _account,
             _amount,
             lpNetValue,
-            burnValue.toUint256(),
+            redeemValue.toUint256(),
             amountOut
         );
 
-        return 0;
+        return amountOut;
     }
 }

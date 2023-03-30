@@ -24,11 +24,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const priceOracle = (
         await hre.ethers.getContract(CONTRACTS.PriceOracle.name)
     ).address;
-    const marketSettigs = (
+    const marketSettings = (
         await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
     ).address;
     await (
-        await market_.initialize(baseToken, priceOracle, marketSettigs)
+        await market_.initialize(baseToken, priceOracle, marketSettings)
     ).wait();
 };
 
