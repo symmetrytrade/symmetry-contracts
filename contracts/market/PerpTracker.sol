@@ -284,7 +284,7 @@ contract PerpTracker is Ownable, Initializable {
             avgPrice = _oraclePrice;
         } else {
             // trade direction is different from skew and will flip skew
-            int numerator = _oraclePrice.multiplyDecimal(_skew.abs());
+            int numerator = _UNIT.multiplyDecimal(_skew.abs());
             numerator += _computePriceCoefficient(
                 0,
                 _skew + _size,
