@@ -23,16 +23,12 @@ contract Market is Ownable, Initializable {
     int256 private constant _UNIT = int(10 ** 18);
 
     // setting keys
-    bytes32 public constant PYTH_MAX_AGE = "pythMaxAge";
-    bytes32 public constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
     bytes32 public constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
-    bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
-    bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
-    bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
-    bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
+    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
+    bytes32 public constant K_LP_SENSITIVITY = "kLpSensitivity";
 
     // states
     address public baseToken; // liquidity token
@@ -107,8 +103,6 @@ contract Market is Ownable, Initializable {
      *     for a token t, OI_{t}= max(Long Open Interest_{t}, abs(Short Open Interest_{t}))
      *     netOpenInterest OI = \sum_{t \in tokens} OI_{t}
      */
-    ///
-    ///
     function globalStatus()
         public
         view
@@ -126,7 +120,7 @@ contract Market is Ownable, Initializable {
                 .getGlobalPosition(token);
             if (position.longSize == 0 && position.shortSize == 0) continue;
             int size = position.longSize + position.shortSize;
-            int256 price = getPrice(token, false);
+            int256 price = PriceOracle(priceOracle).getPrice(token, false);
             // open interest, note here position is lp position(counter party of user)
             netOpenInterest += position
                 .shortSize
@@ -137,7 +131,10 @@ contract Market is Ownable, Initializable {
             lpNetValue += (price - position.avgPrice).multiplyDecimal(size);
             // funding fee
             {
-                (, int256 nextAccFunding) = _nextAccFunding(token, price);
+                (, int256 nextAccFunding) = perpTracker_.nextAccFunding(
+                    token,
+                    price
+                );
                 lpNetValue -= size.multiplyDecimal(
                     nextAccFunding - position.accFunding
                 );
@@ -147,7 +144,7 @@ contract Market is Ownable, Initializable {
                 (
                     int nextAccLongFinancingFee,
                     int nextAccShortFinancingFee
-                ) = _nextAccFinancingFee(token, price);
+                ) = perpTracker_.nextAccFinancingFee(token, price);
                 lpNetValue += (nextAccLongFinancingFee -
                     position.accLongFinancingFee).multiplyDecimal(
                         position.shortSize.abs()
@@ -157,6 +154,52 @@ contract Market is Ownable, Initializable {
                         position.longSize
                     );
             }
+        }
+    }
+
+    /**
+     * @notice Compute the fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
+     * it holds to the lp left in pool. The redemption fee is the slippage of this trade.
+     * @param lp lp net value in usd
+     * @param redeemValue lp to redeem in usd
+     */
+    function redeemFee(
+        int lp,
+        int redeemValue
+    ) external view returns (int fee) {
+        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        MarketSettings settings_ = MarketSettings(settings);
+
+        int kLP = MarketSettings(settings)
+            .getUintVals(K_LP_SENSITIVITY)
+            .toInt256();
+        kLP = kLP.multiplyDecimal(lp - redeemValue);
+
+        uint256 len = perpTracker_.marketTokensLength();
+        for (uint i = 0; i < len; ++i) {
+            address token = perpTracker_.marketTokensList(i);
+            if (!perpTracker_.marketTokensListed(token)) continue;
+
+            int skew = perpTracker_.currentSkew(token);
+            int tradeAmount = skew.multiplyDecimal(redeemValue).divideDecimal(
+                lp
+            );
+            int price = PriceOracle(priceOracle).getPrice(token, false);
+
+            int lambda = settings_
+                .getUintValsByMarket(
+                    perpTracker_.marketKey(token),
+                    LAMBDA_PREMIUM
+                )
+                .toInt256();
+            int fillPrice = perpTracker_.computePerpFillPriceRaw(
+                skew - tradeAmount,
+                tradeAmount,
+                price,
+                kLP,
+                lambda
+            );
+            fee += (price - fillPrice).multiplyDecimal(tradeAmount);
         }
     }
 
@@ -260,6 +303,7 @@ contract Market is Ownable, Initializable {
         returns (int256 mtm, int256 currentMargin, int256 positionNotional)
     {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        PriceOracle oracle_ = PriceOracle(priceOracle);
         uint256 len = perpTracker_.marketTokensLength();
         int pnl = 0;
         for (uint i = 0; i < len; ++i) {
@@ -272,14 +316,17 @@ contract Market is Ownable, Initializable {
             );
             if (position.size == 0) continue;
 
-            int256 price = getPrice(token, false);
+            int256 price = oracle_.getPrice(token, false);
             // update notional value
             positionNotional += position.size.abs().multiplyDecimal(price);
             // update pnl by price
             pnl += position.size.multiplyDecimal(price - position.avgPrice);
             {
                 // update pnl by funding fee
-                (, int256 nextAccFunding) = _nextAccFunding(token, price);
+                (, int256 nextAccFunding) = perpTracker_.nextAccFunding(
+                    token,
+                    price
+                );
                 pnl -= position.size.multiplyDecimal(
                     nextAccFunding - position.accFunding
                 );
@@ -289,7 +336,7 @@ contract Market is Ownable, Initializable {
                 (
                     int nextAccLongFinancingFee,
                     int nextAccShortFinancingFee
-                ) = _nextAccFinancingFee(token, price);
+                ) = perpTracker_.nextAccFinancingFee(token, price);
                 pnl -= position.size.abs().multiplyDecimal(
                     position.size > 0
                         ? nextAccLongFinancingFee - position.accFinancingFee
@@ -308,172 +355,24 @@ contract Market is Ownable, Initializable {
             pnl;
     }
 
-    /*=== funding & financing fees ===*/
+    /*=== fees ===*/
 
     /**
-     * @dev compute funding velocity:
-     * v = min{max{-1, skew / L}, 1} * v_max
+     * @dev make sure the oracle price is updated before calling this function
+     */
+    function _updateFee(address _token) internal {
+        int256 price = PriceOracle(priceOracle).getPrice(_token, true);
+        PerpTracker(perpTracker).updateFee(_token, price);
+    }
+
+    /**
+     * @notice update funding rate, funding fee, only operator role
+     * @dev ensure the oracle price is updated before calling this function
+     *      update the global market data by updateTokenInfo after current position modification / liquidation
      * @param _token token address
      */
-    function _fundingVelocity(
-        address _token
-    ) internal view returns (int256 velocity) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        // latest lp net value and skew
-        int256 lpNetValue = perpTracker_.latestLpNetValue(_token);
-        int skew = perpTracker_.latestSkew(_token);
-        // max velocity
-        int256 maxVelocity = MarketSettings(settings)
-            .getUintValsByMarket(
-                perpTracker_.marketKey(_token),
-                MAX_FUNDING_VELOCITY
-            )
-            .toInt256();
-        if (lpNetValue > 0) {
-            return
-                skew
-                    .divideDecimal(lpNetValue)
-                    .max(-_UNIT)
-                    .min(_UNIT)
-                    .multiplyDecimal(maxVelocity);
-        } else {
-            return skew.sign().multiplyDecimal(maxVelocity);
-        }
-    }
-
-    /**
-     * @dev compute the current funding rate based on funding velocity
-     * @param _token token address
-     */
-    function _nextFundingRate(
-        address _token
-    )
-        internal
-        view
-        returns (
-            int256 nextFundingRate,
-            int256 latestFundingRate,
-            int256 timeElapsed
-        )
-    {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        // get latest funding rate
-        latestFundingRate = perpTracker_.latestFundingRate(_token);
-        // get funding rate velocity
-        int256 fundingVelocity = _fundingVelocity(_token);
-        // get time epalsed (normalized to days)
-        timeElapsed = (int(block.timestamp) -
-            perpTracker_.latestFeeUpdateTime(_token)).max(0).divideDecimal(
-                1 days
-            );
-        // next funding rate
-        nextFundingRate =
-            latestFundingRate +
-            fundingVelocity.multiplyDecimal(timeElapsed);
-    }
-
-    /**
-     * @dev compute next accumulate funding delta
-     * @param _token token address
-     * @param _price base asset price
-     * @return nextAccFunding, accFundingDelta
-     */
-    function _nextAccFunding(
-        address _token,
-        int256 _price
-    ) internal view returns (int256, int256) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        if (perpTracker_.latestFeeUpdateTime(_token) >= int(block.timestamp)) {
-            return (
-                perpTracker_.latestFundingRate(_token),
-                perpTracker_.latestAccFunding(_token)
-            );
-        }
-        // compute next funding rate
-        (
-            int nextFundingRate,
-            int256 latestFundingRate,
-            int256 timeElapsed
-        ) = _nextFundingRate(_token);
-        int accFundingDelta = ((nextFundingRate + latestFundingRate) / 2)
-            .multiplyDecimal(timeElapsed)
-            .multiplyDecimal(_price);
-        int nextAccFunding = perpTracker_.latestAccFunding(_token) +
-            accFundingDelta;
-        return (nextFundingRate, nextAccFunding);
-    }
-
-    /**
-     * @dev get current soft limit, if open interest > soft limit, financing fee will be charged
-     *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
-     */
-    function _getFinancingFeeSoftLimit(
-        address _token
-    ) internal view returns (int) {
-        int lpNetValue = PerpTracker(perpTracker).latestLpNetValue(_token);
-        int maxSoftLimit = MarketSettings(settings)
-            .getUintVals(MAX_SOFT_LIMIT)
-            .toInt256();
-        int threshold = MarketSettings(settings)
-            .getUintVals(SOFT_LIMIT_THRESHOLD)
-            .toInt256();
-        return lpNetValue.multiplyDecimal(threshold).min(maxSoftLimit);
-    }
-
-    function _nextAccFinancingFee(
-        address _token,
-        int256 _price
-    )
-        internal
-        view
-        returns (int nextAccLongFinancingFee, int nextAccShortFinancingFee)
-    {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        (nextAccLongFinancingFee, nextAccShortFinancingFee) = perpTracker_
-            .latestAccFinancingFee(_token);
-        if (perpTracker_.latestFeeUpdateTime(_token) >= int(block.timestamp)) {
-            return (nextAccLongFinancingFee, nextAccShortFinancingFee);
-        }
-        // check soft limit
-        if (
-            perpTracker_.latestNetOpenInterest(_token) >
-            _getFinancingFeeSoftLimit(_token)
-        ) {
-            (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
-                _token
-            );
-            // charge fee from the larger side
-            int feeDelta = 0;
-            {
-                int256 timeElapsed = (int(block.timestamp) -
-                    perpTracker_.latestFeeUpdateTime(_token))
-                    .max(0)
-                    .divideDecimal(1 days);
-                // fee rate = min(|skew| / lp_net_value, 1) * max_fee_rate
-                int256 lpNetValue = perpTracker_.latestLpNetValue(_token);
-                int skew = perpTracker_.latestSkew(_token);
-                int256 maxFeeRate = MarketSettings(settings)
-                    .getUintVals(MAX_FINANCING_FEE_RATE)
-                    .toInt256();
-                int256 feeRate = lpNetValue > 0
-                    ? skew
-                        .abs()
-                        .divideDecimal(lpNetValue)
-                        .min(_UNIT)
-                        .multiplyDecimal(maxFeeRate)
-                    : maxFeeRate;
-                feeDelta = feeRate.multiplyDecimal(timeElapsed).multiplyDecimal(
-                    _price
-                );
-            }
-            if (feeDelta > 0) {
-                if (longSize > -shortSize) {
-                    nextAccLongFinancingFee += feeDelta;
-                } else {
-                    nextAccShortFinancingFee += feeDelta;
-                }
-            }
-        }
+    function updateFee(address _token) external onlyOperator {
+        _updateFee(_token);
     }
 
     function _updateTokenInfo(
@@ -488,46 +387,10 @@ contract Market is Ownable, Initializable {
                 lpNetValue,
                 netOpenInterest,
                 perpTracker_.currentSkew(_token).multiplyDecimal(
-                    getPrice(_token, false)
+                    PriceOracle(priceOracle).getPrice(_token, false)
                 )
             )
         );
-    }
-
-    /**
-     * @dev make sure the oracle price is updated before calling this function
-     */
-    function _updateFee(address _token) internal {
-        int256 price = getPrice(_token, true);
-        // get latest funding rate and accumulate funding delta
-        (int nextFundingRate, int nextAccFunding) = _nextAccFunding(
-            _token,
-            price
-        );
-        (
-            int nextAccLongFinancingFee,
-            int nextAccShortFinancingFee
-        ) = _nextAccFinancingFee(_token, price);
-        PerpTracker(perpTracker).updateFee(
-            _token,
-            PerpTracker.FeeInfo(
-                nextAccFunding,
-                nextFundingRate,
-                nextAccLongFinancingFee,
-                nextAccShortFinancingFee,
-                int(block.timestamp)
-            )
-        );
-    }
-
-    /**
-     * @notice update funding rate, funding fee, only operator role
-     * @dev ensure the oracle price is updated before calling this function
-     *      update the global market data by updateTokenInfo after current position modification / liquidation
-     * @param _token token address
-     */
-    function updateFee(address _token) external onlyOperator {
-        _updateFee(_token);
     }
 
     /**
@@ -572,7 +435,7 @@ contract Market is Ownable, Initializable {
         address _token
     ) external view returns (int256, int256) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        int256 oraclePrice = getPrice(_token, true);
+        int256 oraclePrice = PriceOracle(priceOracle).getPrice(_token, true);
         int256 size = perpTracker_.getPositionSize(_account, _token);
         (int lpNetValue, ) = globalStatus();
         return (
@@ -596,7 +459,7 @@ contract Market is Ownable, Initializable {
         address _token,
         int256 _size
     ) external view returns (int256) {
-        int256 oraclePrice = getPrice(_token, true);
+        int256 oraclePrice = PriceOracle(priceOracle).getPrice(_token, true);
         (int lpNetValue, ) = globalStatus();
         return
             PerpTracker(perpTracker).computePerpFillPrice(
@@ -628,14 +491,15 @@ contract Market is Ownable, Initializable {
                 _account,
                 _token
             );
-            (int256 nextPrice, int256 pnlAndFunding) = _computeTrade(
-                position.size,
-                position.avgPrice,
-                position.accFunding,
-                _sizeDelta,
-                _price,
-                latestAccFunding
-            );
+            (int256 nextPrice, int256 pnlAndFunding) = perpTracker_
+                .computeTrade(
+                    position.size,
+                    position.avgPrice,
+                    position.accFunding,
+                    _sizeDelta,
+                    _price,
+                    latestAccFunding
+                );
             // settle p&l and funding
             uint256 tokenAmount = usdToToken(
                 baseToken,
@@ -678,14 +542,15 @@ contract Market is Ownable, Initializable {
         {
             PerpTracker.GlobalPosition memory position = perpTracker_
                 .getGlobalPosition(_token);
-            (int256 nextPrice, int256 pnlAndFunding) = _computeTrade(
-                position.longSize + position.shortSize,
-                position.avgPrice,
-                position.accFunding,
-                -_sizeDelta, // lp is the counterparty of user
-                _price,
-                latestAccFunding
-            );
+            (int256 nextPrice, int256 pnlAndFunding) = perpTracker_
+                .computeTrade(
+                    position.longSize + position.shortSize,
+                    position.avgPrice,
+                    position.accFunding,
+                    -_sizeDelta, // lp is the counterparty of user
+                    _price,
+                    latestAccFunding
+                );
             // settle p&l and funding
             liquidityBalance += usdToToken(baseToken, pnlAndFunding, false);
             // write to state
@@ -693,82 +558,15 @@ contract Market is Ownable, Initializable {
         }
     }
 
-    function _computeTrade(
-        int256 _size,
-        int256 _avgPrice,
-        int256 _accFunding,
-        int256 _sizeDelta,
-        int256 _price,
-        int256 _latestAccFunding
-    ) internal pure returns (int256 nextPrice, int256 pnlAndFunding) {
-        int256 nextSize = _size + _sizeDelta;
-        if ((_sizeDelta > 0 && _size >= 0) || (_sizeDelta < 0 && _size <= 0)) {
-            // increase position
-            nextPrice = ((_size * _avgPrice + _sizeDelta * _price) / nextSize)
-                .abs();
-        } else {
-            // decrease position
-            // here _size must be non-zero
-            if ((nextSize > 0 && _size > 0) || (nextSize < 0 && _size < 0)) {
-                // position direction is not changed
-                pnlAndFunding = (_size - nextSize).multiplyDecimal(
-                    _price - _avgPrice
-                );
-                nextPrice = _avgPrice;
-            } else {
-                // position direction changed
-                pnlAndFunding = _size.multiplyDecimal(_price - _avgPrice);
-                nextPrice = _price;
-            }
-        }
-        // funding
-        pnlAndFunding -= (_latestAccFunding - _accFunding).multiplyDecimal(
-            _size
-        );
-    }
-
     /*=== pricing ===*/
-    /// @notice get token's normalized usd price
-    /// @param _token token address
-    /// @param _mustUsePyth use price from pyth or not
-    function getPrice(
-        address _token,
-        bool _mustUsePyth
-    ) public view returns (int256) {
-        PriceOracle priceOracle_ = PriceOracle(priceOracle);
-        (, uint256 updatedAt, uint256 chainlinkPrice) = priceOracle_
-            .getLatestChainlinkPrice(_token);
-        MarketSettings settings_ = MarketSettings(settings);
-        (uint256 publishTime, int256 pythPrice) = priceOracle_.getPythPrice(
-            _token
-        );
-        require(
-            !_mustUsePyth ||
-                publishTime + settings_.getUintVals(PYTH_MAX_AGE) >
-                block.timestamp,
-            "Market: pyth price too stale"
-        );
-        if (publishTime > updatedAt) {
-            uint256 divergence = chainlinkPrice > pythPrice.toUint256()
-                ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
-                : pythPrice.toUint256().divideDecimal(chainlinkPrice);
-            require(
-                divergence < settings_.getUintVals(MAX_PRICE_DIVERGENCE),
-                "Market: oracle price divergence too large"
-            );
-            return pythPrice;
-        }
-        return chainlinkPrice.toInt256();
-    }
-
     function tokenToUsd(
         address _token,
         int256 _amount,
         bool _mustUsePyth
     ) public view returns (int256) {
         return
-            (getPrice(_token, _mustUsePyth) * _amount) /
-            int(10 ** IERC20Metadata(_token).decimals());
+            (PriceOracle(priceOracle).getPrice(_token, _mustUsePyth) *
+                _amount) / int(10 ** IERC20Metadata(_token).decimals());
     }
 
     function usdToToken(
@@ -778,6 +576,6 @@ contract Market is Ownable, Initializable {
     ) public view returns (int256) {
         return
             (_amount * int(10 ** IERC20Metadata(_token).decimals())) /
-            getPrice(_token, _mustUsePyth);
+            PriceOracle(priceOracle).getPrice(_token, _mustUsePyth);
     }
 }

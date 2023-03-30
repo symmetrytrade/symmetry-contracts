@@ -22,8 +22,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     );
 
     // initialize
+    const marketSettings = (
+        await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
+    ).address;
     console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
-    await (await oracle_.initialize()).wait();
+    await (await oracle_.initialize(marketSettings)).wait();
 
     // set chainlink
     const config = getConfig(hre.network.name);
@@ -120,5 +123,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 deploy.tags = [CONTRACTS.PriceOracle.name, "prod"];
-deploy.dependencies = ["mock"];
+deploy.dependencies = ["mock", CONTRACTS.MarketSettings.name];
 export default deploy;

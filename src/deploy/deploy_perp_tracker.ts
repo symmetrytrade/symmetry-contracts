@@ -40,5 +40,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 deploy.tags = [CONTRACTS.PerpTracker.name, "prod"];
-deploy.dependencies = [CONTRACTS.Market.name];
+deploy.dependencies = [CONTRACTS.Market.name, CONTRACTS.MarketSettings.name];
 export default deploy;

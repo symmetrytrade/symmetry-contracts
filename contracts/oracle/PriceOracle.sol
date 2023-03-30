@@ -1,14 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../market/MarketSettings.sol";
 import "../access/Ownable.sol";
 import "../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "../interfaces/pyth/IPyth.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeCast.sol";
+import "../utils/SafeDecimalMath.sol";
 
 contract PriceOracle is Ownable, Initializable {
+    using SafeCast for int256;
+    using SafeCast for uint256;
+    using SafeDecimalMath for uint256;
+
     uint256 public constant PRICE_PRECISION = 18;
+
+    // setting keys
+    bytes32 public constant PYTH_MAX_AGE = "pythMaxAge";
+    bytes32 public constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
 
     // chainlink price feed aggregators
     mapping(address => address) public aggregators;
@@ -20,13 +30,21 @@ contract PriceOracle is Ownable, Initializable {
     mapping(address => bytes32) public assetIds;
     // pyth oracle
     address public pythOracle;
+    // market settings
+    address public settings;
 
     /*=== initialize ===*/
-    function initialize() external onlyInitializeOnce {
+    function initialize(address _settings) external onlyInitializeOnce {
+        settings = _settings;
+
         _transferOwnership(msg.sender);
     }
 
     /*=== owner ===*/
+
+    function setSetting(address _settings) external onlyOwner {
+        settings = _settings;
+    }
 
     function setChainlinkSequencerUptimeFeed(
         address _sequencerUptimeFeed,
@@ -81,7 +99,7 @@ contract PriceOracle is Ownable, Initializable {
     /// @return round id, updatedAt, normalized price
     function getLatestChainlinkPrice(
         address _token
-    ) external view returns (uint80, uint256, uint256) {
+    ) public view returns (uint80, uint256, uint256) {
         _checkSequencer();
         AggregatorV2V3Interface aggregator = AggregatorV2V3Interface(
             aggregators[_token]
@@ -110,7 +128,7 @@ contract PriceOracle is Ownable, Initializable {
      */
     function getPythPrice(
         address _token
-    ) external view returns (uint256, int256) {
+    ) public view returns (uint256, int256) {
         bytes32 assetId = assetIds[_token];
         require(assetId != bytes32(0), "PriceOracle: undefined pyth asset");
         PythStructs.Price memory price = IPyth(pythOracle).getPriceUnsafe(
@@ -150,5 +168,37 @@ contract PriceOracle is Ownable, Initializable {
         if (msg.value > fee) {
             payable(_sender).transfer(msg.value - fee);
         }
+    }
+
+    /// @notice get token's normalized usd price
+    /// @param _token token address
+    /// @param _mustUsePyth use price from pyth or not
+    function getPrice(
+        address _token,
+        bool _mustUsePyth
+    ) public view returns (int256) {
+        MarketSettings settings_ = MarketSettings(settings);
+
+        (, uint256 updatedAt, uint256 chainlinkPrice) = getLatestChainlinkPrice(
+            _token
+        );
+        (uint256 publishTime, int256 pythPrice) = getPythPrice(_token);
+        require(
+            !_mustUsePyth ||
+                publishTime + settings_.getUintVals(PYTH_MAX_AGE) >
+                block.timestamp,
+            "PriceOracle: pyth price too stale"
+        );
+        if (publishTime > updatedAt) {
+            uint256 divergence = chainlinkPrice > pythPrice.toUint256()
+                ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
+                : pythPrice.toUint256().divideDecimal(chainlinkPrice);
+            require(
+                divergence < settings_.getUintVals(MAX_PRICE_DIVERGENCE),
+                "PriceOracle: oracle price divergence too large"
+            );
+            return pythPrice;
+        }
+        return chainlinkPrice.toInt256();
     }
 }

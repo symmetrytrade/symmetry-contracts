@@ -30,6 +30,7 @@ describe("Market", () => {
     let config: NetworkConfigs;
     let market_: ethers.Contract;
     let perpTracker_: ethers.Contract;
+    let priceOracle_: ethers.Contract;
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let lpToken_: ethers.Contract;
@@ -49,6 +50,11 @@ describe("Market", () => {
         perpTracker_ = await getProxyContract(
             hre,
             CONTRACTS.PerpTracker,
+            account1
+        );
+        priceOracle_ = await getProxyContract(
+            hre,
+            CONTRACTS.PriceOracle,
             account1
         );
         lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);
@@ -88,30 +94,30 @@ describe("Market", () => {
     });
 
     it("getPrice", async () => {
-        let price = await market_.getPrice(WETH, false);
+        let price = await priceOracle_.getPrice(WETH, false);
         expect(price.div(UNIT).eq(1499)).to.be.eq(true);
 
         await helpers.time.increase(config.marketGeneralConfig.pythMaxAge);
 
-        price = await market_.getPrice(WETH, false);
+        price = await priceOracle_.getPrice(WETH, false);
         expect(price.div(UNIT).eq(1499)).to.be.eq(true);
 
         await setupPrices(hre, { WETH: 1500 }, {}, account1);
-        price = await market_.getPrice(WETH, false);
+        price = await priceOracle_.getPrice(WETH, false);
         expect(price.div(UNIT).eq(1500)).to.be.eq(true);
 
-        await expect(market_.getPrice(WETH, true)).to.be.revertedWith(
-            "Market: pyth price too stale"
+        await expect(priceOracle_.getPrice(WETH, true)).to.be.revertedWith(
+            "PriceOracle: pyth price too stale"
         );
 
         await setupPrices(hre, {}, { WETH: 1300 }, account1);
-        await expect(market_.getPrice(WETH, false)).to.be.revertedWith(
-            "Market: oracle price divergence too large"
+        await expect(priceOracle_.getPrice(WETH, false)).to.be.revertedWith(
+            "PriceOracle: oracle price divergence too large"
         );
 
         await setupPrices(hre, {}, { WETH: 1600 }, account1);
-        await expect(market_.getPrice(WETH, false)).to.be.revertedWith(
-            "Market: oracle price divergence too large"
+        await expect(priceOracle_.getPrice(WETH, false)).to.be.revertedWith(
+            "PriceOracle: oracle price divergence too large"
         );
 
         await setupPrices(hre, {}, { WETH: 1500 }, account1);
