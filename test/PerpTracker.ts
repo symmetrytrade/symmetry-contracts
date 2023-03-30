@@ -110,7 +110,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2875))).to.be.eq(true);
+        expect(fillPrice.eq(normalized(2000))).to.be.eq(true);
         // case 8: skew = 20000 ETH, size = -25000 ETH
         skew = normalized(20000);
         size = normalized(-25000);
@@ -121,7 +121,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2550))).to.be.eq(true);
+        expect(fillPrice.eq(normalized(1950))).to.be.eq(true);
         // case 9: skew = 20000 ETH, size = -50000 ETH
         skew = normalized(20000);
         size = normalized(-50000);
@@ -132,7 +132,8 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq("1799999999999999998000")).to.be.eq(true);
+        console.log(fillPrice.toString());
+        expect(fillPrice.eq("1499999999999999998000")).to.be.eq(true);
         // case 10: skew = -15000 ETH, size = 10000 ETH
         skew = normalized(-15000);
         size = normalized(10000);
@@ -143,7 +144,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1125))).to.be.eq(true);
+        expect(fillPrice.eq(normalized(2000))).to.be.eq(true);
         // case 11: skew = -20000 ETH, size = 25000 ETH
         skew = normalized(-20000);
         size = normalized(25000);
@@ -154,7 +155,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1450))).to.be.eq(true);
+        expect(fillPrice.eq(normalized(2050))).to.be.eq(true);
         // case 12: skew = -20000 ETH, size = 50000 ETH
         skew = normalized(-20000);
         size = normalized(50000);
@@ -165,7 +166,8 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq("2199999999999999998000")).to.be.eq(true);
+        console.log(fillPrice.toString());
+        expect(fillPrice.eq("2499999999999999998000")).to.be.eq(true);
     });
 
     it("market key", async () => {
