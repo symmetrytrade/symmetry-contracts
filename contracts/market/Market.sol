@@ -181,6 +181,7 @@ contract Market is Ownable, Initializable {
             if (!perpTracker_.marketTokensListed(token)) continue;
 
             int skew = perpTracker_.currentSkew(token);
+            if (skew == 0) continue;
             int tradeAmount = skew.multiplyDecimal(redeemValue).divideDecimal(
                 lp
             );
