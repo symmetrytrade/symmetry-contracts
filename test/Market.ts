@@ -5,6 +5,7 @@ import {
     MAX_UINT256,
     UNIT,
     getProxyContract,
+    normalized,
 } from "../src/utils/utils";
 import { getPythUpdateData, setupPrices } from "../src/utils/test_utils";
 import { ethers } from "ethers";
@@ -163,8 +164,9 @@ describe("Market", () => {
         await (
             await positionManager_.submitOrder(
                 WETH,
-                hre.ethers.BigNumber.from(10).mul(UNIT),
-                hre.ethers.BigNumber.from(1550).mul(UNIT),
+                normalized(10),
+                normalized(1550),
+                normalized(1),
                 (await helpers.time.latest()) + 100
             )
         ).wait();
