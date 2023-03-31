@@ -29,6 +29,7 @@ contract Market is Ownable, Initializable {
         "liquidationPenaltyRatio";
     bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
     bytes32 public constant K_LP_SENSITIVITY = "kLpSensitivity";
+    bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 
     // states
     address public baseToken; // liquidity token
@@ -38,7 +39,7 @@ contract Market is Ownable, Initializable {
     mapping(address => bool) public isOperator; // operator contracts
 
     // liquidity margin (deposited liquidity + realized pnl)
-    int256 public liquidityBalance;
+    int256 private liquidityBalance;
     // insurance, collection of liquidation penalty
     uint256 public insuranceBalance;
 
@@ -275,6 +276,20 @@ contract Market is Ownable, Initializable {
             .toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
         PerpTracker(perpTracker).removeMargin(_account, amount);
+    }
+
+    /**
+     * @param _account account to pay the fee
+     * @param _fee fee to pay in usd
+     */
+    function deductFeeFromAccountToLP(
+        address _account,
+        uint256 _fee
+    ) external onlyOperator {
+        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
+            .toUint256();
+        PerpTracker(perpTracker).removeMargin(_account, amount);
+        liquidityBalance += int(amount);
     }
 
     /**

@@ -9,7 +9,9 @@ import "../utils/Initializable.sol";
 
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
+    using SafeDecimalMath for uint256;
     using SafeCast for int256;
+    using SafeCast for uint256;
 
     // setting keys
     bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
@@ -17,6 +19,8 @@ contract PositionManager is Ownable, Initializable {
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
     bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
+    bytes32 public constant MIN_KEEPER_FEE = "minKeeperFee";
+    bytes32 public constant PERP_TRADEING_FEE = "perpTradingFee";
 
     // states
     address public market;
@@ -32,6 +36,7 @@ contract PositionManager is Ownable, Initializable {
         address token;
         int256 size;
         uint256 acceptablePrice;
+        uint256 keeperFee;
         uint256 expiracy;
         uint256 submitTime;
         OrderStatus status;
@@ -82,11 +87,9 @@ contract PositionManager is Ownable, Initializable {
     ) public view returns (bool) {
         (, int256 currentMargin, int256 positionNotional) = Market(market)
             .accountMarginStatus(_account);
-        int256 maxLeverageRatio = int(
-            MarketSettings(Market(market).settings()).getUintVals(
-                MAX_LEVERAGE_RATIO
-            )
-        );
+        int256 maxLeverageRatio = MarketSettings(Market(market).settings())
+            .getUintVals(MAX_LEVERAGE_RATIO)
+            .toInt256();
         return
             positionNotional.divideDecimal(maxLeverageRatio) <= currentMargin;
     }
@@ -102,6 +105,7 @@ contract PositionManager is Ownable, Initializable {
         address _token,
         int256 _size,
         uint256 _acceptablePrice,
+        uint256 _keeperFee,
         uint256 _expiracy
     ) external {
         require(_size != 0, "PositionManager: zero size");
@@ -114,12 +118,18 @@ contract PositionManager is Ownable, Initializable {
             _expiracy > block.timestamp,
             "PositionManager: invalid expiracy"
         );
+        require(
+            MarketSettings(market_.settings()).getUintVals(MIN_KEEPER_FEE) <=
+                _keeperFee,
+            "PositionManager: keeper fee too low"
+        );
         // put order
         Order memory order = Order({
             account: msg.sender,
             token: _token,
             size: _size,
             acceptablePrice: _acceptablePrice,
+            keeperFee: _keeperFee,
             expiracy: _expiracy,
             submitTime: block.timestamp,
             status: OrderStatus.Pending
@@ -177,13 +187,35 @@ contract PositionManager is Ownable, Initializable {
         );
         // update fees
         market_.updateFee(order.token);
-        // calculate fill price
-        int256 fillPrice = market_.computePerpFillPrice(
-            order.token,
-            order.size
-        );
-        // do trade
-        market_.trade(order.account, order.token, order.size, fillPrice);
+        {
+            // calculate fill price
+            int256 fillPrice = market_.computePerpFillPrice(
+                order.token,
+                order.size
+            );
+            // deduct keeper fee
+            if (msg.sender != order.account) {
+                market_.deductFeeFromAccount(
+                    order.account,
+                    order.keeperFee,
+                    msg.sender
+                );
+            }
+            // deduct trading fee
+            // notional_delta = fill_price * |order_size|
+            // fee = notional_delta * trading_fee_ratio
+            uint tradingFee = fillPrice
+                .multiplyDecimal(order.size.abs())
+                .toUint256()
+                .multiplyDecimal(
+                    MarketSettings(market_.settings()).getUintVals(
+                        PERP_TRADEING_FEE
+                    )
+                );
+            market_.deductFeeFromAccountToLP(order.account, tradingFee);
+            // do trade
+            market_.trade(order.account, order.token, order.size, fillPrice);
+        }
         // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(
             !leverageRatioExceeded(order.account) ||
@@ -191,28 +223,37 @@ contract PositionManager is Ownable, Initializable {
             "PositionManager: leverage ratio too large"
         );
         // update token market info
-        (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(
-            order.token
-        );
-        // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
-        if (netOpenInterest > lpNetValue) {
+        {
+            (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(
+                order.token
+            );
             (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
                 order.token
             );
-            // 1. the order increases the old position and the position side become the overweight side
-            // 2. the order decreases the old position entirely and open a new position of counterparty side,
-            //    the counterparty side become the overweight side
-            if (
-                (prevSize <= 0 && order.size < 0 && shortSize > longSize) ||
-                (prevSize >= 0 && order.size > 0 && longSize > shortSize) ||
-                (prevSize < 0 &&
-                    prevSize + order.size > 0 &&
-                    longSize > shortSize) ||
-                (prevSize > 0 &&
-                    prevSize + order.size < 0 &&
-                    shortSize > longSize)
-            ) {
-                revert("PositionManager: open interest exceed hardlimit");
+            shortSize = shortSize.abs();
+            int lpLimit = perpTracker_.lpLimitForToken(lpNetValue, order.token);
+            require(
+                (order.size < 0 && lpLimit >= shortSize) ||
+                    (order.size > 0 && lpLimit >= longSize),
+                "PositionManager: position size exceeds limit"
+            );
+            // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
+            if (netOpenInterest > perpTracker_.lpHardLimit(lpNetValue)) {
+                // 1. the order increases the old position and the position side become the overweight side
+                // 2. the order decreases the old position entirely and open a new position of counterparty side,
+                //    the counterparty side become the overweight side
+                if (
+                    (prevSize <= 0 && order.size < 0 && shortSize > longSize) ||
+                    (prevSize >= 0 && order.size > 0 && longSize > shortSize) ||
+                    (prevSize < 0 &&
+                        prevSize + order.size > 0 &&
+                        longSize > shortSize) ||
+                    (prevSize > 0 &&
+                        prevSize + order.size < 0 &&
+                        shortSize > longSize)
+                ) {
+                    revert("PositionManager: open interest exceed hardlimit");
+                }
             }
         }
         // update order
@@ -255,11 +296,9 @@ contract PositionManager is Ownable, Initializable {
         (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
         // deduct liquidation fee to liquidator
         {
-            int256 liquidationFeeRatio = int(
-                MarketSettings(market_.settings()).getUintVals(
-                    LIQUIDATION_FEE_RATIO
-                )
-            );
+            int256 liquidationFeeRatio = MarketSettings(market_.settings())
+                .getUintVals(LIQUIDATION_FEE_RATIO)
+                .toInt256();
             int256 liquidationFee = liquidationPrice
                 .multiplyDecimal(size.abs())
                 .multiplyDecimal(liquidationFeeRatio);
@@ -290,11 +329,9 @@ contract PositionManager is Ownable, Initializable {
         }
         // deduct liquidation penalty to insurance account
         {
-            int256 liquidationPenaltyRatio = int(
-                MarketSettings(market_.settings()).getUintVals(
-                    LIQUIDATION_PENALTY_RATIO
-                )
-            );
+            int256 liquidationPenaltyRatio = MarketSettings(market_.settings())
+                .getUintVals(LIQUIDATION_PENALTY_RATIO)
+                .toInt256();
             int256 liquidationPenalty = liquidationPrice
                 .multiplyDecimal(size.abs())
                 .multiplyDecimal(liquidationPenaltyRatio);
