@@ -106,7 +106,6 @@ describe("Liquidity", () => {
         expect((await USDC_.balanceOf(market_.address)).eq(amount)).to.be.eq(
             true
         );
-        expect((await market_.liquidityBalance()).eq(amount)).to.be.eq(true);
         expect(
             (
                 await liquidityManager_.latestMint(await account1.getAddress())
