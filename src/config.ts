@@ -23,13 +23,16 @@ interface MarketGeneralConfig {
     hardLimitThreshold: string;
     maxFinancingFeeRate: string;
     minOrderDelay: number;
-    kLpSensitivity: string;
+    kLpSensitivity: string; // k used in kLP
+    minKeeperFee: string;
+    perpTradingFee: string;
 }
 
 interface MarketConfig {
     maxFundingVelocity: string;
     skewScale: string;
     lambdaPremium: string;
+    kLpLimit: string; // k used in check max position size
 }
 
 export interface NetworkConfigs {
@@ -57,17 +60,21 @@ const DefaultConfig: NetworkConfigs = {
         maxFinancingFeeRate: normalized(100), // 100% per day
         minOrderDelay: 60, // 1 minute
         kLpSensitivity: normalized(1),
+        minKeeperFee: normalized(1), // 1 usd
+        perpTradingFee: normalized(0.001),
     },
     marketConfig: {
         WBTC: {
             maxFundingVelocity: normalized(300),
             skewScale: normalized(1000000), // 100w
             lambdaPremium: normalized(0.5),
+            kLpLimit: normalized(0.8),
         },
         WETH: {
             maxFundingVelocity: normalized(300),
             skewScale: normalized(1000000), // 100w
             lambdaPremium: normalized(0.5),
+            kLpLimit: normalized(0.7),
         },
     },
 };

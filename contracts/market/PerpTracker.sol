@@ -17,6 +17,7 @@ contract PerpTracker is Ownable, Initializable {
     bytes32 public constant SKEW_SCALE = "skewScale";
     bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
     bytes32 public constant K_LP_SENSITIVITY = "kLpSensitivity";
+    bytes32 public constant K_LP_LIMIT = "kLpLimit";
     bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant HARD_LIMIT_THRESHOLD = "hardLimitThreshold";
@@ -450,24 +451,37 @@ contract PerpTracker is Ownable, Initializable {
      * @dev get current soft limit, if open interest > soft limit, financing fee will be charged
      *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
      */
-    function lpSoftLimit(int256 lp) public view returns (int) {
+    function lpSoftLimit(int256 _lp) public view returns (int) {
         int maxSoftLimit = MarketSettings(settings)
             .getUintVals(MAX_SOFT_LIMIT)
             .toInt256();
         int threshold = MarketSettings(settings)
             .getUintVals(SOFT_LIMIT_THRESHOLD)
             .toInt256();
-        return lp.multiplyDecimal(threshold).min(maxSoftLimit);
+        return _lp.multiplyDecimal(threshold).min(maxSoftLimit);
     }
 
     /**
      * @dev get current hard limit
      */
-    function lpHardLimit(int256 lp) public view returns (int) {
+    function lpHardLimit(int256 _lp) public view returns (int) {
         int threshold = MarketSettings(settings)
             .getUintVals(HARD_LIMIT_THRESHOLD)
             .toInt256();
-        return lp.multiplyDecimal(threshold);
+        return _lp.multiplyDecimal(threshold);
+    }
+
+    /**
+     * @dev get lp limit for token
+     */
+    function lpLimitForToken(
+        int256 _lp,
+        address _token
+    ) public view returns (int) {
+        int threshold = MarketSettings(settings)
+            .getUintValsByMarket(marketKey(_token), K_LP_LIMIT)
+            .toInt256();
+        return _lp.multiplyDecimal(threshold);
     }
 
     function nextAccFinancingFee(
