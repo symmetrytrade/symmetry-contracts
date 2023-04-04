@@ -118,16 +118,6 @@ describe("Liquidity", () => {
         await expect(
             liquidityManager_.removeLiquidity(
                 minLp,
-                amount,
-                await account1.getAddress()
-            )
-        ).to.be.revertedWith("LiquidityManager: remove is in cooldown");
-        await helpers.time.increase(
-            config.marketGeneralConfig.liquidityRemoveCooldown
-        );
-        await expect(
-            liquidityManager_.removeLiquidity(
-                minLp,
                 amount.add(1),
                 await account1.getAddress()
             )
@@ -135,7 +125,7 @@ describe("Liquidity", () => {
         await expect(
             liquidityManager_.removeLiquidity(
                 minLp,
-                amount,
+                amount.sub(amount.div(1000)),
                 await account1.getAddress()
             )
         )
@@ -145,10 +135,12 @@ describe("Liquidity", () => {
                 minLp,
                 minUsd,
                 minUsd,
-                amount
+                amount.sub(amount.div(1000))
             );
         globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue.eq(0)).to.be.eq(true);
+        expect(
+            globalStatus.lpNetValue.eq(amount.div(1000000).mul(998))
+        ).to.be.eq(true);
         expect(globalStatus.netOpenInterest.eq(0)).to.be.eq(true);
     });
 

@@ -15,8 +15,7 @@ contract LiquidityManager is Ownable, Initializable {
     using SafeCast for uint256;
 
     // setting keys
-    bytes32 public constant LIQUIDITY_REMOVE_COOLDOWN =
-        "liquidityRemoveCooldown";
+    bytes32 public constant LIQUIDITY_REDEEM_FEE = "liquidityRedeemFee";
 
     // states
     address public market;
@@ -129,16 +128,6 @@ contract LiquidityManager is Ownable, Initializable {
         address _receiver
     ) internal returns (uint256) {
         Market market_ = Market(market);
-        // check cooldown
-        // this cooldown is used to avoid front-run and flashloan that manipulating funding fee
-        require(
-            block.timestamp >=
-                latestMint[_account] +
-                    MarketSettings(market_.settings()).getUintVals(
-                        LIQUIDITY_REMOVE_COOLDOWN
-                    ),
-            "LiquidityManager: remove is in cooldown"
-        );
         // check lp token price and free lp value
         (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
@@ -149,7 +138,7 @@ contract LiquidityManager is Ownable, Initializable {
             lpNetValue - netOpenInterest >= redeemValue,
             "LiquidityManager: insufficient free lp"
         );
-        redeemValue -= market_.redeemFee(lpNetValue, redeemValue);
+        redeemValue -= market_.redeemSlippage(lpNetValue, redeemValue);
         require(redeemValue > 0, "LiquidityManager: non-positive redeem value");
         // burn lp
         lpToken_.burn(_account, _amount);
@@ -157,6 +146,11 @@ contract LiquidityManager is Ownable, Initializable {
         uint256 amountOut = market_
             .usdToToken(market_.baseToken(), redeemValue, false)
             .toUint256();
+        // redeem fee
+        uint256 redeemFee = MarketSettings(market_.settings())
+            .getUintVals(LIQUIDITY_REDEEM_FEE)
+            .multiplyDecimal(amountOut);
+        amountOut -= redeemFee;
         require(
             amountOut >= _minOut,
             "LiquidityManager: insufficient amountOut"

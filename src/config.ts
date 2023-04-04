@@ -17,22 +17,20 @@ interface MarketGeneralConfig {
     maxLeverageRatio: string;
     liquidationFeeRatio: string;
     liquidationPenaltyRatio: string;
-    liquidityRemoveCooldown: number;
-    maxSoftLimit: string;
+    liquidityRedeemFee: string;
     softLimitThreshold: string;
     hardLimitThreshold: string;
-    maxFinancingFeeRate: string;
     minOrderDelay: number;
-    kLpSensitivity: string; // k used in kLP
     minKeeperFee: string;
-    perpTradingFee: string;
 }
 
 interface MarketConfig {
     maxFundingVelocity: string;
-    skewScale: string;
     lambdaPremium: string;
     kLpLimit: string; // k used in check max position size
+    proportionRatio: string;
+    perpTradingFee: string;
+    maxFinancingFeeRate: string;
 }
 
 export interface NetworkConfigs {
@@ -53,28 +51,28 @@ const DefaultConfig: NetworkConfigs = {
         maxLeverageRatio: normalized(0.04), // 4%, 25x
         liquidationFeeRatio: normalized(0.001), // 0.1%
         liquidationPenaltyRatio: normalized(0.001), // 0.1%
-        liquidityRemoveCooldown: 10, // seconds
-        maxSoftLimit: normalized(1000000), // 1 mio usd
+        liquidityRedeemFee: normalized(0.001), // 0.1%
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
-        maxFinancingFeeRate: normalized(100), // 100% per day
         minOrderDelay: 60, // 1 minute
-        kLpSensitivity: normalized(1),
         minKeeperFee: normalized(1), // 1 usd
-        perpTradingFee: normalized(0.001),
     },
     marketConfig: {
         WBTC: {
             maxFundingVelocity: normalized(300),
-            skewScale: normalized(1000000), // 100w
             lambdaPremium: normalized(0.5),
             kLpLimit: normalized(0.8),
+            proportionRatio: normalized(1),
+            perpTradingFee: normalized(0.001),
+            maxFinancingFeeRate: normalized(100), // 100% per day
         },
         WETH: {
             maxFundingVelocity: normalized(300),
-            skewScale: normalized(1000000), // 100w
             lambdaPremium: normalized(0.5),
             kLpLimit: normalized(0.7),
+            proportionRatio: normalized(1),
+            perpTradingFee: normalized(0.001),
+            maxFinancingFeeRate: normalized(100), // 100% per day
         },
     },
 };

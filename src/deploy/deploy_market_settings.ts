@@ -40,8 +40,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                 ? mustGetKey(config.addresses, market)
                 : (await hre.ethers.getContract(market)).address;
         for (const [k, v] of Object.entries(conf)) {
-            console.log(token);
-            console.log(k);
             const key = perpConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);
             await (await settings_.setUintVals(key, value)).wait();

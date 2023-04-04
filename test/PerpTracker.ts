@@ -132,7 +132,6 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        console.log(fillPrice.toString());
         expect(fillPrice.eq("1499999999999999998000")).to.be.eq(true);
         // case 10: skew = -15000 ETH, size = 10000 ETH
         skew = normalized(-15000);
@@ -166,7 +165,6 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        console.log(fillPrice.toString());
         expect(fillPrice.eq("2499999999999999998000")).to.be.eq(true);
     });
 
