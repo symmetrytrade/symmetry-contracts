@@ -22,13 +22,14 @@ contract Market is Ownable, Initializable {
     // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
     int256 private constant _UNIT = int(10 ** 18);
 
-    // setting keys
+    // general setting keys
     bytes32 public constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
+    // setting keys per market
     bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
-    bytes32 public constant K_LP_SENSITIVITY = "kLpSensitivity";
+    bytes32 public constant PROPORTION_RATIO = "proportionRatio";
     bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 
     // states
@@ -159,22 +160,17 @@ contract Market is Ownable, Initializable {
     }
 
     /**
-     * @notice Compute the fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
-     * it holds to the lp left in pool. The redemption fee is the slippage of this trade.
+     * @notice Compute the slippage of a liquidity redemption. During lp redemption, the exiting lp will trade the position
+     * it holds to the lp left in pool.
      * @param lp lp net value in usd
      * @param redeemValue lp to redeem in usd
      */
-    function redeemFee(
+    function redeemSlippage(
         int lp,
         int redeemValue
     ) external view returns (int fee) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         MarketSettings settings_ = MarketSettings(settings);
-
-        int kLP = MarketSettings(settings)
-            .getUintVals(K_LP_SENSITIVITY)
-            .toInt256();
-        kLP = kLP.multiplyDecimal(lp - redeemValue);
 
         uint256 len = perpTracker_.marketTokensLength();
         for (uint i = 0; i < len; ++i) {
@@ -194,6 +190,13 @@ contract Market is Ownable, Initializable {
                     LAMBDA_PREMIUM
                 )
                 .toInt256();
+            int kLP = settings_
+                .getUintValsByMarket(
+                    perpTracker_.marketKey(token),
+                    PROPORTION_RATIO
+                )
+                .toInt256();
+            kLP = kLP.multiplyDecimal(lp - redeemValue);
             int fillPrice = perpTracker_.computePerpFillPriceRaw(
                 skew - tradeAmount,
                 tradeAmount,
@@ -285,7 +288,7 @@ contract Market is Ownable, Initializable {
     function deductFeeFromAccountToLP(
         address _account,
         uint256 _fee
-    ) external onlyOperator {
+    ) public onlyOperator {
         uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
             .toUint256();
         PerpTracker(perpTracker).removeMargin(_account, amount);
@@ -500,6 +503,20 @@ contract Market is Ownable, Initializable {
     ) external onlyOperator {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         int256 latestAccFunding = perpTracker_.latestAccFunding(_token);
+
+        // deduct trading fee
+        // notional_delta = fill_price * |order_size|
+        // fee = notional_delta * trading_fee_ratio
+        uint tradingFee = _price
+            .multiplyDecimal(_sizeDelta.abs())
+            .toUint256()
+            .multiplyDecimal(
+                MarketSettings(settings).getUintValsByMarket(
+                    perpTracker_.marketKey(_token),
+                    PERP_TRADING_FEE
+                )
+            );
+        deductFeeFromAccountToLP(_account, tradingFee);
 
         // update user positions
         {

@@ -12,15 +12,14 @@ contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
 
-    // setting keys
+    // global setting keys
     bytes32 public constant PERP_DOMAIN = "perpDomain";
-    bytes32 public constant SKEW_SCALE = "skewScale";
-    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
-    bytes32 public constant K_LP_SENSITIVITY = "kLpSensitivity";
-    bytes32 public constant K_LP_LIMIT = "kLpLimit";
-    bytes32 public constant MAX_SOFT_LIMIT = "maxSoftLimit";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant HARD_LIMIT_THRESHOLD = "hardLimitThreshold";
+    // setting keys per market
+    bytes32 public constant PROPORTION_RATIO = "proportionRatio";
+    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
+    bytes32 public constant K_LP_LIMIT = "kLpLimit";
     bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
     bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
 
@@ -320,7 +319,9 @@ contract PerpTracker is Ownable, Initializable {
             .getUintValsByMarket(marketKey(_token), LAMBDA_PREMIUM)
             .toInt256();
         int skew = currentSkew(_token);
-        int kLP = settings_.getUintVals(K_LP_SENSITIVITY).toInt256();
+        int kLP = settings_
+            .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
+            .toInt256();
         kLP = kLP.multiplyDecimal(_lpNetValue).divideDecimal(_oraclePrice);
 
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
@@ -375,7 +376,7 @@ contract PerpTracker is Ownable, Initializable {
         int numerator = tokenInfos[_token].skew;
         int256 lp = tokenInfos[_token].lpNetValue;
         int denominator = settings_
-            .getUintVals(K_LP_SENSITIVITY)
+            .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
             .toInt256()
             .multiplyDecimal(lp);
         // max velocity
@@ -452,13 +453,10 @@ contract PerpTracker is Ownable, Initializable {
      *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
      */
     function lpSoftLimit(int256 _lp) public view returns (int) {
-        int maxSoftLimit = MarketSettings(settings)
-            .getUintVals(MAX_SOFT_LIMIT)
-            .toInt256();
         int threshold = MarketSettings(settings)
             .getUintVals(SOFT_LIMIT_THRESHOLD)
             .toInt256();
-        return _lp.multiplyDecimal(threshold).min(maxSoftLimit);
+        return _lp.multiplyDecimal(threshold);
     }
 
     /**
@@ -511,16 +509,19 @@ contract PerpTracker is Ownable, Initializable {
                 int256 timeElapsed = (int(block.timestamp) -
                     feeInfos[_token].updateTime).max(0).divideDecimal(1 days);
                 // fee rate = min(OI * |skew| / (kLP * hard_limit), 1) * max_fee_rate
-                int skew = tokenInfos[_token].skew;
-                int numerator = oi.multiplyDecimal(skew);
+                int numerator = oi.multiplyDecimal(tokenInfos[_token].skew);
                 int denominator = settings_
-                    .getUintVals(K_LP_SENSITIVITY)
-                    .toInt256()
-                    .multiplyDecimal(lp)
-                    .multiplyDecimal(lpHardLimit(lp));
+                    .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
+                    .toInt256();
+                denominator = denominator.multiplyDecimal(lp).multiplyDecimal(
+                    lpHardLimit(lp)
+                );
 
                 int256 maxFeeRate = settings_
-                    .getUintVals(MAX_FINANCING_FEE_RATE)
+                    .getUintValsByMarket(
+                        marketKey(_token),
+                        MAX_FINANCING_FEE_RATE
+                    )
                     .toInt256();
                 int256 feeRate = denominator > 0
                     ? numerator

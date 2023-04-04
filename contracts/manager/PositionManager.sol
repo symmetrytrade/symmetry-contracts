@@ -13,14 +13,14 @@ contract PositionManager is Ownable, Initializable {
     using SafeCast for int256;
     using SafeCast for uint256;
 
-    // setting keys
+    // general setting keys
     bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
     bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
     bytes32 public constant MIN_KEEPER_FEE = "minKeeperFee";
-    bytes32 public constant PERP_TRADEING_FEE = "perpTradingFee";
+    // setting keys per market
 
     // states
     address public market;
@@ -201,18 +201,6 @@ contract PositionManager is Ownable, Initializable {
                     msg.sender
                 );
             }
-            // deduct trading fee
-            // notional_delta = fill_price * |order_size|
-            // fee = notional_delta * trading_fee_ratio
-            uint tradingFee = fillPrice
-                .multiplyDecimal(order.size.abs())
-                .toUint256()
-                .multiplyDecimal(
-                    MarketSettings(market_.settings()).getUintVals(
-                        PERP_TRADEING_FEE
-                    )
-                );
-            market_.deductFeeFromAccountToLP(order.account, tradingFee);
             // do trade
             market_.trade(order.account, order.token, order.size, fillPrice);
         }
@@ -233,8 +221,10 @@ contract PositionManager is Ownable, Initializable {
             shortSize = shortSize.abs();
             int lpLimit = perpTracker_.lpLimitForToken(lpNetValue, order.token);
             require(
-                (order.size < 0 && lpLimit >= shortSize) ||
-                    (order.size > 0 && lpLimit >= longSize),
+                (order.size < 0 &&
+                    (lpLimit >= shortSize || shortSize <= longSize)) ||
+                    (order.size > 0 &&
+                        (lpLimit >= longSize || longSize <= shortSize)),
                 "PositionManager: position size exceeds limit"
             );
             // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
@@ -285,7 +275,7 @@ contract PositionManager is Ownable, Initializable {
             isLiquidatable(_account),
             "PositionManager: account is not liquidatable"
         );
-        // compute liquidate price
+        // compute liquidation price
         (int256 liquidationPrice, int256 size) = market_
             .computePerpLiquidatePrice(_account, _token);
         // close position
