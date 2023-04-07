@@ -11,6 +11,7 @@ import "../interfaces/IERC20Metadata.sol";
 import "../oracle/PriceOracle.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
+import "hardhat/console.sol";
 
 contract Market is Ownable, Initializable {
     using SafeERC20 for IERC20;
@@ -43,6 +44,14 @@ contract Market is Ownable, Initializable {
     int256 private liquidityBalance;
     // insurance, collection of liquidation penalty
     uint256 public insuranceBalance;
+
+    event Traded(
+        address indexed account,
+        address indexed token,
+        int256 sizeDelta,
+        int256 price,
+        uint256 fee
+    );
 
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
@@ -118,8 +127,9 @@ contract Market is Ownable, Initializable {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
-            PerpTracker.GlobalPosition memory position = perpTracker_
-                .getGlobalPosition(token);
+            PerpTracker.LpPosition memory position = perpTracker_.getLpPosition(
+                token
+            );
             if (position.longSize == 0 && position.shortSize == 0) continue;
             int size = position.longSize + position.shortSize;
             int256 price = PriceOracle(priceOracle).getPrice(token, false);
@@ -279,20 +289,6 @@ contract Market is Ownable, Initializable {
             .toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
         PerpTracker(perpTracker).removeMargin(_account, amount);
-    }
-
-    /**
-     * @param _account account to pay the fee
-     * @param _fee fee to pay in usd
-     */
-    function deductFeeFromAccountToLP(
-        address _account,
-        uint256 _fee
-    ) public onlyOperator {
-        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
-            .toUint256();
-        PerpTracker(perpTracker).removeMargin(_account, amount);
-        liquidityBalance += int(amount);
     }
 
     /**
@@ -489,6 +485,37 @@ contract Market is Ownable, Initializable {
             );
     }
 
+    function _tradingFee(
+        address,
+        address _token,
+        int256 _sizeDelta,
+        int256 _price
+    ) internal view returns (int256 execPrice, uint256 tradingFee) {
+        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        // deduct trading fee in the price
+        // (p_{oracle}-p_{avg})*size=(p_{oracle}-p_{fill})*size-p_{avg}*|size|*k%
+        // p_{avg}=p_{fill} / (1 - k%) for size > 0
+        // p_{avg}=p_{fill} / (1 + k%) for size < 0
+        // where k is trading fee ratio
+        int256 k = MarketSettings(settings)
+            .getUintValsByMarket(
+                perpTracker_.marketKey(_token),
+                PERP_TRADING_FEE
+            )
+            .toInt256();
+        // TODO: fee discount
+        require(k < _UNIT, "Market: trading fee ratio > 1");
+        if (_sizeDelta > 0) {
+            execPrice = _price.divideDecimal(_UNIT - k);
+        } else {
+            execPrice = _price.divideDecimal(_UNIT + k);
+        }
+        tradingFee = execPrice
+            .multiplyDecimal(_sizeDelta.abs())
+            .multiplyDecimal(k)
+            .toUint256();
+    }
+
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
     /// @dev make sure the funding & financing fee is updated before calling this function.
     /// @param _account user address
@@ -504,19 +531,12 @@ contract Market is Ownable, Initializable {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         int256 latestAccFunding = perpTracker_.latestAccFunding(_token);
 
-        // deduct trading fee
-        // notional_delta = fill_price * |order_size|
-        // fee = notional_delta * trading_fee_ratio
-        uint tradingFee = _price
-            .multiplyDecimal(_sizeDelta.abs())
-            .toUint256()
-            .multiplyDecimal(
-                MarketSettings(settings).getUintValsByMarket(
-                    perpTracker_.marketKey(_token),
-                    PERP_TRADING_FEE
-                )
-            );
-        deductFeeFromAccountToLP(_account, tradingFee);
+        (int256 execPrice, uint256 tradingFee) = _tradingFee(
+            _account,
+            _token,
+            _sizeDelta,
+            _price
+        );
 
         // update user positions
         {
@@ -530,7 +550,7 @@ contract Market is Ownable, Initializable {
                     position.avgPrice,
                     position.accFunding,
                     _sizeDelta,
-                    _price,
+                    execPrice,
                     latestAccFunding
                 );
             // settle p&l and funding
@@ -546,15 +566,19 @@ contract Market is Ownable, Initializable {
             }
             // settle financing fee
             {
-                (
-                    int nextAccLongFinancingFee,
-                    int nextAccShortFinancingFee
-                ) = perpTracker_.latestAccFinancingFee(_token);
-                int openInterestFee = position.size.abs().multiplyDecimal(
-                    position.size > 0
-                        ? nextAccLongFinancingFee - position.accFinancingFee
-                        : nextAccShortFinancingFee - position.accFinancingFee
-                );
+                int openInterestFee;
+                {
+                    (
+                        int nextAccLongFinancingFee,
+                        int nextAccShortFinancingFee
+                    ) = perpTracker_.latestAccFinancingFee(_token);
+                    openInterestFee = position.size.abs().multiplyDecimal(
+                        position.size > 0
+                            ? nextAccLongFinancingFee - position.accFinancingFee
+                            : nextAccShortFinancingFee -
+                                position.accFinancingFee
+                    );
+                }
                 if (openInterestFee > 0) {
                     tokenAmount = usdToToken(baseToken, openInterestFee, false)
                         .toUint256();
@@ -573,22 +597,25 @@ contract Market is Ownable, Initializable {
 
         // update lp global positions
         {
-            PerpTracker.GlobalPosition memory position = perpTracker_
-                .getGlobalPosition(_token);
+            PerpTracker.LpPosition memory position = perpTracker_.getLpPosition(
+                _token
+            );
             (int256 nextPrice, int256 pnlAndFunding) = perpTracker_
                 .computeTrade(
                     position.longSize + position.shortSize,
                     position.avgPrice,
                     position.accFunding,
                     -_sizeDelta, // lp is the counterparty of user
-                    _price,
+                    execPrice,
                     latestAccFunding
                 );
             // settle p&l and funding
             liquidityBalance += usdToToken(baseToken, pnlAndFunding, false);
             // write to state
-            perpTracker_.updateGlobalPosition(_token, -_sizeDelta, nextPrice);
+            perpTracker_.updateLpPosition(_token, -_sizeDelta, nextPrice);
         }
+
+        emit Traded(_account, _token, _sizeDelta, execPrice, tradingFee);
     }
 
     /*=== pricing ===*/

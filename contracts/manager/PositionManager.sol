@@ -90,8 +90,7 @@ contract PositionManager is Ownable, Initializable {
         int256 maxLeverageRatio = MarketSettings(Market(market).settings())
             .getUintVals(MAX_LEVERAGE_RATIO)
             .toInt256();
-        return
-            positionNotional.divideDecimal(maxLeverageRatio) <= currentMargin;
+        return positionNotional / maxLeverageRatio > currentMargin;
     }
 
     /*=== position ===*/
@@ -175,7 +174,7 @@ contract PositionManager is Ownable, Initializable {
             order.submitTime +
                 MarketSettings(market_.settings()).getUintVals(
                     MIN_ORDER_DELAY
-                ) <
+                ) <=
                 block.timestamp,
             "PositionManager: delay"
         );
@@ -215,7 +214,7 @@ contract PositionManager is Ownable, Initializable {
             (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(
                 order.token
             );
-            (int longSize, int shortSize) = perpTracker_.getGlobalPositionSize(
+            (int longSize, int shortSize) = perpTracker_.getNetPositionSize(
                 order.token
             );
             shortSize = shortSize.abs();

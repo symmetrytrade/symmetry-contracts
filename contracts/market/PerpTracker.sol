@@ -7,6 +7,7 @@ import "../utils/Initializable.sol";
 import "../utils/SafeCast.sol";
 import "./Market.sol";
 import "./MarketSettings.sol";
+import "hardhat/console.sol";
 
 contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
@@ -26,7 +27,7 @@ contract PerpTracker is Ownable, Initializable {
     // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
     int256 private constant _UNIT = int(10 ** 18);
 
-    struct GlobalPosition {
+    struct LpPosition {
         int256 longSize; // long position hold by lp in underlying, positive, 18 decimals
         int256 shortSize; // short position hold by lp in underlying, negative, 18 decimals
         int256 avgPrice; // average price for the lp net position (long + short)
@@ -61,12 +62,28 @@ contract PerpTracker is Ownable, Initializable {
     address[] public marketTokensList; // market tokens
     mapping(address => bool) public marketTokensListed;
 
-    mapping(address => GlobalPosition) public globalPositions; // lp global positions
+    mapping(address => LpPosition) public lpPositions; // lp global positions
     mapping(address => mapping(address => Position)) private userPositions; // positions of single user, user => token => position mapping
     mapping(address => int256) public userMargin; // margin(include realized pnl) of user
 
     mapping(address => FeeInfo) private feeInfos;
     mapping(address => TokenInfo) private tokenInfos;
+
+    event MarginTransferred(address indexed account, int256 delta);
+    event TokenInfoUpdated(
+        address indexed token,
+        int256 lpNetValue,
+        int256 netOpenInterest,
+        int256 skew
+    );
+    event FeeInfoUpdated(
+        address indexed token,
+        int256 nextAccFundingFee,
+        int256 nextFundingRate,
+        int256 nextAccLongFinancingFee,
+        int256 nextAccShortFinancingFee,
+        uint256 updateTime
+    );
 
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -114,23 +131,20 @@ contract PerpTracker is Ownable, Initializable {
 
     /*=== view functions === */
 
-    function getGlobalPosition(
+    function getLpPosition(
         address _token
-    ) external view returns (GlobalPosition memory) {
-        return globalPositions[_token];
+    ) external view returns (LpPosition memory) {
+        return lpPositions[_token];
     }
 
     /**
      * @notice get user net position of a token
      * @return long position size, short position size
      */
-    function getGlobalPositionSize(
+    function getNetPositionSize(
         address _token
     ) external view returns (int256, int256) {
-        return (
-            -globalPositions[_token].shortSize,
-            -globalPositions[_token].longSize
-        );
+        return (-lpPositions[_token].shortSize, -lpPositions[_token].longSize);
     }
 
     function marketTokensLength() external view returns (uint256) {
@@ -168,6 +182,8 @@ contract PerpTracker is Ownable, Initializable {
 
     function addMargin(address _account, uint256 _amount) external onlyMarket {
         userMargin[_account] += _amount.toInt256();
+
+        emit MarginTransferred(_account, _amount.toInt256());
     }
 
     function removeMargin(
@@ -175,6 +191,8 @@ contract PerpTracker is Ownable, Initializable {
         uint256 _amount
     ) external onlyMarket {
         userMargin[_account] -= _amount.toInt256();
+
+        emit MarginTransferred(_account, -(_amount.toInt256()));
     }
 
     function updatePosition(
@@ -192,12 +210,12 @@ contract PerpTracker is Ownable, Initializable {
             : feeInfos[_token].accShortFinancingFee;
     }
 
-    function updateGlobalPosition(
+    function updateLpPosition(
         address _token,
         int256 _sizeDelta,
         int256 _avgPrice
     ) external onlyMarket {
-        GlobalPosition storage position = globalPositions[_token];
+        LpPosition storage position = lpPositions[_token];
         if (_sizeDelta > 0) {
             position.longSize += _sizeDelta;
         } else if (_sizeDelta < 0) {
@@ -214,6 +232,13 @@ contract PerpTracker is Ownable, Initializable {
         TokenInfo memory _tokenInfo
     ) external onlyMarket {
         tokenInfos[_token] = _tokenInfo;
+
+        emit TokenInfoUpdated(
+            _token,
+            _tokenInfo.lpNetValue,
+            _tokenInfo.netOpenInterest,
+            _tokenInfo.skew
+        );
     }
 
     /*=== perp ===*/
@@ -226,8 +251,8 @@ contract PerpTracker is Ownable, Initializable {
      * @param _token token address
      */
     function currentSkew(address _token) public view returns (int256) {
-        GlobalPosition storage globalPosition = globalPositions[_token];
-        return -(globalPosition.longSize + globalPosition.shortSize);
+        LpPosition storage lpPosition = lpPositions[_token];
+        return -(lpPosition.longSize + lpPosition.shortSize);
     }
 
     /*=== trading ===*/
@@ -383,6 +408,7 @@ contract PerpTracker is Ownable, Initializable {
         int256 maxVelocity = settings_
             .getUintValsByMarket(marketKey(_token), MAX_FUNDING_VELOCITY)
             .toInt256();
+        if (numerator == 0) return 0;
         if (denominator > 0) {
             return
                 numerator
@@ -535,8 +561,8 @@ contract PerpTracker is Ownable, Initializable {
             }
             if (feeDelta > 0) {
                 (int longSize, int shortSize) = (
-                    -globalPositions[_token].shortSize,
-                    -globalPositions[_token].longSize
+                    -lpPositions[_token].shortSize,
+                    -lpPositions[_token].longSize
                 );
                 if (longSize > -shortSize) {
                     nextAccLongFinancingFee += feeDelta;
@@ -564,6 +590,15 @@ contract PerpTracker is Ownable, Initializable {
             nextAccLongFinancingFee,
             nextAccShortFinancingFee,
             int(block.timestamp)
+        );
+
+        emit FeeInfoUpdated(
+            _token,
+            nextAccFundingFee,
+            nextFundingRate,
+            nextAccLongFinancingFee,
+            nextAccShortFinancingFee,
+            block.timestamp
         );
     }
 }
