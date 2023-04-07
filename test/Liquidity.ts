@@ -100,20 +100,16 @@ describe("Liquidity", () => {
             .to.emit(liquidityManager_, "AddLiquidity")
             .withArgs(await account1.getAddress(), amount, 0, minUsd, minLp);
         expect(
-            (await lpToken_.balanceOf(await account1.getAddress())).eq(minLp)
-        ).to.be.eq(true);
-        expect((await lpToken_.totalSupply()).eq(minLp)).to.be.eq(true);
-        expect((await USDC_.balanceOf(market_.address)).eq(amount)).to.be.eq(
-            true
-        );
+            await lpToken_.balanceOf(await account1.getAddress())
+        ).to.deep.eq(minLp);
+        expect(await lpToken_.totalSupply()).to.deep.eq(minLp);
+        expect(await USDC_.balanceOf(market_.address)).to.deep.eq(amount);
         expect(
-            (
-                await liquidityManager_.latestMint(await account1.getAddress())
-            ).eq(await helpers.time.latest())
-        ).to.be.eq(true);
+            await liquidityManager_.latestMint(await account1.getAddress())
+        ).to.deep.eq(await helpers.time.latest());
         let globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue.eq(minUsd)).to.be.eq(true);
-        expect(globalStatus.netOpenInterest.eq(0)).to.be.eq(true);
+        expect(globalStatus.lpNetValue).to.deep.eq(minUsd);
+        expect(globalStatus.netOpenInterest).to.deep.eq(0);
         // remove
         await expect(
             liquidityManager_.removeLiquidity(
@@ -138,10 +134,10 @@ describe("Liquidity", () => {
                 amount.sub(amount.div(1000))
             );
         globalStatus = await market_.globalStatus();
-        expect(
-            globalStatus.lpNetValue.eq(amount.div(1000000).mul(998))
-        ).to.be.eq(true);
-        expect(globalStatus.netOpenInterest.eq(0)).to.be.eq(true);
+        expect(globalStatus.lpNetValue).to.deep.eq(
+            amount.div(1000000).mul(998)
+        );
+        expect(globalStatus.netOpenInterest).to.deep.eq(0);
     });
 
     it("deposit&remove at non-zero skew", async () => {

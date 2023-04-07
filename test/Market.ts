@@ -7,7 +7,12 @@ import {
     getProxyContract,
     normalized,
 } from "../src/utils/utils";
-import { getPythUpdateData, setupPrices } from "../src/utils/test_utils";
+import {
+    getPythUpdateData,
+    increaseNextBlockTimestamp,
+    printValues,
+    setupPrices,
+} from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
@@ -96,16 +101,16 @@ describe("Market", () => {
 
     it("getPrice", async () => {
         let price = await priceOracle_.getPrice(WETH, false);
-        expect(price.div(UNIT).eq(1499)).to.be.eq(true);
+        expect(price.div(UNIT)).to.deep.eq(1499);
 
-        await helpers.time.increase(config.marketGeneralConfig.pythMaxAge);
+        await increaseNextBlockTimestamp(config.marketGeneralConfig.pythMaxAge);
 
         price = await priceOracle_.getPrice(WETH, false);
-        expect(price.div(UNIT).eq(1499)).to.be.eq(true);
+        expect(price.div(UNIT)).to.deep.eq(1499);
 
         await setupPrices(hre, { WETH: 1500 }, {}, account1);
         price = await priceOracle_.getPrice(WETH, false);
-        expect(price.div(UNIT).eq(1500)).to.be.eq(true);
+        expect(price.div(UNIT)).to.deep.eq(1500);
 
         await expect(priceOracle_.getPrice(WETH, true)).to.be.revertedWith(
             "PriceOracle: pyth price too stale"
@@ -130,13 +135,13 @@ describe("Market", () => {
             hre.ethers.BigNumber.from(2).mul(UNIT),
             false
         );
-        expect(usdAmount.div(UNIT).eq(3000)).to.be.eq(true);
+        expect(usdAmount.div(UNIT)).to.deep.eq(3000);
         usdAmount = await market_.tokenToUsd(
             WETH,
             hre.ethers.BigNumber.from(-5).mul(UNIT),
             false
         );
-        expect(usdAmount.div(UNIT).eq(-7500)).to.be.eq(true);
+        expect(usdAmount.div(UNIT)).to.deep.eq(-7500);
     });
 
     it("usdToToken", async () => {
@@ -145,21 +150,25 @@ describe("Market", () => {
             hre.ethers.BigNumber.from(3000).mul(UNIT),
             false
         );
-        expect(tokenAmount.div(UNIT).eq(2)).to.be.eq(true);
+        expect(tokenAmount.div(UNIT)).to.deep.eq(2);
         tokenAmount = await market_.usdToToken(
             WETH,
             hre.ethers.BigNumber.from(-7500).mul(UNIT),
             false
         );
-        expect(tokenAmount.div(UNIT).eq(-5)).to.be.eq(true);
+        expect(tokenAmount.div(UNIT)).to.deep.eq(-5);
     });
 
-    it("trade", async () => {
+    it("trade ETH long", async () => {
         await (
             await positionManager_.depositMargin(
                 hre.ethers.BigNumber.from(1500).mul(UNIT)
             )
         ).wait();
+        let status = await market_.accountMarginStatus(
+            await account1.getAddress()
+        );
+        expect(status.currentMargin).to.deep.eq(normalized(1470));
 
         await (
             await positionManager_.submitOrder(
@@ -172,41 +181,143 @@ describe("Market", () => {
         ).wait();
         const orderId = (await positionManager_.orderCnt()).sub(1);
 
-        await helpers.time.increase(config.marketGeneralConfig.minOrderDelay);
+        await increaseNextBlockTimestamp(
+            config.marketGeneralConfig.minOrderDelay
+        ); // 60s
 
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 1500 });
-        await (
-            await positionManager_.executeOrder(
-                orderId,
-                pythUpdateData.updateData,
-                { value: pythUpdateData.fee }
-            )
-        ).wait();
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        )
+            .to.emit(market_, "Traded")
+            .withArgs(
+                await account1.getAddress(),
+                WETH,
+                normalized(10),
+                "1507247042961328674174", // avg price
+                "15072470429613286741" // trading fee
+            );
+        const userMargin = await perpTracker_.userMargin(
+            await account1.getAddress()
+        );
+        expect(userMargin).to.deep.eq(normalized(1500));
         const position = await perpTracker_.getPosition(
             await account1.getAddress(),
             WETH
         );
-        /*
-        console.log("Position:");
-        for (const [k, v] of Object.entries(position)) {
-            console.log(`${k}: ${v.toString()}`);
-        }
+        expect(position.accFunding).to.deep.eq(0);
+        expect(position.avgPrice).to.deep.eq("1507247042961328674174");
+        status = await market_.accountMarginStatus(await account1.getAddress());
+        // todo: mtm
+        expect(status.currentMargin).to.deep.eq("1397529570386713258260");
+        expect(status.positionNotional).to.deep.eq("15000000000000000000000");
+        const lpPosition = await perpTracker_.getLpPosition(WETH);
+        expect(lpPosition.longSize).to.deep.eq(0);
+        expect(lpPosition.shortSize).to.deep.eq("-10000000000000000000");
+        const globalStatus = await market_.globalStatus();
+        expect(globalStatus.lpNetValue).to.deep.eq("980072470429613286741740");
+        expect(globalStatus.netOpenInterest).to.deep.eq(
+            "15000000000000000000000"
+        );
+        await increaseNextBlockTimestamp(5); // 60s
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        ).to.be.revertedWith("PositionManager: order is not pending");
+    });
+    it("trade BTC short revert", async () => {
+        await increaseNextBlockTimestamp(5); // 10s
+        await (
+            await positionManager_.submitOrder(
+                WBTC,
+                normalized(-2),
+                normalized(25000),
+                normalized(1),
+                (await helpers.time.latest()) + 100
+            )
+        ).wait();
+        const orderId = (await positionManager_.orderCnt()).sub(1);
+
+        await increaseNextBlockTimestamp(
+            config.marketGeneralConfig.minOrderDelay
+        ); // 60s
+
+        const pythUpdateData = await getPythUpdateData(hre, { WBTC: 20000 });
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        ).to.be.revertedWith("PositionManager: leverage ratio too large");
+        await increaseNextBlockTimestamp(100); // 100s
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        ).to.be.revertedWith("PositionManager: order expired");
+    });
+    it("trade BTC short", async () => {
+        await increaseNextBlockTimestamp(10); // 10s
+        await (
+            await positionManager_.submitOrder(
+                WBTC,
+                normalized(-0.5),
+                normalized(25000),
+                normalized(1),
+                (await helpers.time.latest()) + 100
+            )
+        ).wait();
+        const orderId = (await positionManager_.orderCnt()).sub(1);
+
+        await increaseNextBlockTimestamp(
+            config.marketGeneralConfig.minOrderDelay
+        ); // 60s
+
+        const pythUpdateData = await getPythUpdateData(hre, { WBTC: 20000 });
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        )
+            .to.emit(market_, "Traded")
+            .withArgs(
+                await account1.getAddress(),
+                WBTC,
+                normalized(-0.5),
+                "19929054323994577942057", // avg price
+                "9964527161997288971" // trading fee
+            );
+        const userMargin = await perpTracker_.userMargin(
+            await account1.getAddress()
+        );
+        expect(userMargin).to.deep.eq(normalized(1500));
+        const position = await perpTracker_.getPosition(
+            await account1.getAddress(),
+            WBTC
+        );
+        expect(position.accFunding).to.deep.eq(0);
+        expect(position.avgPrice).to.deep.eq("19929054323994577942057");
+        // funding of ETH position
+        // since the long ETH trade, there should be 5+5+60+100+10+60=240s passed
+        const fs = await perpTracker_.nextAccFunding(WETH, normalized(1500));
+        expect(fs[0]).to.deep.eq("12754158878190548"); // next funding rate
+        expect(fs[1]).to.deep.eq("26571164329563000"); // acc funding
+        // margin status
         const status = await market_.accountMarginStatus(
             await account1.getAddress()
         );
-        console.log("Margin Status:");
-        for (const [k, v] of Object.entries(status)) {
-            console.log(`${k}: ${v.toString()}`);
-        }
-        console.log("global position:");
-        const globalPosition = await perpTracker_.getGlobalPosition(WETH);
-        for (const [k, v] of Object.entries(globalPosition)) {
-            console.log(`${k}: ${v.toString()}`);
-        }
-        console.log("global status:");
+        expect(status.currentMargin).to.deep.eq("1361791020740706599289");
+        expect(status.positionNotional).to.deep.eq("25000000000000000000000");
+        // todo: mtm
+        const lpPosition = await perpTracker_.getLpPosition(WBTC);
+        expect(lpPosition.longSize).to.deep.eq(normalized(0.5));
+        expect(lpPosition.shortSize).to.deep.eq(0);
         const globalStatus = await market_.globalStatus();
-        for (const [k, v] of Object.entries(globalStatus)) {
-            console.log(`${k}: ${v.toString()}`);
-        }*/
+        expect(globalStatus.lpNetValue).to.deep.eq("980108208979259293400711");
+        expect(globalStatus.netOpenInterest).to.deep.eq(
+            "25000000000000000000000"
+        );
     });
 });

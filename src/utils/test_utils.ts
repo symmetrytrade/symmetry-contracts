@@ -7,6 +7,20 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 const abiCoder = new hardhat.ethers.utils.AbiCoder();
 
+export async function increaseNextBlockTimestamp(interval: number) {
+    const evmTime = await helpers.time.latest();
+    await helpers.time.setNextBlockTimestamp(evmTime + interval);
+}
+
+export function printValues(name: string, e: object) {
+    console.log(`\n==== ${name} begin ====`);
+    for (const [k, v] of Object.entries(e)) {
+        if (k >= "0" && k <= "9") continue;
+        console.log(`${k}: ${v.toString()}`);
+    }
+    console.log(`==== ${name} end  ====\n`);
+}
+
 export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
     return (
         await hre.ethers.provider.getBlock(

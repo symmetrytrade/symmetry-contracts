@@ -69,14 +69,12 @@ describe("PriceOracle", () => {
                 const answer = await priceOracle_.getLatestChainlinkPrice(
                     tokenAddress
                 );
-                expect(answer[0].eq(1)).to.be.eq(true);
-                expect(
-                    answer[2].eq(
-                        new BigNumber(chainlinkPrices[aggregator.name])
-                            .times(1e18)
-                            .toString(10)
-                    )
-                ).to.be.eq(true);
+                expect(answer[0]).to.deep.eq(1);
+                expect(answer[2]).to.deep.eq(
+                    new BigNumber(chainlinkPrices[aggregator.name])
+                        .times(1e18)
+                        .toString(10)
+                );
             }
         }
     });
@@ -120,21 +118,15 @@ describe("PriceOracle", () => {
                 account1.getAddress()
             );
             // check fee cost
-            expect(
-                balanceBefore.sub(balanceAfter).eq(gasFee.add(fee))
-            ).to.be.eq(true);
+            expect(balanceBefore.sub(balanceAfter)).to.deep.eq(gasFee.add(fee));
             // check answer
             const tokenAddress = (await hre.ethers.getContract(token.symbol))
                 .address;
             const answer = await priceOracle_.getPythPrice(tokenAddress);
-            expect(answer[0].eq(publishTime)).to.be.eq(true);
-            expect(
-                answer[1].eq(
-                    new BigNumber(1e18)
-                        .times(pythPrices[token.symbol])
-                        .toString(10)
-                )
-            ).to.be.eq(true);
+            expect(answer[0]).to.deep.eq(publishTime);
+            expect(answer[1]).to.deep.eq(
+                new BigNumber(1e18).times(pythPrices[token.symbol]).toString(10)
+            );
         }
     });
 });

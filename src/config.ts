@@ -14,7 +14,7 @@ interface MarketGeneralConfig {
     pythMaxAge: number;
     maxPriceDivergence: string;
     maintenanceMarginRatio: string;
-    maxLeverageRatio: string;
+    maxLeverageRatio: number;
     liquidationFeeRatio: string;
     liquidationPenaltyRatio: string;
     liquidityRedeemFee: string;
@@ -48,7 +48,7 @@ const DefaultConfig: NetworkConfigs = {
         pythMaxAge: 180, // 3 minutes
         maxPriceDivergence: normalized(1.005), // 0.5%
         maintenanceMarginRatio: normalized(0.02), // 2%
-        maxLeverageRatio: normalized(0.04), // 4%, 25x
+        maxLeverageRatio: 25, // 25x
         liquidationFeeRatio: normalized(0.001), // 0.1%
         liquidationPenaltyRatio: normalized(0.001), // 0.1%
         liquidityRedeemFee: normalized(0.001), // 0.1%
