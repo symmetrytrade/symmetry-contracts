@@ -44,7 +44,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2150))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(2150));
         // case 2: skew = 1000 ETH, size = 10000 ETH
         skew = normalized(1000);
         size = normalized(10000);
@@ -55,7 +55,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2595))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(2595));
         // case 3: skew = 15000 ETH, size = 1000 ETH
         skew = normalized(15000);
         size = normalized(1000);
@@ -66,7 +66,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(3000))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(3000));
         // case 4: skew = 0 ETH, size = -1000 ETH
         skew = normalized(0);
         size = normalized(-1000);
@@ -77,7 +77,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1950))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(1950));
         // case 5: skew = -1000 ETH, size = -10000 ETH
         skew = normalized(-1000);
         size = normalized(-10000);
@@ -88,7 +88,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1405))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(1405));
         // case 6: skew = -15000 ETH, size = -1000 ETH
         skew = normalized(-15000);
         size = normalized(-1000);
@@ -99,7 +99,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1000))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(1000));
         // case 7: skew = 15000 ETH, size = -10000 ETH
         skew = normalized(15000);
         size = normalized(-10000);
@@ -110,7 +110,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2000))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(2000));
         // case 8: skew = 20000 ETH, size = -25000 ETH
         skew = normalized(20000);
         size = normalized(-25000);
@@ -121,7 +121,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(1950))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(1950));
         // case 9: skew = 20000 ETH, size = -50000 ETH
         skew = normalized(20000);
         size = normalized(-50000);
@@ -132,7 +132,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq("1499999999999999998000")).to.be.eq(true);
+        expect(fillPrice).to.deep.eq("1499999999999999998000");
         // case 10: skew = -15000 ETH, size = 10000 ETH
         skew = normalized(-15000);
         size = normalized(10000);
@@ -143,7 +143,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2000))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(2000));
         // case 11: skew = -20000 ETH, size = 25000 ETH
         skew = normalized(-20000);
         size = normalized(25000);
@@ -154,7 +154,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq(normalized(2050))).to.be.eq(true);
+        expect(fillPrice).to.deep.eq(normalized(2050));
         // case 12: skew = -20000 ETH, size = 50000 ETH
         skew = normalized(-20000);
         size = normalized(50000);
@@ -165,7 +165,7 @@ describe("PerpTracker", () => {
             kLP,
             lambda
         );
-        expect(fillPrice.eq("2499999999999999998000")).to.be.eq(true);
+        expect(fillPrice).to.deep.eq("2499999999999999998000");
     });
 
     it("market key", async () => {
@@ -175,7 +175,7 @@ describe("PerpTracker", () => {
 
     it("listed tokens", async () => {
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength.eq(2)).to.be.eq(true);
+        expect(tokenLength).to.deep.eq(2);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WBTC);
         expect(await perpTracker_.marketTokensList(1)).to.be.eq(WETH);
     });
@@ -187,7 +187,7 @@ describe("PerpTracker", () => {
 
         await (await perpTracker_.removeToken(0)).wait();
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength.eq(1)).to.be.eq(true);
+        expect(tokenLength).to.deep.eq(1);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH);
     });
 });

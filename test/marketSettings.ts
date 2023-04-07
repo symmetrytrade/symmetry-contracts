@@ -26,7 +26,7 @@ describe("MarketSettings", () => {
         )) {
             const key = hre.ethers.utils.formatBytes32String(term);
             const value = await marketSettings_.getUintVals(key);
-            expect(value.eq(rawValue)).to.be.eq(true);
+            expect(value).to.deep.eq(rawValue);
         }
     });
 
@@ -38,7 +38,7 @@ describe("MarketSettings", () => {
                     perpMarketKey(token),
                     hre.ethers.utils.formatBytes32String(k)
                 );
-                expect(value.eq(v)).to.be.eq(true);
+                expect(value).to.deep.eq(v);
             }
         }
     });
