@@ -484,17 +484,25 @@ contract Market is Ownable, Initializable {
             }
         }
         // trade
-        perpTracker_.settleTradeForUser(
-            _account,
-            _token,
-            _sizeDelta,
-            execPrice
-        );
-        liquidityBalance += usdToToken(
-            baseToken,
-            perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice),
-            false
-        );
+        {
+            (int oldSize, int newSize) = perpTracker_.settleTradeForUser(
+                _account,
+                _token,
+                _sizeDelta,
+                execPrice
+            );
+            liquidityBalance += usdToToken(
+                baseToken,
+                perpTracker_.settleTradeForLp(
+                    _token,
+                    -_sizeDelta,
+                    execPrice,
+                    oldSize,
+                    newSize
+                ),
+                false
+            );
+        }
 
         emit Traded(_account, _token, _sizeDelta, execPrice, tradingFee);
         return execPrice;
