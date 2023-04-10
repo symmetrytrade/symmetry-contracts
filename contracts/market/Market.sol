@@ -452,91 +452,52 @@ contract Market is Ownable, Initializable {
         address _token,
         int256 _sizeDelta,
         int256 _price
-    ) external onlyOperator {
+    ) external onlyOperator returns (int) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        int256 latestAccFunding = perpTracker_.latestAccFunding(_token);
+
+        require(
+            perpTracker_.latestUpdated(_token) == block.timestamp,
+            "Market: fee is not updated"
+        );
 
         (int256 execPrice, uint256 tradingFee) = FeeTracker(feeTracker)
             .discountedTradingFee(_account, _token, _sizeDelta, _price);
 
-        // update user positions
+        // funding fee
+        perpTracker_.settleFunding(_account, _token);
+        liquidityBalance += usdToToken(
+            baseToken,
+            perpTracker_.computeLpFunding(_token),
+            false
+        );
+        // financing fee
         {
-            PerpTracker.Position memory position = perpTracker_.getPosition(
+            int financingFee = perpTracker_.computeFinancingFee(
                 _account,
                 _token
             );
-            (int256 nextPrice, int256 pnlAndFunding) = perpTracker_
-                .computeTrade(
-                    position.size,
-                    position.avgPrice,
-                    position.accFunding,
-                    _sizeDelta,
-                    execPrice,
-                    latestAccFunding
-                );
-            // settle p&l and funding
-            uint256 tokenAmount = usdToToken(
-                baseToken,
-                pnlAndFunding.abs(),
-                false
-            ).toUint256();
-            if (pnlAndFunding > 0) {
-                perpTracker_.addMargin(_account, tokenAmount);
-            } else if (pnlAndFunding < 0) {
+            if (financingFee > 0) {
+                uint tokenAmount = usdToToken(baseToken, financingFee, false)
+                    .toUint256();
                 perpTracker_.removeMargin(_account, tokenAmount);
+                liquidityBalance += int(tokenAmount);
             }
-            // settle financing fee
-            {
-                int openInterestFee;
-                {
-                    (
-                        int nextAccLongFinancingFee,
-                        int nextAccShortFinancingFee
-                    ) = perpTracker_.latestAccFinancingFee(_token);
-                    openInterestFee = position.size.abs().multiplyDecimal(
-                        position.size > 0
-                            ? nextAccLongFinancingFee - position.accFinancingFee
-                            : nextAccShortFinancingFee -
-                                position.accFinancingFee
-                    );
-                }
-                if (openInterestFee > 0) {
-                    tokenAmount = usdToToken(baseToken, openInterestFee, false)
-                        .toUint256();
-                    perpTracker_.removeMargin(_account, tokenAmount);
-                    liquidityBalance += int(tokenAmount);
-                }
-            }
-            // write to state
-            perpTracker_.updatePosition(
-                _account,
-                _token,
-                position.size + _sizeDelta,
-                nextPrice
-            );
         }
-
-        // update lp global positions
-        {
-            PerpTracker.LpPosition memory position = perpTracker_.getLpPosition(
-                _token
-            );
-            (int256 nextPrice, int256 pnlAndFunding) = perpTracker_
-                .computeTrade(
-                    position.longSize + position.shortSize,
-                    position.avgPrice,
-                    position.accFunding,
-                    -_sizeDelta, // lp is the counterparty of user
-                    execPrice,
-                    latestAccFunding
-                );
-            // settle p&l and funding
-            liquidityBalance += usdToToken(baseToken, pnlAndFunding, false);
-            // write to state
-            perpTracker_.updateLpPosition(_token, -_sizeDelta, nextPrice);
-        }
+        // trade
+        perpTracker_.settleTradeForUser(
+            _account,
+            _token,
+            _sizeDelta,
+            execPrice
+        );
+        liquidityBalance += usdToToken(
+            baseToken,
+            perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice),
+            false
+        );
 
         emit Traded(_account, _token, _sizeDelta, execPrice, tradingFee);
+        return execPrice;
     }
 
     /*=== pricing ===*/

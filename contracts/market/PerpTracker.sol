@@ -11,6 +11,7 @@ import "./MarketSettings.sol";
 contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
+    using SafeCast for int256;
 
     // global setting keys
     bytes32 public constant PERP_DOMAIN = "perpDomain";
@@ -168,40 +169,54 @@ contract PerpTracker is Ownable, Initializable {
         return feeInfos[_token].accFunding;
     }
 
-    function latestAccFinancingFee(
-        address _token
-    ) external view returns (int256, int256) {
-        return (
-            feeInfos[_token].accLongFinancingFee,
-            feeInfos[_token].accShortFinancingFee
-        );
+    function latestUpdated(address _token) external view returns (uint) {
+        return uint(feeInfos[_token].updateTime);
     }
 
     /*=== update functions ===*/
 
-    function addMargin(address _account, uint256 _amount) external onlyMarket {
+    function _addMargin(address _account, uint256 _amount) internal {
         userMargin[_account] += _amount.toInt256();
 
         emit MarginTransferred(_account, _amount.toInt256());
+    }
+
+    function addMargin(address _account, uint256 _amount) external onlyMarket {
+        _addMargin(_account, _amount);
+    }
+
+    function _removeMargin(address _account, uint256 _amount) internal {
+        userMargin[_account] -= _amount.toInt256();
+
+        emit MarginTransferred(_account, -(_amount.toInt256()));
     }
 
     function removeMargin(
         address _account,
         uint256 _amount
     ) external onlyMarket {
-        userMargin[_account] -= _amount.toInt256();
-
-        emit MarginTransferred(_account, -(_amount.toInt256()));
+        _removeMargin(_account, _amount);
     }
 
-    function updatePosition(
+    function _modifyMarginByUsd(address _account, int _amount) internal {
+        uint tokenAmount = Market(market)
+            .usdToToken(Market(market).baseToken(), _amount.abs(), false)
+            .toUint256();
+        if (_amount > 0) {
+            _addMargin(_account, tokenAmount);
+        } else if (_amount < 0) {
+            _removeMargin(_account, tokenAmount);
+        }
+    }
+
+    function _updatePosition(
         address _account,
         address _token,
-        int256 _size,
+        int256 _sizeDelta,
         int256 _avgPrice
-    ) external onlyMarket {
+    ) internal {
         Position storage position = userPositions[_account][_token];
-        position.size = _size;
+        position.size += _sizeDelta;
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
         position.accFinancingFee = position.size > 0
@@ -209,11 +224,11 @@ contract PerpTracker is Ownable, Initializable {
             : feeInfos[_token].accShortFinancingFee;
     }
 
-    function updateLpPosition(
+    function _updateLpPosition(
         address _token,
         int256 _sizeDelta,
         int256 _avgPrice
-    ) external onlyMarket {
+    ) internal {
         LpPosition storage position = lpPositions[_token];
         if (_sizeDelta > 0) {
             position.longSize += _sizeDelta;
@@ -351,14 +366,28 @@ contract PerpTracker is Ownable, Initializable {
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
     }
 
+    function computeFinancingFee(
+        address _account,
+        address _token
+    ) external view returns (int) {
+        int size = userPositions[_account][_token].size;
+        int lastAccFinancingFee = userPositions[_account][_token]
+            .accFinancingFee;
+        return
+            size.abs().multiplyDecimal(
+                size > 0
+                    ? feeInfos[_token].accLongFinancingFee - lastAccFinancingFee
+                    : feeInfos[_token].accShortFinancingFee -
+                        lastAccFinancingFee
+            );
+    }
+
     function computeTrade(
         int256 _size,
         int256 _avgPrice,
-        int256 _accFunding,
         int256 _sizeDelta,
-        int256 _price,
-        int256 _latestAccFunding
-    ) external pure returns (int256 nextPrice, int256 pnlAndFunding) {
+        int256 _price
+    ) public pure returns (int256 nextPrice, int256 pnl) {
         int256 nextSize = _size + _sizeDelta;
         if ((_sizeDelta > 0 && _size >= 0) || (_sizeDelta < 0 && _size <= 0)) {
             // increase position
@@ -369,20 +398,72 @@ contract PerpTracker is Ownable, Initializable {
             // here _size must be non-zero
             if ((nextSize > 0 && _size > 0) || (nextSize < 0 && _size < 0)) {
                 // position direction is not changed
-                pnlAndFunding = (_size - nextSize).multiplyDecimal(
-                    _price - _avgPrice
-                );
+                pnl = (-_sizeDelta).multiplyDecimal(_price - _avgPrice);
                 nextPrice = _avgPrice;
             } else {
                 // position direction changed
-                pnlAndFunding = _size.multiplyDecimal(_price - _avgPrice);
+                pnl = _size.multiplyDecimal(_price - _avgPrice);
                 nextPrice = _price;
             }
         }
-        // funding
-        pnlAndFunding -= (_latestAccFunding - _accFunding).multiplyDecimal(
-            _size
+    }
+
+    function settleFunding(
+        address _account,
+        address _token
+    ) external onlyMarket {
+        int fundingFee = (feeInfos[_token].accFunding -
+            userPositions[_account][_token].accFunding).multiplyDecimal(
+                userPositions[_account][_token].size
+            );
+        _modifyMarginByUsd(_account, fundingFee);
+    }
+
+    function computeLpFunding(
+        address _token
+    ) external view onlyMarket returns (int) {
+        return
+            (feeInfos[_token].accFunding - lpPositions[_token].accFunding)
+                .multiplyDecimal(
+                    lpPositions[_token].longSize + lpPositions[_token].shortSize
+                );
+    }
+
+    function settleTradeForUser(
+        address _account,
+        address _token,
+        int _sizeDelta,
+        int _execPrice
+    ) external onlyMarket {
+        // user position
+        Position memory position = userPositions[_account][_token];
+
+        (int nextPrice, int pnl) = computeTrade(
+            position.size,
+            position.avgPrice,
+            _sizeDelta,
+            _execPrice
         );
+        _modifyMarginByUsd(_account, pnl);
+        _updatePosition(_account, _token, _sizeDelta, nextPrice);
+    }
+
+    function settleTradeForLp(
+        address _token,
+        int _sizeDelta,
+        int _execPrice
+    ) external onlyMarket returns (int) {
+        // user position
+        LpPosition memory position = lpPositions[_token];
+
+        (int nextPrice, int pnl) = computeTrade(
+            position.longSize + position.shortSize,
+            position.avgPrice,
+            _sizeDelta,
+            _execPrice
+        );
+        _updateLpPosition(_token, _sizeDelta, nextPrice);
+        return pnl;
     }
 
     /*=== funding & financing fees ===*/
