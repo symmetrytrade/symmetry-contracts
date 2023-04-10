@@ -35,7 +35,7 @@ contract PositionManager is Ownable, Initializable {
         address account;
         address token;
         int256 size;
-        uint256 acceptablePrice;
+        int256 acceptablePrice;
         uint256 keeperFee;
         uint256 expiracy;
         uint256 submitTime;
@@ -104,7 +104,7 @@ contract PositionManager is Ownable, Initializable {
     function submitOrder(
         address _token,
         int256 _size,
-        uint256 _acceptablePrice,
+        int256 _acceptablePrice,
         uint256 _keeperFee,
         uint256 _expiracy
     ) external {
@@ -202,7 +202,17 @@ contract PositionManager is Ownable, Initializable {
                 );
             }
             // do trade
-            market_.trade(order.account, order.token, order.size, fillPrice);
+            int execPrice = market_.trade(
+                order.account,
+                order.token,
+                order.size,
+                fillPrice
+            );
+            require(
+                (execPrice <= order.acceptablePrice && order.size > 0) ||
+                    (execPrice >= order.acceptablePrice && order.size < 0),
+                "PositionManager: unacceptable execution price"
+            );
         }
         // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(
