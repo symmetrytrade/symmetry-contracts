@@ -226,14 +226,16 @@ contract PerpTracker is Ownable, Initializable {
 
     function _updateLpPosition(
         address _token,
-        int256 _sizeDelta,
+        int256 _longSizeDelta,
+        int256 _shortSizeDelta,
         int256 _avgPrice
     ) internal {
         LpPosition storage position = lpPositions[_token];
-        if (_sizeDelta > 0) {
-            position.longSize += _sizeDelta;
-        } else if (_sizeDelta < 0) {
-            position.shortSize += _sizeDelta;
+        if (_longSizeDelta != 0) {
+            position.longSize += _longSizeDelta;
+        }
+        if (_shortSizeDelta != 0) {
+            position.shortSize += _shortSizeDelta;
         }
         position.avgPrice = _avgPrice;
         position.accFunding = feeInfos[_token].accFunding;
@@ -412,29 +414,35 @@ contract PerpTracker is Ownable, Initializable {
         address _account,
         address _token
     ) external onlyMarket {
-        int fundingFee = (feeInfos[_token].accFunding -
+        int fundingFee = -(feeInfos[_token].accFunding -
             userPositions[_account][_token].accFunding).multiplyDecimal(
                 userPositions[_account][_token].size
             );
-        _modifyMarginByUsd(_account, fundingFee);
+        if (fundingFee != 0) {
+            _modifyMarginByUsd(_account, fundingFee);
+        }
     }
 
     function computeLpFunding(
         address _token
     ) external view onlyMarket returns (int) {
         return
-            (feeInfos[_token].accFunding - lpPositions[_token].accFunding)
+            -(feeInfos[_token].accFunding - lpPositions[_token].accFunding)
                 .multiplyDecimal(
                     lpPositions[_token].longSize + lpPositions[_token].shortSize
                 );
     }
 
+    /**
+     * @notice settle trade for user, update position info
+     * @return old position size, new position size
+     */
     function settleTradeForUser(
         address _account,
         address _token,
         int _sizeDelta,
         int _execPrice
-    ) external onlyMarket {
+    ) external onlyMarket returns (int, int) {
         // user position
         Position memory position = userPositions[_account][_token];
 
@@ -444,14 +452,28 @@ contract PerpTracker is Ownable, Initializable {
             _sizeDelta,
             _execPrice
         );
-        _modifyMarginByUsd(_account, pnl);
+        if (pnl != 0) {
+            _modifyMarginByUsd(_account, pnl);
+        }
         _updatePosition(_account, _token, _sizeDelta, nextPrice);
+
+        return (position.size, position.size + _sizeDelta);
     }
 
+    /**
+     * @notice settle trade for lp, update lp position info
+     * @param _token token
+     * @param _sizeDelta trade volume
+     * @param _execPrice execution price
+     * @param _oldSize user old position size
+     * @param _newSize user position size after trade
+     */
     function settleTradeForLp(
         address _token,
         int _sizeDelta,
-        int _execPrice
+        int _execPrice,
+        int _oldSize,
+        int _newSize
     ) external onlyMarket returns (int) {
         // user position
         LpPosition memory position = lpPositions[_token];
@@ -462,7 +484,19 @@ contract PerpTracker is Ownable, Initializable {
             _sizeDelta,
             _execPrice
         );
-        _updateLpPosition(_token, _sizeDelta, nextPrice);
+        int longSizeDelta = 0;
+        int shortSizeDelta = 0;
+        if (_oldSize > 0) {
+            shortSizeDelta += _oldSize;
+        } else {
+            longSizeDelta += _oldSize;
+        }
+        if (_newSize > 0) {
+            shortSizeDelta -= _newSize;
+        } else {
+            longSizeDelta -= _newSize;
+        }
+        _updateLpPosition(_token, longSizeDelta, shortSizeDelta, nextPrice);
         return pnl;
     }
 
