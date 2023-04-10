@@ -65,6 +65,7 @@ contract PositionManager is Ownable, Initializable {
 
     function depositMargin(uint256 _amount) external {
         Market(market).transferMarginIn(msg.sender, _amount);
+        // TODO: min margin balance
     }
 
     function withdrawMargin(uint256 _amount) external {

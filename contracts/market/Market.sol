@@ -170,15 +170,16 @@ contract Market is Ownable, Initializable {
     }
 
     /**
-     * @notice Compute the slippage of a liquidity redemption. During lp redemption, the exiting lp will trade the position
+     * @notice Compute the trading fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
      * it holds to the lp left in pool.
      * @param lp lp net value in usd
      * @param redeemValue lp to redeem in usd
      */
-    function redeemSlippage(
+    function redeemTradingFee(
+        address _account,
         int lp,
         int redeemValue
-    ) external view returns (int fee) {
+    ) external view returns (uint fee) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         MarketSettings settings_ = MarketSettings(settings);
 
@@ -187,34 +188,46 @@ contract Market is Ownable, Initializable {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
-            int skew = perpTracker_.currentSkew(token);
-            if (skew == 0) continue;
-            int tradeAmount = skew.multiplyDecimal(redeemValue).divideDecimal(
-                lp
-            );
-            int price = PriceOracle(priceOracle).getPrice(token, false);
+            int fillPrice;
+            int tradeAmount;
 
-            int lambda = settings_
-                .getUintValsByMarket(
-                    perpTracker_.marketKey(token),
-                    LAMBDA_PREMIUM
-                )
-                .toInt256();
-            int kLP = settings_
-                .getUintValsByMarket(
-                    perpTracker_.marketKey(token),
-                    PROPORTION_RATIO
-                )
-                .toInt256();
-            kLP = kLP.multiplyDecimal(lp - redeemValue);
-            int fillPrice = perpTracker_.computePerpFillPriceRaw(
-                skew - tradeAmount,
+            // calculate fill price
+            {
+                int skew = perpTracker_.currentSkew(token);
+                if (skew == 0) continue;
+                tradeAmount = skew.multiplyDecimal(redeemValue).divideDecimal(
+                    lp
+                );
+                int price = PriceOracle(priceOracle).getPrice(token, false);
+                int lambda = settings_
+                    .getUintValsByMarket(
+                        perpTracker_.marketKey(token),
+                        LAMBDA_PREMIUM
+                    )
+                    .toInt256();
+                int kLP = settings_
+                    .getUintValsByMarket(
+                        perpTracker_.marketKey(token),
+                        PROPORTION_RATIO
+                    )
+                    .toInt256();
+                kLP = kLP.multiplyDecimal(lp - redeemValue);
+                fillPrice = perpTracker_.computePerpFillPriceRaw(
+                    skew - tradeAmount,
+                    tradeAmount,
+                    price,
+                    kLP,
+                    lambda
+                );
+            }
+            // calculate execution price and fee
+            (, uint256 tradingFee) = _tradingFee(
+                _account,
+                token,
                 tradeAmount,
-                price,
-                kLP,
-                lambda
+                fillPrice
             );
-            fee += (price - fillPrice).multiplyDecimal(tradeAmount);
+            fee += tradingFee;
         }
     }
 

@@ -138,7 +138,9 @@ contract LiquidityManager is Ownable, Initializable {
             lpNetValue - netOpenInterest >= redeemValue,
             "LiquidityManager: insufficient free lp"
         );
-        redeemValue -= market_.redeemSlippage(lpNetValue, redeemValue);
+        redeemValue -= market_
+            .redeemTradingFee(_account, lpNetValue, redeemValue)
+            .toInt256();
         require(redeemValue > 0, "LiquidityManager: non-positive redeem value");
         // burn lp
         lpToken_.burn(_account, _amount);
