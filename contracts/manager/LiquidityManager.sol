@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../market/Market.sol";
+import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/SafeCast.sol";
@@ -138,7 +139,7 @@ contract LiquidityManager is Ownable, Initializable {
             lpNetValue - netOpenInterest >= redeemValue,
             "LiquidityManager: insufficient free lp"
         );
-        redeemValue -= market_
+        redeemValue -= FeeTracker(market_.feeTracker())
             .redeemTradingFee(_account, lpNetValue, redeemValue)
             .toInt256();
         require(redeemValue > 0, "LiquidityManager: non-positive redeem value");

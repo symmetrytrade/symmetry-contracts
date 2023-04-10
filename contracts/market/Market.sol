@@ -11,7 +11,7 @@ import "../interfaces/IERC20Metadata.sol";
 import "../oracle/PriceOracle.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
-import "hardhat/console.sol";
+import "./FeeTracker.sol";
 
 contract Market is Ownable, Initializable {
     using SafeERC20 for IERC20;
@@ -37,6 +37,7 @@ contract Market is Ownable, Initializable {
     address public baseToken; // liquidity token
     address public priceOracle; // oracle
     address public perpTracker; // perpetual position tracker
+    address public feeTracker; // fee tracker
     address public settings; // settings for markets
     mapping(address => bool) public isOperator; // operator contracts
 
@@ -75,6 +76,10 @@ contract Market is Ownable, Initializable {
 
     function setPerpTracker(address _perpTracker) external onlyOwner {
         perpTracker = _perpTracker;
+    }
+
+    function setFeeTracker(address _feeTracker) external onlyOwner {
+        feeTracker = _feeTracker;
     }
 
     function setOperator(address _operator, bool _status) external onlyOwner {
@@ -166,68 +171,6 @@ contract Market is Ownable, Initializable {
                         position.longSize
                     );
             }
-        }
-    }
-
-    /**
-     * @notice Compute the trading fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
-     * it holds to the lp left in pool.
-     * @param lp lp net value in usd
-     * @param redeemValue lp to redeem in usd
-     */
-    function redeemTradingFee(
-        address _account,
-        int lp,
-        int redeemValue
-    ) external view returns (uint fee) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        MarketSettings settings_ = MarketSettings(settings);
-
-        uint256 len = perpTracker_.marketTokensLength();
-        for (uint i = 0; i < len; ++i) {
-            address token = perpTracker_.marketTokensList(i);
-            if (!perpTracker_.marketTokensListed(token)) continue;
-
-            int fillPrice;
-            int tradeAmount;
-
-            // calculate fill price
-            {
-                int skew = perpTracker_.currentSkew(token);
-                if (skew == 0) continue;
-                tradeAmount = skew.multiplyDecimal(redeemValue).divideDecimal(
-                    lp
-                );
-                int price = PriceOracle(priceOracle).getPrice(token, false);
-                int lambda = settings_
-                    .getUintValsByMarket(
-                        perpTracker_.marketKey(token),
-                        LAMBDA_PREMIUM
-                    )
-                    .toInt256();
-                int kLP = settings_
-                    .getUintValsByMarket(
-                        perpTracker_.marketKey(token),
-                        PROPORTION_RATIO
-                    )
-                    .toInt256();
-                kLP = kLP.multiplyDecimal(lp - redeemValue);
-                fillPrice = perpTracker_.computePerpFillPriceRaw(
-                    skew - tradeAmount,
-                    tradeAmount,
-                    price,
-                    kLP,
-                    lambda
-                );
-            }
-            // calculate execution price and fee
-            (, uint256 tradingFee) = _tradingFee(
-                _account,
-                token,
-                tradeAmount,
-                fillPrice
-            );
-            fee += tradingFee;
         }
     }
 
@@ -498,37 +441,6 @@ contract Market is Ownable, Initializable {
             );
     }
 
-    function _tradingFee(
-        address,
-        address _token,
-        int256 _sizeDelta,
-        int256 _price
-    ) internal view returns (int256 execPrice, uint256 tradingFee) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        // deduct trading fee in the price
-        // (p_{oracle}-p_{avg})*size=(p_{oracle}-p_{fill})*size-p_{avg}*|size|*k%
-        // p_{avg}=p_{fill} / (1 - k%) for size > 0
-        // p_{avg}=p_{fill} / (1 + k%) for size < 0
-        // where k is trading fee ratio
-        int256 k = MarketSettings(settings)
-            .getUintValsByMarket(
-                perpTracker_.marketKey(_token),
-                PERP_TRADING_FEE
-            )
-            .toInt256();
-        // TODO: fee discount
-        require(k < _UNIT, "Market: trading fee ratio > 1");
-        if (_sizeDelta > 0) {
-            execPrice = _price.divideDecimal(_UNIT - k);
-        } else {
-            execPrice = _price.divideDecimal(_UNIT + k);
-        }
-        tradingFee = execPrice
-            .multiplyDecimal(_sizeDelta.abs())
-            .multiplyDecimal(k)
-            .toUint256();
-    }
-
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
     /// @dev make sure the funding & financing fee is updated before calling this function.
     /// @param _account user address
@@ -544,12 +456,8 @@ contract Market is Ownable, Initializable {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         int256 latestAccFunding = perpTracker_.latestAccFunding(_token);
 
-        (int256 execPrice, uint256 tradingFee) = _tradingFee(
-            _account,
-            _token,
-            _sizeDelta,
-            _price
-        );
+        (int256 execPrice, uint256 tradingFee) = FeeTracker(feeTracker)
+            .discountedTradingFee(_account, _token, _sizeDelta, _price);
 
         // update user positions
         {
