@@ -7,7 +7,6 @@ import "../utils/Initializable.sol";
 import "../utils/SafeCast.sol";
 import "./Market.sol";
 import "./MarketSettings.sol";
-import "hardhat/console.sol";
 
 contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;

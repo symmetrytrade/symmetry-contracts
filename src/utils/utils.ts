@@ -60,6 +60,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     },
     LPToken: { name: "LPToken", contract: "LPToken" },
     PerpTracker: { name: "PerpTracker", contract: "PerpTracker" },
+    FeeTracker: { name: "FeeTracker", contract: "FeeTracker" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
     WETH: { name: "WETH", contract: "FaucetToken" },
