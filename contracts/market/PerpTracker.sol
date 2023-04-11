@@ -619,7 +619,11 @@ contract PerpTracker is Ownable, Initializable {
             marketKey(_token),
             K_LP_LIMIT
         );
-        return _lp.multiplyDecimal(threshold);
+        int pr = MarketSettings(settings).getIntValsByMarket(
+            marketKey(_token),
+            PROPORTION_RATIO
+        );
+        return _lp.multiplyDecimal(threshold).multiplyDecimal(pr);
     }
 
     function nextAccFinancingFee(
