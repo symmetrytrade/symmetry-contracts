@@ -29,7 +29,6 @@ contract Market is Ownable, Initializable {
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
     // setting keys per market
-    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
     bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 

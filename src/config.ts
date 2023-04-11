@@ -22,11 +22,12 @@ interface MarketGeneralConfig {
     hardLimitThreshold: string;
     minOrderDelay: number;
     minKeeperFee: string;
+    minMargin: string;
+    maxSlippage: string;
 }
 
 interface MarketConfig {
     maxFundingVelocity: string;
-    lambdaPremium: string;
     kLpLimit: string; // k used in check max position size
     proportionRatio: string;
     perpTradingFee: string;
@@ -56,11 +57,12 @@ const DefaultConfig: NetworkConfigs = {
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
         minOrderDelay: 60, // 1 minute
         minKeeperFee: normalized(1), // 1 usd
+        minMargin: normalized(50), // 20 usd
+        maxSlippage: normalized(0.5),
     },
     marketConfig: {
         WBTC: {
             maxFundingVelocity: normalized(300),
-            lambdaPremium: normalized(0.5),
             kLpLimit: normalized(0.8),
             proportionRatio: normalized(1),
             perpTradingFee: normalized(0.001),
@@ -68,7 +70,6 @@ const DefaultConfig: NetworkConfigs = {
         },
         WETH: {
             maxFundingVelocity: normalized(300),
-            lambdaPremium: normalized(0.5),
             kLpLimit: normalized(0.7),
             proportionRatio: normalized(1),
             perpTradingFee: normalized(0.001),

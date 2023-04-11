@@ -19,8 +19,8 @@ contract FeeTracker is Ownable, Initializable {
     int256 private constant _UNIT = int(10 ** 18);
 
     // general setting keys
+    bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
     // setting keys per market
-    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
     bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 
@@ -65,7 +65,8 @@ contract FeeTracker is Ownable, Initializable {
     function _redeemTradeFillPrice(
         address _token,
         int _lp,
-        int _redeemValue
+        int _redeemValue,
+        int _lambda
     ) internal view returns (int fillPrice, int tradeAmount) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         MarketSettings settings_ = MarketSettings(settings);
@@ -73,9 +74,6 @@ contract FeeTracker is Ownable, Initializable {
         int skew = perpTracker_.currentSkew(_token);
         if (skew == 0) return (0, 0);
         tradeAmount = skew.multiplyDecimal(_redeemValue).divideDecimal(_lp);
-        int lambda = settings_
-            .getUintValsByMarket(perpTracker_.marketKey(_token), LAMBDA_PREMIUM)
-            .toInt256();
         int kLP = settings_
             .getUintValsByMarket(
                 perpTracker_.marketKey(_token),
@@ -92,7 +90,7 @@ contract FeeTracker is Ownable, Initializable {
             tradeAmount,
             price,
             kLP,
-            lambda
+            _lambda
         );
     }
 
@@ -110,6 +108,10 @@ contract FeeTracker is Ownable, Initializable {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
 
         uint256 len = perpTracker_.marketTokensLength();
+
+        int lambda = MarketSettings(settings)
+            .getUintVals(MAX_SLIPPAGE)
+            .toInt256();
         for (uint i = 0; i < len; ++i) {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
@@ -117,7 +119,8 @@ contract FeeTracker is Ownable, Initializable {
             (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(
                 token,
                 lp,
-                redeemValue
+                redeemValue,
+                lambda
             );
             if (tradeAmount == 0) continue;
 

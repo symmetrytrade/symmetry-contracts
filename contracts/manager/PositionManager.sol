@@ -20,6 +20,7 @@ contract PositionManager is Ownable, Initializable {
         "liquidationPenaltyRatio";
     bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
     bytes32 public constant MIN_KEEPER_FEE = "minKeeperFee";
+    bytes32 public constant MIN_MARGIN = "minMargin";
     // setting keys per market
 
     // states
@@ -71,10 +72,21 @@ contract PositionManager is Ownable, Initializable {
     function withdrawMargin(uint256 _amount) external {
         Market market_ = Market(market);
         market_.transferMarginOut(msg.sender, _amount);
+        (, int256 currentMargin, int256 positionNotional) = Market(market)
+            .accountMarginStatus(msg.sender);
         require(
-            !leverageRatioExceeded(msg.sender),
+            !_leverageRatioExceeded(currentMargin, positionNotional),
             "PositionManager: leverage ratio too large"
         );
+        if (positionNotional > 0) {
+            int256 minMargin = MarketSettings(Market(market).settings())
+                .getUintVals(MIN_MARGIN)
+                .toInt256();
+            require(
+                minMargin < currentMargin,
+                "PositionManager: margin too low"
+            );
+        }
     }
 
     function isLiquidatable(address _account) public view returns (bool) {
@@ -83,15 +95,22 @@ contract PositionManager is Ownable, Initializable {
         return maintenanceMargin <= currentMargin;
     }
 
+    function _leverageRatioExceeded(
+        int currentMargin,
+        int positionNotional
+    ) internal view returns (bool) {
+        int256 maxLeverageRatio = MarketSettings(Market(market).settings())
+            .getUintVals(MAX_LEVERAGE_RATIO)
+            .toInt256();
+        return positionNotional / maxLeverageRatio > currentMargin;
+    }
+
     function leverageRatioExceeded(
         address _account
     ) public view returns (bool) {
         (, int256 currentMargin, int256 positionNotional) = Market(market)
             .accountMarginStatus(_account);
-        int256 maxLeverageRatio = MarketSettings(Market(market).settings())
-            .getUintVals(MAX_LEVERAGE_RATIO)
-            .toInt256();
-        return positionNotional / maxLeverageRatio > currentMargin;
+        return _leverageRatioExceeded(currentMargin, positionNotional);
     }
 
     /*=== position ===*/
