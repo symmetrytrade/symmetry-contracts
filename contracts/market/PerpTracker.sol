@@ -512,6 +512,7 @@ contract PerpTracker is Ownable, Initializable {
         MarketSettings settings_ = MarketSettings(settings);
 
         int numerator = tokenInfos[_token].skew;
+        if (numerator == 0) return 0;
         int256 lp = tokenInfos[_token].lpNetValue;
         int denominator = settings_
             .getIntValsByMarket(marketKey(_token), PROPORTION_RATIO)
@@ -521,7 +522,6 @@ contract PerpTracker is Ownable, Initializable {
             marketKey(_token),
             MAX_FUNDING_VELOCITY
         );
-        if (numerator == 0) return 0;
         if (denominator > 0) {
             return
                 numerator
@@ -626,6 +626,43 @@ contract PerpTracker is Ownable, Initializable {
         return _lp.multiplyDecimal(threshold).multiplyDecimal(pr);
     }
 
+    function _nextFinancingFeeRate(address _token) internal view returns (int) {
+        MarketSettings settings_ = MarketSettings(settings);
+
+        int oi = tokenInfos[_token].netOpenInterest;
+        int lp = tokenInfos[_token].lpNetValue;
+        int softLimit = lpSoftLimit(lp);
+        if (oi > softLimit) {
+            // fee rate = min((OI - soft_limit) * |skew| / (pr * LP * hard_limit), 1) * max_fee_rate
+            int numerator = (oi - softLimit).multiplyDecimal(
+                tokenInfos[_token].skew.abs()
+            );
+            if (numerator == 0) return 0;
+
+            int denominator = settings_.getIntValsByMarket(
+                marketKey(_token),
+                PROPORTION_RATIO
+            );
+            denominator = denominator.multiplyDecimal(lp).multiplyDecimal(
+                lpHardLimit(lp)
+            );
+
+            int256 maxFeeRate = settings_.getIntValsByMarket(
+                marketKey(_token),
+                MAX_FINANCING_FEE_RATE
+            );
+            if (denominator > 0) {
+                return
+                    numerator
+                        .divideDecimal(denominator)
+                        .min(_UNIT)
+                        .multiplyDecimal(maxFeeRate);
+            }
+            return maxFeeRate;
+        }
+        return 0;
+    }
+
     function nextAccFinancingFee(
         address _token,
         int256 _price
@@ -634,8 +671,6 @@ contract PerpTracker is Ownable, Initializable {
         view
         returns (int nextAccLongFinancingFee, int nextAccShortFinancingFee)
     {
-        MarketSettings settings_ = MarketSettings(settings);
-
         (nextAccLongFinancingFee, nextAccShortFinancingFee) = (
             feeInfos[_token].accLongFinancingFee,
             feeInfos[_token].accShortFinancingFee
@@ -643,49 +678,21 @@ contract PerpTracker is Ownable, Initializable {
         if (feeInfos[_token].updateTime >= int(block.timestamp)) {
             return (nextAccLongFinancingFee, nextAccShortFinancingFee);
         }
-        // check soft limit
-        int oi = tokenInfos[_token].netOpenInterest;
-        int lp = tokenInfos[_token].lpNetValue;
-        if (oi > lpSoftLimit(lp)) {
-            // charge fee from the larger side
-            int feeDelta = 0;
-            {
-                int256 timeElapsed = (int(block.timestamp) -
-                    feeInfos[_token].updateTime).max(0).divideDecimal(1 days);
-                // fee rate = min(OI * |skew| / (kLP * hard_limit), 1) * max_fee_rate
-                int numerator = oi.multiplyDecimal(tokenInfos[_token].skew);
-                int denominator = settings_.getIntValsByMarket(
-                    marketKey(_token),
-                    PROPORTION_RATIO
-                );
-                denominator = denominator.multiplyDecimal(lp).multiplyDecimal(
-                    lpHardLimit(lp)
-                );
-
-                int256 maxFeeRate = settings_.getIntValsByMarket(
-                    marketKey(_token),
-                    MAX_FINANCING_FEE_RATE
-                );
-                int256 feeRate = denominator > 0
-                    ? numerator
-                        .divideDecimal(denominator)
-                        .min(_UNIT)
-                        .multiplyDecimal(maxFeeRate)
-                    : maxFeeRate;
-                feeDelta = feeRate.multiplyDecimal(timeElapsed).multiplyDecimal(
-                    _price
-                );
-            }
-            if (feeDelta > 0) {
-                (int longSize, int shortSize) = (
-                    -lpPositions[_token].shortSize,
-                    -lpPositions[_token].longSize
-                );
-                if (longSize > -shortSize) {
-                    nextAccLongFinancingFee += feeDelta;
-                } else {
-                    nextAccShortFinancingFee += feeDelta;
-                }
+        int rate = _nextFinancingFeeRate(_token);
+        if (rate > 0) {
+            int256 timeElapsed = (int(block.timestamp) -
+                feeInfos[_token].updateTime).max(0).divideDecimal(1 days);
+            int feeDelta = rate.multiplyDecimal(timeElapsed).multiplyDecimal(
+                _price
+            );
+            (int longSize, int shortSize) = (
+                -lpPositions[_token].shortSize,
+                -lpPositions[_token].longSize
+            );
+            if (longSize > -shortSize) {
+                nextAccLongFinancingFee += feeDelta;
+            } else {
+                nextAccShortFinancingFee += feeDelta;
             }
         }
     }
