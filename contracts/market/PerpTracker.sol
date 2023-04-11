@@ -356,11 +356,12 @@ contract PerpTracker is Ownable, Initializable {
     ) external view returns (int256 avgPrice) {
         MarketSettings settings_ = MarketSettings(settings);
 
-        int lambda = settings_.getUintVals(MAX_SLIPPAGE).toInt256();
+        int lambda = settings_.getIntVals(MAX_SLIPPAGE);
         int skew = currentSkew(_token);
-        int kLP = settings_
-            .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
-            .toInt256();
+        int kLP = settings_.getIntValsByMarket(
+            marketKey(_token),
+            PROPORTION_RATIO
+        );
         kLP = kLP.multiplyDecimal(_lpNetValue).divideDecimal(_oraclePrice);
 
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
@@ -513,13 +514,13 @@ contract PerpTracker is Ownable, Initializable {
         int numerator = tokenInfos[_token].skew;
         int256 lp = tokenInfos[_token].lpNetValue;
         int denominator = settings_
-            .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
-            .toInt256()
+            .getIntValsByMarket(marketKey(_token), PROPORTION_RATIO)
             .multiplyDecimal(lp);
         // max velocity
-        int256 maxVelocity = settings_
-            .getUintValsByMarket(marketKey(_token), MAX_FUNDING_VELOCITY)
-            .toInt256();
+        int256 maxVelocity = settings_.getIntValsByMarket(
+            marketKey(_token),
+            MAX_FUNDING_VELOCITY
+        );
         if (numerator == 0) return 0;
         if (denominator > 0) {
             return
@@ -591,9 +592,9 @@ contract PerpTracker is Ownable, Initializable {
      *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
      */
     function lpSoftLimit(int256 _lp) public view returns (int) {
-        int threshold = MarketSettings(settings)
-            .getUintVals(SOFT_LIMIT_THRESHOLD)
-            .toInt256();
+        int threshold = MarketSettings(settings).getIntVals(
+            SOFT_LIMIT_THRESHOLD
+        );
         return _lp.multiplyDecimal(threshold);
     }
 
@@ -601,9 +602,9 @@ contract PerpTracker is Ownable, Initializable {
      * @dev get current hard limit
      */
     function lpHardLimit(int256 _lp) public view returns (int) {
-        int threshold = MarketSettings(settings)
-            .getUintVals(HARD_LIMIT_THRESHOLD)
-            .toInt256();
+        int threshold = MarketSettings(settings).getIntVals(
+            HARD_LIMIT_THRESHOLD
+        );
         return _lp.multiplyDecimal(threshold);
     }
 
@@ -614,9 +615,10 @@ contract PerpTracker is Ownable, Initializable {
         int256 _lp,
         address _token
     ) public view returns (int) {
-        int threshold = MarketSettings(settings)
-            .getUintValsByMarket(marketKey(_token), K_LP_LIMIT)
-            .toInt256();
+        int threshold = MarketSettings(settings).getIntValsByMarket(
+            marketKey(_token),
+            K_LP_LIMIT
+        );
         return _lp.multiplyDecimal(threshold);
     }
 
@@ -648,19 +650,18 @@ contract PerpTracker is Ownable, Initializable {
                     feeInfos[_token].updateTime).max(0).divideDecimal(1 days);
                 // fee rate = min(OI * |skew| / (kLP * hard_limit), 1) * max_fee_rate
                 int numerator = oi.multiplyDecimal(tokenInfos[_token].skew);
-                int denominator = settings_
-                    .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
-                    .toInt256();
+                int denominator = settings_.getIntValsByMarket(
+                    marketKey(_token),
+                    PROPORTION_RATIO
+                );
                 denominator = denominator.multiplyDecimal(lp).multiplyDecimal(
                     lpHardLimit(lp)
                 );
 
-                int256 maxFeeRate = settings_
-                    .getUintValsByMarket(
-                        marketKey(_token),
-                        MAX_FINANCING_FEE_RATE
-                    )
-                    .toInt256();
+                int256 maxFeeRate = settings_.getIntValsByMarket(
+                    marketKey(_token),
+                    MAX_FINANCING_FEE_RATE
+                );
                 int256 feeRate = denominator > 0
                     ? numerator
                         .divideDecimal(denominator)

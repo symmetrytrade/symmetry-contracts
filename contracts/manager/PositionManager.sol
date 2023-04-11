@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../market/Market.sol";
+import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/SafeCast.sol";
@@ -15,9 +16,6 @@ contract PositionManager is Ownable, Initializable {
 
     // general setting keys
     bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
-    bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
-    bytes32 public constant LIQUIDATION_PENALTY_RATIO =
-        "liquidationPenaltyRatio";
     bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
     bytes32 public constant MIN_KEEPER_FEE = "minKeeperFee";
     bytes32 public constant MIN_MARGIN = "minMargin";
@@ -56,6 +54,12 @@ contract PositionManager is Ownable, Initializable {
         _transferOwnership(msg.sender);
     }
 
+    /*=== owner functions ===*/
+
+    function setMarket(address _market) external onlyOwner {
+        market = _market;
+    }
+
     /*=== view ===*/
 
     function getOrder(uint256 _id) external view returns (Order memory) {
@@ -80,8 +84,7 @@ contract PositionManager is Ownable, Initializable {
         );
         if (positionNotional > 0) {
             int256 minMargin = MarketSettings(Market(market).settings())
-                .getUintVals(MIN_MARGIN)
-                .toInt256();
+                .getIntVals(MIN_MARGIN);
             require(
                 minMargin < currentMargin,
                 "PositionManager: margin too low"
@@ -100,8 +103,7 @@ contract PositionManager is Ownable, Initializable {
         int positionNotional
     ) internal view returns (bool) {
         int256 maxLeverageRatio = MarketSettings(Market(market).settings())
-            .getUintVals(MAX_LEVERAGE_RATIO)
-            .toInt256();
+            .getIntVals(MAX_LEVERAGE_RATIO);
         return positionNotional / maxLeverageRatio > currentMargin;
     }
 
@@ -138,8 +140,9 @@ contract PositionManager is Ownable, Initializable {
             "PositionManager: invalid expiracy"
         );
         require(
-            MarketSettings(market_.settings()).getUintVals(MIN_KEEPER_FEE) <=
-                _keeperFee,
+            MarketSettings(market_.settings())
+                .getIntVals(MIN_KEEPER_FEE)
+                .toUint256() <= _keeperFee,
             "PositionManager: keeper fee too low"
         );
         // put order
@@ -192,9 +195,9 @@ contract PositionManager is Ownable, Initializable {
 
         require(
             order.submitTime +
-                MarketSettings(market_.settings()).getUintVals(
-                    MIN_ORDER_DELAY
-                ) <=
+                MarketSettings(market_.settings())
+                    .getIntVals(MIN_ORDER_DELAY)
+                    .toUint256() <=
                 block.timestamp,
             "PositionManager: delay"
         );
@@ -292,6 +295,7 @@ contract PositionManager is Ownable, Initializable {
         bytes[] calldata _priceUpdateData
     ) external payable {
         Market market_ = Market(market);
+        FeeTracker feeTracker_ = FeeTracker(market_.feeTracker());
         // update oracle price
         PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
@@ -305,7 +309,7 @@ contract PositionManager is Ownable, Initializable {
             "PositionManager: account is not liquidatable"
         );
         // compute liquidation price
-        (int256 liquidationPrice, int256 size) = market_
+        (int256 liquidationPrice, int256 size, int256 notional) = market_
             .computePerpLiquidatePrice(_account, _token);
         // close position
         market_.trade(_account, _token, size, liquidationPrice);
@@ -315,12 +319,7 @@ contract PositionManager is Ownable, Initializable {
         (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
         // deduct liquidation fee to liquidator
         {
-            int256 liquidationFeeRatio = MarketSettings(market_.settings())
-                .getUintVals(LIQUIDATION_FEE_RATIO)
-                .toInt256();
-            int256 liquidationFee = liquidationPrice
-                .multiplyDecimal(size.abs())
-                .multiplyDecimal(liquidationFeeRatio);
+            int liquidationFee = feeTracker_.liquidationFee(notional);
             if (currentMargin >= liquidationFee) {
                 // margin is sufficient to pay liquidation fee
                 market_.deductFeeFromAccount(
@@ -348,12 +347,7 @@ contract PositionManager is Ownable, Initializable {
         }
         // deduct liquidation penalty to insurance account
         {
-            int256 liquidationPenaltyRatio = MarketSettings(market_.settings())
-                .getUintVals(LIQUIDATION_PENALTY_RATIO)
-                .toInt256();
-            int256 liquidationPenalty = liquidationPrice
-                .multiplyDecimal(size.abs())
-                .multiplyDecimal(liquidationPenaltyRatio);
+            int liquidationPenalty = feeTracker_.liquidationPenalty(notional);
             if (currentMargin >= liquidationPenalty) {
                 // margin is sufficient
                 market_.deductPenaltyToInsurance(

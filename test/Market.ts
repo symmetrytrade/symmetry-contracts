@@ -134,7 +134,7 @@ describe("Market", () => {
 
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setUintVals(
+            await marketSettings_.setIntVals(
                 hre.ethers.utils.formatBytes32String("maxPriceDivergence"),
                 normalized(2)
             )

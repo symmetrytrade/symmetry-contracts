@@ -25,16 +25,16 @@ describe("MarketSettings", () => {
             config.marketGeneralConfig
         )) {
             const key = hre.ethers.utils.formatBytes32String(term);
-            const value = await marketSettings_.getUintVals(key);
+            const value = await marketSettings_.getIntVals(key);
             expect(value).to.deep.eq(rawValue);
         }
     });
 
-    it("getUintValsByMarket", async () => {
+    it("getIntValsByMarket", async () => {
         for (const [market, conf] of Object.entries(config.marketConfig)) {
             const token = (await hre.ethers.getContract(market)).address;
             for (const [k, v] of Object.entries(conf)) {
-                const value = await marketSettings_.getUintValsByMarket(
+                const value = await marketSettings_.getIntValsByMarket(
                     perpMarketKey(token),
                     hre.ethers.utils.formatBytes32String(k)
                 );

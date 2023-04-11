@@ -151,7 +151,8 @@ contract LiquidityManager is Ownable, Initializable {
             .toUint256();
         // redeem fee
         uint256 redeemFee = MarketSettings(market_.settings())
-            .getUintVals(LIQUIDITY_REDEEM_FEE)
+            .getIntVals(LIQUIDITY_REDEEM_FEE)
+            .toUint256()
             .multiplyDecimal(amountOut);
         amountOut -= redeemFee;
         require(

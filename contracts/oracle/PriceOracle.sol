@@ -185,7 +185,7 @@ contract PriceOracle is Ownable, Initializable {
         (uint256 publishTime, int256 pythPrice) = getPythPrice(_token);
         require(
             !_mustUsePyth ||
-                publishTime + settings_.getUintVals(PYTH_MAX_AGE) >
+                publishTime + settings_.getIntVals(PYTH_MAX_AGE).toUint256() >
                 block.timestamp,
             "PriceOracle: pyth price too stale"
         );
@@ -194,7 +194,8 @@ contract PriceOracle is Ownable, Initializable {
                 ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
                 : pythPrice.toUint256().divideDecimal(chainlinkPrice);
             require(
-                divergence < settings_.getUintVals(MAX_PRICE_DIVERGENCE),
+                divergence <
+                    settings_.getIntVals(MAX_PRICE_DIVERGENCE).toUint256(),
                 "PriceOracle: oracle price divergence too large"
             );
             return pythPrice;
