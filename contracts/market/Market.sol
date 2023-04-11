@@ -26,8 +26,7 @@ contract Market is Ownable, Initializable {
     // general setting keys
     bytes32 public constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
-    bytes32 public constant LIQUIDATION_PENALTY_RATIO =
-        "liquidationPenaltyRatio";
+    bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
     bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
@@ -276,6 +275,15 @@ contract Market is Ownable, Initializable {
         PriceOracle oracle_ = PriceOracle(priceOracle);
         uint256 len = perpTracker_.marketTokensLength();
         int pnl = 0;
+        int mtmRatio;
+        int feeRatio;
+        int minFee;
+        {
+            MarketSettings settings_ = MarketSettings(settings);
+            mtmRatio = settings_.getIntVals(MAINTENANCE_MARGIN_RATIO);
+            feeRatio = settings_.getIntVals(LIQUIDATION_FEE_RATIO);
+            minFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
+        }
         for (uint i = 0; i < len; ++i) {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
@@ -287,8 +295,14 @@ contract Market is Ownable, Initializable {
             if (position.size == 0) continue;
 
             int256 price = oracle_.getPrice(token, false);
-            // update notional value
-            positionNotional += position.size.abs().multiplyDecimal(price);
+            // update notional value & mtm
+            {
+                int notional = position.size.abs().multiplyDecimal(price);
+                positionNotional += notional;
+                mtm +=
+                    notional.multiplyDecimal(mtmRatio - feeRatio) +
+                    notional.multiplyDecimal(feeRatio).max(minFee);
+            }
             // update pnl by price
             pnl += position.size.multiplyDecimal(price - position.avgPrice);
             {
@@ -313,13 +327,8 @@ contract Market is Ownable, Initializable {
                         : nextAccShortFinancingFee - position.accFinancingFee
                 );
             }
+            // update mtm
         }
-        MarketSettings settings_ = MarketSettings(settings);
-        mtm = positionNotional.multiplyDecimal(
-            (settings_.getUintVals(MAINTENANCE_MARGIN_RATIO) +
-                settings_.getUintVals(LIQUIDATION_FEE_RATIO) +
-                settings_.getUintVals(LIQUIDATION_PENALTY_RATIO)).toInt256()
-        );
         currentMargin =
             tokenToUsd(baseToken, perpTracker_.userMargin(_account), false) +
             pnl;
@@ -398,12 +407,12 @@ contract Market is Ownable, Initializable {
      * @notice compute the fill price of liquidation
      * @param _account account to liquidate
      * @param _token token to liquidate
-     * @return liquidation price, liquidation size
+     * @return liquidation price, liquidation notional
      */
     function computePerpLiquidatePrice(
         address _account,
         address _token
-    ) external view returns (int256, int256) {
+    ) external view returns (int256, int256, int256) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
         int256 oraclePrice = PriceOracle(priceOracle).getPrice(_token, true);
         int256 size = perpTracker_.getPositionSize(_account, _token);
@@ -415,7 +424,8 @@ contract Market is Ownable, Initializable {
                 oraclePrice,
                 lpNetValue
             ),
-            size
+            size,
+            size.multiplyDecimal(oraclePrice)
         );
     }
 

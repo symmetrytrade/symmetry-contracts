@@ -20,6 +20,10 @@ contract FeeTracker is Ownable, Initializable {
 
     // general setting keys
     bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
+    bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
+    bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
+    bytes32 public constant LIQUIDATION_PENALTY_RATIO =
+        "liquidationPenaltyRatio";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
     bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
@@ -74,12 +78,10 @@ contract FeeTracker is Ownable, Initializable {
         int skew = perpTracker_.currentSkew(_token);
         if (skew == 0) return (0, 0);
         tradeAmount = skew.multiplyDecimal(_redeemValue).divideDecimal(_lp);
-        int kLP = settings_
-            .getUintValsByMarket(
-                perpTracker_.marketKey(_token),
-                PROPORTION_RATIO
-            )
-            .toInt256();
+        int kLP = settings_.getIntValsByMarket(
+            perpTracker_.marketKey(_token),
+            PROPORTION_RATIO
+        );
         kLP = kLP.multiplyDecimal(_lp - _redeemValue);
         int price = PriceOracle(Market(market).priceOracle()).getPrice(
             _token,
@@ -109,9 +111,7 @@ contract FeeTracker is Ownable, Initializable {
 
         uint256 len = perpTracker_.marketTokensLength();
 
-        int lambda = MarketSettings(settings)
-            .getUintVals(MAX_SLIPPAGE)
-            .toInt256();
+        int lambda = MarketSettings(settings).getIntVals(MAX_SLIPPAGE);
         for (uint i = 0; i < len; ++i) {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
@@ -148,12 +148,10 @@ contract FeeTracker is Ownable, Initializable {
         // p_{avg}=p_{fill} / (1 - k%) for size > 0
         // p_{avg}=p_{fill} / (1 + k%) for size < 0
         // where k is trading fee ratio
-        int256 k = MarketSettings(settings)
-            .getUintValsByMarket(
-                perpTracker_.marketKey(_token),
-                PERP_TRADING_FEE
-            )
-            .toInt256();
+        int256 k = MarketSettings(settings).getIntValsByMarket(
+            perpTracker_.marketKey(_token),
+            PERP_TRADING_FEE
+        );
         // TODO: fee discount
         require(k < _UNIT, "Market: trading fee ratio > 1");
         if (_sizeDelta > 0) {
@@ -174,5 +172,21 @@ contract FeeTracker is Ownable, Initializable {
         int256 _price
     ) external view returns (int256, uint256) {
         return _discountedTradingFee(_account, _token, _sizeDelta, _price);
+    }
+
+    function liquidationPenalty(int notional) external view returns (int) {
+        int256 liquidationPenaltyRatio = MarketSettings(settings).getIntVals(
+            LIQUIDATION_PENALTY_RATIO
+        );
+        return notional.abs().multiplyDecimal(liquidationPenaltyRatio);
+    }
+
+    function liquidationFee(int notional) external view returns (int) {
+        int liquidationFeeRatio = MarketSettings(settings).getIntVals(
+            LIQUIDATION_FEE_RATIO
+        );
+        int fee = notional.abs().multiplyDecimal(liquidationFeeRatio);
+        int minFee = MarketSettings(settings).getIntVals(MIN_LIQUIDATION_FEE);
+        return minFee.max(fee);
     }
 }

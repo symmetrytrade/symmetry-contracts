@@ -30,7 +30,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
         const key = hre.ethers.utils.formatBytes32String(term);
         const value = hre.ethers.BigNumber.from(rawValue);
-        await (await settings_.setUintVals(key, value)).wait();
+        await (await settings_.setIntVals(key, value)).wait();
     }
 
     // set market specific config
@@ -42,7 +42,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         for (const [k, v] of Object.entries(conf)) {
             const key = perpConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);
-            await (await settings_.setUintVals(key, value)).wait();
+            await (await settings_.setIntVals(key, value)).wait();
         }
     }
 };
