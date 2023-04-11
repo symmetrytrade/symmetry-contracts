@@ -17,9 +17,9 @@ contract PerpTracker is Ownable, Initializable {
     bytes32 public constant PERP_DOMAIN = "perpDomain";
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant HARD_LIMIT_THRESHOLD = "hardLimitThreshold";
+    bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
-    bytes32 public constant LAMBDA_PREMIUM = "lambdaPremium";
     bytes32 public constant K_LP_LIMIT = "kLpLimit";
     bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
     bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
@@ -356,9 +356,7 @@ contract PerpTracker is Ownable, Initializable {
     ) external view returns (int256 avgPrice) {
         MarketSettings settings_ = MarketSettings(settings);
 
-        int lambda = settings_
-            .getUintValsByMarket(marketKey(_token), LAMBDA_PREMIUM)
-            .toInt256();
+        int lambda = settings_.getUintVals(MAX_SLIPPAGE).toInt256();
         int skew = currentSkew(_token);
         int kLP = settings_
             .getUintValsByMarket(marketKey(_token), PROPORTION_RATIO)
