@@ -22,6 +22,7 @@ contract FeeTracker is Ownable, Initializable {
     bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
     bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
+    bytes32 public constant MAX_LIQUIDATION_FEE = "maxLiquidationFee";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
     // setting keys per market
@@ -187,6 +188,7 @@ contract FeeTracker is Ownable, Initializable {
         );
         int fee = notional.abs().multiplyDecimal(liquidationFeeRatio);
         int minFee = MarketSettings(settings).getIntVals(MIN_LIQUIDATION_FEE);
-        return minFee.max(fee);
+        int maxFee = MarketSettings(settings).getIntVals(MAX_LIQUIDATION_FEE);
+        return fee.max(minFee).min(maxFee);
     }
 }

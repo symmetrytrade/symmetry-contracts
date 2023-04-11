@@ -16,6 +16,8 @@ interface MarketGeneralConfig {
     maintenanceMarginRatio: string;
     maxLeverageRatio: number;
     liquidationFeeRatio: string;
+    minLiquidationFee: string;
+    maxLiquidationFee: string;
     liquidationPenaltyRatio: string;
     liquidityRedeemFee: string;
     softLimitThreshold: string;
@@ -50,8 +52,10 @@ const DefaultConfig: NetworkConfigs = {
         maxPriceDivergence: normalized(1.005), // 0.5%
         maintenanceMarginRatio: normalized(0.02), // 2%
         maxLeverageRatio: 25, // 25x
-        liquidationFeeRatio: normalized(0.001), // 0.1%
-        liquidationPenaltyRatio: normalized(0.001), // 0.1%
+        liquidationFeeRatio: normalized(0.0035), // 0.35%
+        minLiquidationFee: normalized(1), // 1u
+        maxLiquidationFee: normalized(1000), // 1000u
+        liquidationPenaltyRatio: normalized(0.01), // 1%
         liquidityRedeemFee: normalized(0.001), // 0.1%
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
