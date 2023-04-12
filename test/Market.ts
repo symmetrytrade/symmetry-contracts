@@ -233,7 +233,7 @@ describe("Market", () => {
         expect(globalStatus.netOpenInterest).to.deep.eq(
             "15000000000000000000000"
         );
-        await increaseNextBlockTimestamp(5); // 60s
+        await increaseNextBlockTimestamp(5); // 5s
         await expect(
             positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
                 value: pythUpdateData.fee,
@@ -241,7 +241,7 @@ describe("Market", () => {
         ).to.be.revertedWith("PositionManager: order is not pending");
     });
     it("trade BTC short revert", async () => {
-        await increaseNextBlockTimestamp(5); // 10s
+        await increaseNextBlockTimestamp(5); // 5s
         await (
             await positionManager_.submitOrder(
                 WBTC,
