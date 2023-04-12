@@ -251,6 +251,7 @@ contract PositionManager is Ownable, Initializable {
                 order.token
             );
             shortSize = shortSize.abs();
+            // check single token limit
             int lpLimit = perpTracker_.lpLimitForToken(lpNetValue, order.token);
             require(
                 (order.size < 0 &&

@@ -69,6 +69,7 @@ contract FeeTracker is Ownable, Initializable {
 
     function _redeemTradeFillPrice(
         address _token,
+        int _oraclePrice,
         int _lp,
         int _redeemValue,
         int _lambda
@@ -83,15 +84,13 @@ contract FeeTracker is Ownable, Initializable {
             perpTracker_.marketKey(_token),
             PROPORTION_RATIO
         );
-        kLP = kLP.multiplyDecimal(_lp - _redeemValue);
-        int price = PriceOracle(Market(market).priceOracle()).getPrice(
-            _token,
-            false
+        kLP = kLP.multiplyDecimal(_lp - _redeemValue).divideDecimal(
+            _oraclePrice
         );
         fillPrice = perpTracker_.computePerpFillPriceRaw(
             skew - tradeAmount,
             tradeAmount,
-            price,
+            _oraclePrice,
             kLP,
             _lambda
         );
@@ -117,8 +116,12 @@ contract FeeTracker is Ownable, Initializable {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
+            int oraclePrice = PriceOracle(Market(market).priceOracle())
+                .getPrice(token, false);
+
             (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(
                 token,
+                oraclePrice,
                 lp,
                 redeemValue,
                 lambda
@@ -127,13 +130,17 @@ contract FeeTracker is Ownable, Initializable {
 
             // calculate fill price
             // calculate execution price and fee
-            (, uint256 tradingFee) = _discountedTradingFee(
+            (int256 execPrice, ) = _discountedTradingFee(
                 _account,
                 token,
                 tradeAmount,
                 fillPrice
             );
-            fee += tradingFee;
+            // pnl = (oracle_price - exec_price) * volume
+            // fee = |pnl| = -pnl
+            fee += (execPrice - oraclePrice)
+                .multiplyDecimal(tradeAmount)
+                .toUint256();
         }
     }
 

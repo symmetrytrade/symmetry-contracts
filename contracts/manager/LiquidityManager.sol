@@ -33,9 +33,10 @@ contract LiquidityManager is Ownable, Initializable {
 
     event RemoveLiquidity(
         address account,
-        uint256 burnAmount,
+        uint256 redeemAmount,
         int256 lpNetValue,
-        uint256 burnUsdAmount,
+        uint256 redeemUsdAmount,
+        uint256 redeemFee,
         uint256 amountOut
     );
 
@@ -93,8 +94,6 @@ contract LiquidityManager is Ownable, Initializable {
             usdAmount >= _minUsd,
             "LiquidityManager: insufficient usd amount"
         );
-        // transfer funds
-        market_.transferLiquidityIn(_account, _amount);
         // mint lp tokens
         LPToken lpToken_ = LPToken(lpToken);
         uint256 lpSupply = lpToken_.totalSupply();
@@ -110,6 +109,8 @@ contract LiquidityManager is Ownable, Initializable {
             "LiquidityManager: insufficient lp amount"
         );
         latestMint[_receiver] = block.timestamp;
+        // transfer funds
+        market_.transferLiquidityIn(_account, _amount);
         lpToken_.mint(_receiver, mintAmount);
 
         emit AddLiquidity(
@@ -133,28 +134,34 @@ contract LiquidityManager is Ownable, Initializable {
         (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
-        int256 redeemValue = (lpNetValue * _amount.toInt256()) /
+        int redeemValue = (lpNetValue * _amount.toInt256()) /
             lpToken_.totalSupply().toInt256(); // must be non-negative
+        int redeemFee = 0;
+        {
+            // redeem trade
+            redeemFee += FeeTracker(market_.feeTracker())
+                .redeemTradingFee(_account, lpNetValue, redeemValue)
+                .toInt256();
+            // redeem fee
+            redeemFee += MarketSettings(market_.settings())
+                .getIntVals(LIQUIDITY_REDEEM_FEE)
+                .multiplyDecimal(redeemValue);
+            // TODO: where the fee goes?
+        }
         require(
-            lpNetValue - netOpenInterest >= redeemValue,
+            redeemValue > redeemFee,
+            "LiquidityManager: non-positive redeem value"
+        );
+        require(
+            lpNetValue - netOpenInterest >= redeemValue - redeemFee,
             "LiquidityManager: insufficient free lp"
         );
-        redeemValue -= FeeTracker(market_.feeTracker())
-            .redeemTradingFee(_account, lpNetValue, redeemValue)
-            .toInt256();
-        require(redeemValue > 0, "LiquidityManager: non-positive redeem value");
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
         uint256 amountOut = market_
-            .usdToToken(market_.baseToken(), redeemValue, false)
+            .usdToToken(market_.baseToken(), redeemValue - redeemFee, false)
             .toUint256();
-        // redeem fee
-        uint256 redeemFee = MarketSettings(market_.settings())
-            .getIntVals(LIQUIDITY_REDEEM_FEE)
-            .toUint256()
-            .multiplyDecimal(amountOut);
-        amountOut -= redeemFee;
         require(
             amountOut >= _minOut,
             "LiquidityManager: insufficient amountOut"
@@ -166,6 +173,7 @@ contract LiquidityManager is Ownable, Initializable {
             _amount,
             lpNetValue,
             redeemValue.toUint256(),
+            redeemFee.toUint256(),
             amountOut
         );
 
