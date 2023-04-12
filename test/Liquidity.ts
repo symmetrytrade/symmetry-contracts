@@ -5,21 +5,27 @@ import {
     MAX_UINT256,
     UNIT,
     getProxyContract,
+    normalized,
 } from "../src/utils/utils";
-import { setupPrices } from "../src/utils/test_utils";
+import {
+    getPythUpdateData,
+    increaseNextBlockTimestamp,
+    printValues,
+    setupPrices,
+} from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
-    USDC: 0.998,
+    USDC: 0.98,
     WETH: 1500,
     WBTC: 20000,
 };
 
 const pythPrices: { [key: string]: number } = {
-    USDC: 0.998,
+    USDC: 0.98,
     WETH: 1500,
     WBTC: 20000,
 };
@@ -29,6 +35,7 @@ describe("Liquidity", () => {
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
     let market_: ethers.Contract;
+    let perpTracker_: ethers.Contract;
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let lpToken_: ethers.Contract;
@@ -46,6 +53,11 @@ describe("Liquidity", () => {
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);
+        perpTracker_ = await getProxyContract(
+            hre,
+            CONTRACTS.PerpTracker,
+            account1
+        );
         liquidityManager_ = await getProxyContract(
             hre,
             CONTRACTS.LiquidityManager,
@@ -71,8 +83,8 @@ describe("Liquidity", () => {
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
         const amount = hre.ethers.BigNumber.from(100000).mul(UNIT);
-        const minUsd = hre.ethers.BigNumber.from(99800).mul(UNIT);
-        const minLp = hre.ethers.BigNumber.from(99800).mul(UNIT);
+        const minUsd = hre.ethers.BigNumber.from(98000).mul(UNIT);
+        const minLp = hre.ethers.BigNumber.from(98000).mul(UNIT);
         await expect(
             liquidityManager_.addLiquidity(
                 amount,
@@ -129,22 +141,26 @@ describe("Liquidity", () => {
             .withArgs(
                 await account1.getAddress(),
                 minLp,
-                minUsd,
-                minUsd,
+                normalized(98000),
+                normalized(98000),
+                normalized(98),
                 amount.sub(amount.div(1000))
             );
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(
-            amount.div(1000000).mul(998)
+            amount.div(1000000).mul(980)
         );
         expect(globalStatus.netOpenInterest).to.deep.eq(0);
+        expect(
+            await lpToken_.balanceOf(await account1.getAddress())
+        ).to.deep.eq(0);
     });
 
     it("deposit&remove at non-zero skew", async () => {
         // first deposit
         const amount = hre.ethers.BigNumber.from(100000).mul(UNIT);
-        const minUsd = hre.ethers.BigNumber.from(99800).mul(UNIT);
-        const minLp = hre.ethers.BigNumber.from(99800).mul(UNIT);
+        const minUsd = hre.ethers.BigNumber.from(98000).mul(UNIT);
+        const minLp = hre.ethers.BigNumber.from(98000).mul(UNIT);
         await (
             await liquidityManager_.addLiquidity(
                 amount,
@@ -153,6 +169,101 @@ describe("Liquidity", () => {
                 await account1.getAddress()
             )
         ).wait();
+        expect(
+            await lpToken_.balanceOf(await account1.getAddress())
+        ).to.deep.eq(minLp);
+
         // trade
+        await (
+            await positionManager_.depositMargin(
+                hre.ethers.BigNumber.from(1500).mul(UNIT)
+            )
+        ).wait();
+        await (
+            await positionManager_.submitOrder(
+                WETH,
+                normalized(1),
+                normalized(1550),
+                normalized(1),
+                (await helpers.time.latest()) + 100
+            )
+        ).wait();
+        const orderId = (await positionManager_.orderCnt()).sub(1);
+
+        await increaseNextBlockTimestamp(
+            config.marketGeneralConfig.minOrderDelay
+        ); // 60s
+
+        const pythUpdateData = await getPythUpdateData(hre, { WETH: 1500 });
+        await expect(
+            positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
+                value: pythUpdateData.fee,
+            })
+        )
+            .to.emit(market_, "Traded")
+            .withArgs(
+                await account1.getAddress(),
+                WETH,
+                normalized(1),
+                "1507241303159670506006", // avg price
+                "1507241303159670506" // trading fee
+            );
+        const lpPosition = await perpTracker_.getLpPosition(WETH);
+        expect(lpPosition.longSize).to.deep.eq(0);
+        expect(lpPosition.shortSize).to.deep.eq(normalized(-1));
+        // second deposit
+        await increaseNextBlockTimestamp(5); // 5s
+        await expect(
+            liquidityManager_.addLiquidity(
+                amount,
+                minUsd,
+                0,
+                await account1.getAddress()
+            )
+        )
+            .to.emit(liquidityManager_, "AddLiquidity")
+            .withArgs(
+                await account1.getAddress(),
+                amount,
+                "98105241314680774335006",
+                normalized(98000),
+                "97894871581777838018054"
+            );
+        // first remove
+        await increaseNextBlockTimestamp(5); // 5s
+        expect(await lpToken_.totalSupply()).to.deep.eq(
+            "195894871581777838018054"
+        );
+        await expect(
+            liquidityManager_.removeLiquidity(
+                "97947435790888919009027",
+                0,
+                await account1.getAddress()
+            )
+        )
+            .to.emit(liquidityManager_, "RemoveLiquidity")
+            .withArgs(
+                await account1.getAddress(),
+                "97947435790888919009027",
+                "196105241349244085823506",
+                "98052620674622042911753",
+                "103110214979291145763",
+                "99948480060859950781622"
+            );
+        expect(await lpToken_.totalSupply()).to.deep.eq(
+            "97947435790888919009027"
+        );
+        expect(
+            await lpToken_.balanceOf(await account1.getAddress())
+        ).to.deep.eq("97947435790888919009027");
+        // second remove
+        await increaseNextBlockTimestamp(5); // 5s
+        await expect(
+            liquidityManager_.removeLiquidity(
+                normalized(97500),
+                0,
+                await account1.getAddress()
+            )
+        ).to.be.revertedWith("LiquidityManager: insufficient free lp");
     });
 });
