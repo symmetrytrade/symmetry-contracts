@@ -25,9 +25,9 @@ contract FeeTracker is Ownable, Initializable {
     bytes32 public constant MAX_LIQUIDATION_FEE = "maxLiquidationFee";
     bytes32 public constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
+    bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
-    bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 
     // states
     address public market; // market
@@ -132,7 +132,6 @@ contract FeeTracker is Ownable, Initializable {
             // calculate execution price and fee
             (int256 execPrice, ) = _discountedTradingFee(
                 _account,
-                token,
                 tradeAmount,
                 fillPrice
             );
@@ -146,20 +145,15 @@ contract FeeTracker is Ownable, Initializable {
 
     function _discountedTradingFee(
         address,
-        address _token,
         int256 _sizeDelta,
         int256 _price
     ) internal view returns (int256 execPrice, uint256 fee) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
         // deduct trading fee in the price
         // (p_{oracle}-p_{avg})*size=(p_{oracle}-p_{fill})*size-p_{avg}*|size|*k%
         // p_{avg}=p_{fill} / (1 - k%) for size > 0
         // p_{avg}=p_{fill} / (1 + k%) for size < 0
         // where k is trading fee ratio
-        int256 k = MarketSettings(settings).getIntValsByMarket(
-            perpTracker_.marketKey(_token),
-            PERP_TRADING_FEE
-        );
+        int256 k = MarketSettings(settings).getIntVals(PERP_TRADING_FEE);
         // TODO: fee discount
         require(k < _UNIT, "Market: trading fee ratio > 1");
         if (_sizeDelta > 0) {
@@ -175,11 +169,10 @@ contract FeeTracker is Ownable, Initializable {
 
     function discountedTradingFee(
         address _account,
-        address _token,
         int256 _sizeDelta,
         int256 _price
     ) external view returns (int256, uint256) {
-        return _discountedTradingFee(_account, _token, _sizeDelta, _price);
+        return _discountedTradingFee(_account, _sizeDelta, _price);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {

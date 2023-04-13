@@ -155,7 +155,9 @@ contract PriceOracle is Ownable, Initializable {
         bytes[] calldata _priceUpdateData
     ) external payable {
         if (_priceUpdateData.length == 0) {
-            payable(_sender).transfer(msg.value);
+            if (msg.value > 0) {
+                payable(_sender).transfer(msg.value);
+            }
             return;
         }
         IPyth pythOracle_ = IPyth(pythOracle);

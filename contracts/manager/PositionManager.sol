@@ -239,7 +239,8 @@ contract PositionManager is Ownable, Initializable {
         // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(
             !leverageRatioExceeded(order.account) ||
-                (prevSize + order.size) * order.size <= 0,
+                (prevSize < 0 && order.size > 0 && prevSize + order.size < 0) ||
+                (prevSize > 0 && order.size < 0 && prevSize + order.size > 0),
             "PositionManager: leverage ratio too large"
         );
         // update token market info
