@@ -1,6 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
+    ADDR0,
     CONTRACTS,
     MAX_UINT256,
     UNIT,
@@ -43,6 +44,7 @@ describe("Market", () => {
     let WETH: string;
     let WBTC: string;
     let USDC_: ethers.Contract;
+    let feeTracker_: ethers.Contract;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];
@@ -76,6 +78,11 @@ describe("Market", () => {
         positionManager_ = await getProxyContract(
             hre,
             CONTRACTS.PositionManager,
+            account1
+        );
+        feeTracker_ = await getProxyContract(
+            hre,
+            CONTRACTS.FeeTracker,
             account1
         );
         config = getConfig(hre.network.name);
@@ -396,5 +403,20 @@ describe("Market", () => {
         expect(globalStatus.netOpenInterest).to.deep.eq(
             "15000000000000000000000"
         );
+    });
+    it("set functions", async () => {
+        market_ = market_.connect(deployer);
+        await market_.setOracle(ADDR0);
+        expect(await market_.priceOracle()).to.eq(ADDR0);
+        await market_.setSetting(ADDR0);
+        expect(await market_.settings()).to.eq(ADDR0);
+
+        feeTracker_ = feeTracker_.connect(deployer);
+        await feeTracker_.setMarket(ADDR0);
+        expect(await feeTracker_.market()).to.eq(ADDR0);
+        await feeTracker_.setPerpTracker(ADDR0);
+        expect(await feeTracker_.perpTracker()).to.eq(ADDR0);
+        await feeTracker_.setSetting(ADDR0);
+        expect(await feeTracker_.settings()).to.eq(ADDR0);
     });
 });

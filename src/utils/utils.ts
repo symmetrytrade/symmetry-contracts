@@ -14,6 +14,7 @@ export const PERP_DOMAIN =
 export const UNIT = "1000000000000000000";
 export const MAX_UINT256 =
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
 export function normalized(x: number) {
     return new BigNumber(x).multipliedBy(UNIT).toString(10);

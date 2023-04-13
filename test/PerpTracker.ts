@@ -1,6 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
+    ADDR0,
     CONTRACTS,
     getProxyContract,
     normalized,
@@ -275,5 +276,11 @@ describe("PerpTracker", () => {
             normalized(2000)
         );
         expect(ans.nextPrice).to.deep.eq(normalized(2000));
+    });
+    it("set functions", async () => {
+        await perpTracker_.setMarket(ADDR0);
+        expect(await perpTracker_.market()).to.eq(ADDR0);
+        await perpTracker_.setSetting(ADDR0);
+        expect(await perpTracker_.settings()).to.eq(ADDR0);
     });
 });
