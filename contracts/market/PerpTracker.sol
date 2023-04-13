@@ -7,6 +7,7 @@ import "../utils/Initializable.sol";
 import "../utils/SafeCast.sol";
 import "./Market.sol";
 import "./MarketSettings.sol";
+import "../oracle/PriceOracle.sol";
 
 contract PerpTracker is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
@@ -18,11 +19,11 @@ contract PerpTracker is Ownable, Initializable {
     bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
     bytes32 public constant HARD_LIMIT_THRESHOLD = "hardLimitThreshold";
     bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
+    bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
+    bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
+    bytes32 public constant TOKEN_OI_LIMIT_RATIO = "tokenOILimitRatio";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
-    bytes32 public constant K_LP_LIMIT = "kLpLimit";
-    bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
-    bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
 
     // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
     int256 private constant _UNIT = int(10 ** 18);
@@ -131,6 +132,16 @@ contract PerpTracker is Ownable, Initializable {
 
     /*=== view functions === */
 
+    function getTokenInfo(
+        address _token
+    ) external view returns (TokenInfo memory) {
+        return tokenInfos[_token];
+    }
+
+    function getFeeInfo(address _token) external view returns (FeeInfo memory) {
+        return feeInfos[_token];
+    }
+
     function getLpPosition(
         address _token
     ) external view returns (LpPosition memory) {
@@ -163,10 +174,6 @@ contract PerpTracker is Ownable, Initializable {
         address _token
     ) external view returns (int256) {
         return userPositions[_account][_token].size;
-    }
-
-    function latestAccFunding(address _token) external view returns (int256) {
-        return feeInfos[_token].accFunding;
     }
 
     function latestUpdated(address _token) external view returns (uint) {
@@ -518,10 +525,7 @@ contract PerpTracker is Ownable, Initializable {
             .getIntValsByMarket(marketKey(_token), PROPORTION_RATIO)
             .multiplyDecimal(lp);
         // max velocity
-        int256 maxVelocity = settings_.getIntValsByMarket(
-            marketKey(_token),
-            MAX_FUNDING_VELOCITY
-        );
+        int256 maxVelocity = settings_.getIntVals(MAX_FUNDING_VELOCITY);
         if (denominator > 0) {
             return
                 numerator
@@ -609,21 +613,27 @@ contract PerpTracker is Ownable, Initializable {
     }
 
     /**
-     * @dev get lp limit for token
+     * @dev get lp limit for token in token size
      */
     function lpLimitForToken(
         int256 _lp,
         address _token
     ) public view returns (int) {
-        int threshold = MarketSettings(settings).getIntValsByMarket(
-            marketKey(_token),
-            K_LP_LIMIT
+        int threshold = MarketSettings(settings).getIntVals(
+            TOKEN_OI_LIMIT_RATIO
         );
         int pr = MarketSettings(settings).getIntValsByMarket(
             marketKey(_token),
             PROPORTION_RATIO
         );
-        return _lp.multiplyDecimal(threshold).multiplyDecimal(pr);
+        int oraclePrice = PriceOracle(Market(market).priceOracle()).getPrice(
+            _token,
+            false
+        );
+        return
+            _lp.multiplyDecimal(threshold).multiplyDecimal(pr).divideDecimal(
+                oraclePrice
+            );
     }
 
     function _nextFinancingFeeRate(address _token) internal view returns (int) {
@@ -647,10 +657,7 @@ contract PerpTracker is Ownable, Initializable {
                 lpHardLimit(lp)
             );
 
-            int256 maxFeeRate = settings_.getIntValsByMarket(
-                marketKey(_token),
-                MAX_FINANCING_FEE_RATE
-            );
+            int256 maxFeeRate = settings_.getIntVals(MAX_FINANCING_FEE_RATE);
             if (denominator > 0) {
                 return
                     numerator

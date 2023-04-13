@@ -29,7 +29,6 @@ contract Market is Ownable, Initializable {
     bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
-    bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
 
     // states
     address public baseToken; // liquidity token
@@ -470,7 +469,7 @@ contract Market is Ownable, Initializable {
         );
 
         (int256 execPrice, uint256 tradingFee) = FeeTracker(feeTracker)
-            .discountedTradingFee(_account, _token, _sizeDelta, _price);
+            .discountedTradingFee(_account, _sizeDelta, _price);
 
         // funding fee
         perpTracker_.settleFunding(_account, _token);
