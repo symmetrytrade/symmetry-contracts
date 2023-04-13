@@ -26,14 +26,14 @@ interface MarketGeneralConfig {
     minKeeperFee: string;
     minMargin: string;
     maxSlippage: string;
+    maxFundingVelocity: string;
+    maxFinancingFeeRate: string;
+    perpTradingFee: string;
+    tokenOILimitRatio: string;
 }
 
 interface MarketConfig {
-    maxFundingVelocity: string;
-    kLpLimit: string; // k used in check max position size
     proportionRatio: string;
-    perpTradingFee: string;
-    maxFinancingFeeRate: string;
 }
 
 export interface NetworkConfigs {
@@ -63,21 +63,17 @@ const DefaultConfig: NetworkConfigs = {
         minKeeperFee: normalized(1), // 1 usd
         minMargin: normalized(50), // 20 usd
         maxSlippage: normalized(0.5),
+        maxFundingVelocity: normalized(300), // 30000% / day^2
+        maxFinancingFeeRate: normalized(0.09), // 9% per day
+        perpTradingFee: normalized(0.001), // 0.1%
+        tokenOILimitRatio: normalized(0.7),
     },
     marketConfig: {
         WBTC: {
-            maxFundingVelocity: normalized(300),
-            kLpLimit: normalized(0.8),
             proportionRatio: normalized(1),
-            perpTradingFee: normalized(0.001),
-            maxFinancingFeeRate: normalized(100), // 100% per day
         },
         WETH: {
-            maxFundingVelocity: normalized(300),
-            kLpLimit: normalized(0.7),
             proportionRatio: normalized(1),
-            perpTradingFee: normalized(0.001),
-            maxFinancingFeeRate: normalized(100), // 100% per day
         },
     },
 };

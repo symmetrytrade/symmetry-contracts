@@ -1,6 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
+    ADDR0,
     CONTRACTS,
     MAX_UINT256,
     UNIT,
@@ -265,5 +266,12 @@ describe("Liquidity", () => {
                 await account1.getAddress()
             )
         ).to.be.revertedWith("LiquidityManager: insufficient free lp");
+    });
+
+    it("set functions", async () => {
+        liquidityManager_ = liquidityManager_.connect(deployer);
+        await liquidityManager_.setMarket(ADDR0, ADDR0);
+        expect(await liquidityManager_.market()).to.eq(ADDR0);
+        expect(await liquidityManager_.lpToken()).to.eq(ADDR0);
     });
 });
