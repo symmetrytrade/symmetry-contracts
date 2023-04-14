@@ -45,6 +45,39 @@ contract PositionManager is Ownable, Initializable {
     uint256 public orderCnt;
 
     event OrderStatusChanged(uint256 orderId, OrderStatus status);
+    // liquidationFee in USD, out amount in base token
+    event LiquidationFee(
+        address account,
+        int notionalLiquidated,
+        address liquidator,
+        int liquidationFee,
+        uint accountOut,
+        uint insuranceOut,
+        uint lpOut
+    );
+    // liquidationPenalty in USD, penaltyAmount in base token
+    event LiquidationPenalty(
+        address account,
+        int notionalLiquidated,
+        address liquidator,
+        int liquidationPenalty,
+        uint penaltyAmount
+    );
+    // deficitLoss in usd, out amount in base token
+    event DeficitLoss(
+        address account,
+        int deficitLoss,
+        uint insuranceOut,
+        uint lpOut
+    );
+    event Liquidated(
+        address account,
+        address token,
+        int notionalLiquidated,
+        int liquidationFee,
+        int liquidationPenalty,
+        int deficitLoss
+    );
 
     /*=== initialize ===*/
 
@@ -285,6 +318,85 @@ contract PositionManager is Ownable, Initializable {
         emit OrderStatusChanged(_id, OrderStatus.Executed);
     }
 
+    function _payLiquidationFee(
+        address _account,
+        int _margin,
+        int _notionalLiquidated
+    ) internal returns (int liquidationFee) {
+        Market market_ = Market(market);
+        liquidationFee = FeeTracker(market_.feeTracker()).liquidationFee(
+            _notionalLiquidated
+        );
+        uint accountOut;
+        uint lpOut;
+        uint insuranceOut;
+        if (_margin >= liquidationFee) {
+            // margin is sufficient to pay liquidation fee
+            accountOut = market_.deductFeeFromAccount(
+                _account,
+                liquidationFee.toUint256(),
+                msg.sender
+            );
+        } else if (_margin > 0) {
+            // margin is insufficient, deduct fee from user margin, then from insurance, lp
+            accountOut = market_.deductFeeFromAccount(
+                _account,
+                _margin.toUint256(),
+                msg.sender
+            );
+            (insuranceOut, lpOut) = market_.deductFeeFromInsurance(
+                (liquidationFee - _margin).toUint256(),
+                msg.sender
+            );
+        } else {
+            (insuranceOut, lpOut) = market_.deductFeeFromInsurance(
+                liquidationFee.toUint256(),
+                msg.sender
+            );
+        }
+        emit LiquidationFee(
+            _account,
+            _notionalLiquidated,
+            msg.sender,
+            liquidationFee,
+            accountOut,
+            insuranceOut,
+            lpOut
+        );
+    }
+
+    function _payLiquidationPenalty(
+        address _account,
+        int _margin,
+        int _notionalLiquidated
+    ) internal returns (int liquidationPenalty) {
+        if (_margin <= 0) return 0;
+
+        Market market_ = Market(market);
+        liquidationPenalty = FeeTracker(market_.feeTracker())
+            .liquidationPenalty(_notionalLiquidated)
+            .min(_margin);
+        uint penaltyAmount = market_.deductPenaltyToInsurance(
+            _account,
+            liquidationPenalty.toUint256()
+        );
+        emit LiquidationPenalty(
+            _account,
+            _notionalLiquidated,
+            msg.sender,
+            liquidationPenalty,
+            penaltyAmount
+        );
+    }
+
+    function _coverDeficitLoss(address _account, int _deficitLoss) internal {
+        (uint insuranceOut, uint lpOut) = Market(market).coverDeficitLoss(
+            _account,
+            _deficitLoss
+        );
+        emit DeficitLoss(_account, _deficitLoss, insuranceOut, lpOut);
+    }
+
     /**
      * @notice liquidate an account by closing the whole position of a token
      * @param _account account to liquidate
@@ -297,7 +409,6 @@ contract PositionManager is Ownable, Initializable {
         bytes[] calldata _priceUpdateData
     ) external payable {
         Market market_ = Market(market);
-        FeeTracker feeTracker_ = FeeTracker(market_.feeTracker());
         // update oracle price
         PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
@@ -311,66 +422,42 @@ contract PositionManager is Ownable, Initializable {
             "PositionManager: account is not liquidatable"
         );
         // compute liquidation price
-        (int256 liquidationPrice, int256 size, int256 notional) = market_
-            .computePerpLiquidatePrice(_account, _token);
+        (
+            int256 liquidationPrice,
+            int256 size,
+            int256 notionalLiquidated
+        ) = market_.computePerpLiquidatePrice(_account, _token);
         // close position
         market_.trade(_account, _token, size, liquidationPrice);
         // update global info
         market_.updateTokenInfo(_token);
         // post trade margin
         (, int256 currentMargin, ) = market_.accountMarginStatus(_account);
-        // deduct liquidation fee to liquidator
-        {
-            int liquidationFee = feeTracker_.liquidationFee(notional);
-            if (currentMargin >= liquidationFee) {
-                // margin is sufficient to pay liquidation fee
-                market_.deductFeeFromAccount(
-                    _account,
-                    liquidationFee.toUint256(),
-                    msg.sender
-                );
-                currentMargin -= liquidationFee;
-            } else {
-                // margin is insufficient, deduct fee from user margin, then from insurance, lp
-                if (currentMargin > 0) {
-                    liquidationFee -= currentMargin;
-                    market_.deductFeeFromAccount(
-                        _account,
-                        currentMargin.toUint256(),
-                        msg.sender
-                    );
-                    currentMargin = 0;
-                }
-                market_.deductFeeFromInsurance(
-                    liquidationFee.toUint256(),
-                    msg.sender
-                );
-            }
-        }
-        // deduct liquidation penalty to insurance account
-        {
-            int liquidationPenalty = feeTracker_.liquidationPenalty(notional);
-            if (currentMargin >= liquidationPenalty) {
-                // margin is sufficient
-                market_.deductPenaltyToInsurance(
-                    _account,
-                    liquidationPenalty.toUint256()
-                );
-            } else {
-                // margin is insufficient, deduct fee from user margin, then from insurance, lp
-                if (currentMargin > 0) {
-                    liquidationPenalty -= currentMargin;
-                    market_.deductPenaltyToInsurance(
-                        _account,
-                        currentMargin.toUint256()
-                    );
-                    currentMargin = 0;
-                }
-            }
-        }
         // fill the exceeding loss from insurance account
+        int deficitLoss;
         if (currentMargin < 0) {
-            market_.fillExceedingLoss(_account, uint256(-currentMargin));
+            deficitLoss = -currentMargin;
+            _coverDeficitLoss(_account, deficitLoss);
         }
+        // deduct liquidation fee to liquidator
+        int liquidationFee = _payLiquidationFee(
+            _account,
+            currentMargin,
+            notionalLiquidated
+        );
+        // deduct liquidation penalty to insurance account
+        int liquidationPenalty = _payLiquidationPenalty(
+            _account,
+            (currentMargin - liquidationFee).max(0),
+            notionalLiquidated
+        );
+        emit Liquidated(
+            _account,
+            _token,
+            notionalLiquidated,
+            liquidationFee,
+            liquidationPenalty,
+            deficitLoss
+        );
     }
 }
