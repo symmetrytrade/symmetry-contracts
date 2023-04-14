@@ -1,6 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
+    ADDR0,
     CONTRACTS,
     MAX_UINT256,
     UNIT,
@@ -539,5 +540,9 @@ describe("Position", () => {
         await (
             await positionManager_.withdrawMargin("50000021895086000000")
         ).wait();
+    });
+    it("set functions", async () => {
+        await positionManager_.setMarket(ADDR0);
+        expect(await positionManager_.market()).to.eq(ADDR0);
     });
 });
