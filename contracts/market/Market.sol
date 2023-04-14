@@ -173,6 +173,22 @@ contract Market is Ownable, Initializable {
 
     /*=== insurance ===*/
 
+    function _deductInsuranceAndLp(
+        uint amount
+    ) internal returns (uint insuranceOut, uint lpOut) {
+        if (insuranceBalance >= amount) {
+            insuranceOut = amount;
+            insuranceBalance -= amount;
+        } else {
+            // if insurance is insufficient, pay rest fee by lp
+            insuranceOut = insuranceBalance;
+            lpOut = amount - insuranceBalance;
+
+            insuranceBalance = 0;
+            liquidityBalance -= int(lpOut);
+        }
+    }
+
     /**
      * @param _fee fee to pay in usd
      * @param _receiver fee receiver
@@ -180,34 +196,20 @@ contract Market is Ownable, Initializable {
     function deductFeeFromInsurance(
         uint256 _fee,
         address _receiver
-    ) external onlyOperator {
+    ) external onlyOperator returns (uint insuranceOut, uint lpOut) {
         uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
             .toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
-        if (insuranceBalance >= _fee) {
-            insuranceBalance -= _fee;
-        } else {
-            // if insurance is insufficient, pay rest fee by lp
-            _fee -= insuranceBalance;
-            insuranceBalance = 0;
-            liquidityBalance -= int(_fee);
-        }
+        return _deductInsuranceAndLp(amount);
     }
 
-    function fillExceedingLoss(
+    function coverDeficitLoss(
         address _account,
-        uint256 _loss
-    ) external onlyOperator {
-        uint256 amount = usdToToken(baseToken, _loss.toInt256(), false)
-            .toUint256();
+        int256 _loss
+    ) external onlyOperator returns (uint insuranceOut, uint lpOut) {
+        uint256 amount = usdToToken(baseToken, _loss, false).toUint256();
         PerpTracker(perpTracker).addMargin(_account, amount);
-        if (insuranceBalance > amount) {
-            insuranceBalance -= amount;
-        } else {
-            amount -= insuranceBalance;
-            insuranceBalance = 0;
-            liquidityBalance -= int(amount);
-        }
+        return _deductInsuranceAndLp(amount);
     }
 
     /*=== margin ===*/
@@ -237,9 +239,8 @@ contract Market is Ownable, Initializable {
         address _account,
         uint256 _fee,
         address _receiver
-    ) external onlyOperator {
-        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
-            .toUint256();
+    ) external onlyOperator returns (uint amount) {
+        amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
         PerpTracker(perpTracker).removeMargin(_account, amount);
     }
@@ -251,9 +252,8 @@ contract Market is Ownable, Initializable {
     function deductPenaltyToInsurance(
         address _account,
         uint256 _fee
-    ) external onlyOperator {
-        uint256 amount = usdToToken(baseToken, _fee.toInt256(), false)
-            .toUint256();
+    ) external onlyOperator returns (uint amount) {
+        amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
         PerpTracker(perpTracker).removeMargin(_account, amount);
         insuranceBalance += amount;
     }
