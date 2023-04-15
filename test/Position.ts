@@ -532,7 +532,6 @@ describe("Position", () => {
         await (await positionManager_.executeOrder(orderId, [])).wait();
 
         status = await market_.accountMarginStatus(await account2.getAddress());
-        printValues("status", status);
         expect(status.mtm).to.deep.eq(0);
         expect(status.currentMargin).to.deep.eq("50000021895086000000");
         expect(status.positionNotional).to.deep.eq(0);
@@ -542,6 +541,7 @@ describe("Position", () => {
         ).wait();
     });
     it("set functions", async () => {
+        positionManager_ = positionManager_.connect(deployer);
         await positionManager_.setMarket(ADDR0);
         expect(await positionManager_.market()).to.eq(ADDR0);
     });
