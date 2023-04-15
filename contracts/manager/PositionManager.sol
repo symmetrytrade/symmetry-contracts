@@ -7,6 +7,7 @@ import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
+import "hardhat/console.sol";
 
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
@@ -74,6 +75,7 @@ contract PositionManager is Ownable, Initializable {
         address account,
         address token,
         int notionalLiquidated,
+        address liquidator,
         int liquidationFee,
         int liquidationPenalty,
         int deficitLoss
@@ -128,7 +130,7 @@ contract PositionManager is Ownable, Initializable {
     function isLiquidatable(address _account) public view returns (bool) {
         (int256 maintenanceMargin, int256 currentMargin, ) = Market(market)
             .accountMarginStatus(_account);
-        return maintenanceMargin <= currentMargin;
+        return maintenanceMargin > currentMargin;
     }
 
     function _leverageRatioExceeded(
@@ -455,6 +457,7 @@ contract PositionManager is Ownable, Initializable {
             _account,
             _token,
             notionalLiquidated,
+            msg.sender,
             liquidationFee,
             liquidationPenalty,
             deficitLoss
