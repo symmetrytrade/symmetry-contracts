@@ -7,7 +7,6 @@ import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
-import "hardhat/console.sol";
 
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
