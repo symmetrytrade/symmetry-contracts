@@ -195,6 +195,7 @@ describe("Market", () => {
                 normalized(10),
                 normalized(1550),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -216,7 +217,8 @@ describe("Market", () => {
                 WETH,
                 normalized(10),
                 "1507247042961328674174", // avg price
-                "15072470429613286741" // trading fee
+                "15072470429613286741", // trading fee
+                "0"
             );
         const userMargin = await perpTracker_.userMargin(
             await account1.getAddress()
@@ -229,7 +231,6 @@ describe("Market", () => {
         expect(position.accFunding).to.deep.eq(0);
         expect(position.avgPrice).to.deep.eq("1507247042961328674174");
         status = await market_.accountMarginStatus(await account1.getAddress());
-        // todo: mtm
         expect(status.currentMargin).to.deep.eq("1397529570386713258260");
         expect(status.positionNotional).to.deep.eq("15000000000000000000000");
         const lpPosition = await perpTracker_.getLpPosition(WETH);
@@ -255,6 +256,7 @@ describe("Market", () => {
                 normalized(-2),
                 normalized(15000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -285,6 +287,7 @@ describe("Market", () => {
                 normalized(-0.5),
                 normalized(15000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -306,7 +309,8 @@ describe("Market", () => {
                 WBTC,
                 normalized(-0.5),
                 "19929054323994577942057", // avg price
-                "9964527161997288971" // trading fee
+                "9964527161997288971", // trading fee
+                "0"
             );
         const userMargin = await perpTracker_.userMargin(
             await account1.getAddress()
@@ -329,7 +333,6 @@ describe("Market", () => {
         );
         expect(status.currentMargin).to.deep.eq("1361791020740706599289");
         expect(status.positionNotional).to.deep.eq("25000000000000000000000");
-        // todo: mtm
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
         expect(lpPosition.longSize).to.deep.eq(normalized(0.5));
         expect(lpPosition.shortSize).to.deep.eq(0);
@@ -348,6 +351,7 @@ describe("Market", () => {
                 normalized(0.5),
                 normalized(25000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -369,7 +373,8 @@ describe("Market", () => {
                 WBTC,
                 normalized(0.5),
                 "15015015015015015015015", // avg price
-                "7507507507507507507" // trading fee
+                "7507507507507507507", // trading fee
+                "0"
             );
         // funding of BTC position
         // since the short BTC trade, there should be 10 + 60 = 70s passed
@@ -392,7 +397,6 @@ describe("Market", () => {
         );
         expect(status.currentMargin).to.deep.eq("3854098376460182356780");
         expect(status.positionNotional).to.deep.eq(normalized(15000));
-        // todo: mtm
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
         expect(lpPosition.longSize).to.deep.eq(0);
         expect(lpPosition.shortSize).to.deep.eq(0);

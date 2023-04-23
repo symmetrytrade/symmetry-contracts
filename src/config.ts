@@ -10,6 +10,7 @@ interface PythConfig {
     assetIds: { [key: string]: string };
 }
 
+// to be loaded in MarketSetting contract
 interface MarketGeneralConfig {
     pythMaxAge: number;
     maxPriceDivergence: string;
@@ -32,8 +33,15 @@ interface MarketGeneralConfig {
     tokenOILimitRatio: string;
 }
 
+// to be loaded in MarketSetting contract by market key
 interface MarketConfig {
     proportionRatio: string;
+}
+
+// to be loaded in separate contracts
+interface OtherConfig {
+    lockMaxTime: number;
+    tradingFeeTiers: TradingFeeTier[];
 }
 
 export interface NetworkConfigs {
@@ -43,6 +51,12 @@ export interface NetworkConfigs {
     gracePeriodTime: number;
     marketGeneralConfig: MarketGeneralConfig;
     marketConfig: { [key: string]: MarketConfig };
+    otherConfig: OtherConfig;
+}
+
+export interface TradingFeeTier {
+    portion: string;
+    discount: string;
 }
 
 const DefaultConfig: NetworkConfigs = {
@@ -75,6 +89,15 @@ const DefaultConfig: NetworkConfigs = {
         WETH: {
             proportionRatio: normalized(1),
         },
+    },
+    otherConfig: {
+        lockMaxTime: 3600 * 24 * 365 * 2, // 2 years
+        tradingFeeTiers: [
+            { portion: normalized(0.005), discount: normalized(0.1) },
+            { portion: normalized(0.001), discount: normalized(0.05) },
+            { portion: normalized(0.0001), discount: normalized(0.03) },
+            { portion: normalized(0.00001), discount: normalized(0.01) },
+        ],
     },
 };
 

@@ -21,7 +21,14 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.PositionManager.name}..`);
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    await (await positionManager_.initialize(market_.address)).wait();
+    const coupon_ = await getProxyContract(
+        hre,
+        CONTRACTS.TradingFeeCoupon,
+        deployer
+    );
+    await (
+        await positionManager_.initialize(market_.address, coupon_.address)
+    ).wait();
 
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
@@ -29,5 +36,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 deploy.tags = [CONTRACTS.PositionManager.name, "prod"];
-deploy.dependencies = [CONTRACTS.Market.name];
+deploy.dependencies = [CONTRACTS.Market.name, CONTRACTS.TradingFeeCoupon.name];
 export default deploy;

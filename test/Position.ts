@@ -161,6 +161,7 @@ describe("Position", () => {
                 normalized(701),
                 normalized(1000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -180,6 +181,7 @@ describe("Position", () => {
                 normalized(-701),
                 normalized(1000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -201,6 +203,7 @@ describe("Position", () => {
                 normalized(600),
                 normalized(1000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -217,7 +220,8 @@ describe("Position", () => {
                 WETH,
                 normalized(600),
                 normalized(1000), // avg price
-                0 // trading fee
+                0, // trading fee
+                0
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WETH);
         let feeInfo = await perpTracker_.getFeeInfo(WETH);
@@ -260,6 +264,7 @@ describe("Position", () => {
                 normalized(-60),
                 normalized(1000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -283,6 +288,7 @@ describe("Position", () => {
                 normalized(-20),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -299,7 +305,8 @@ describe("Position", () => {
                 WBTC,
                 normalized(-20),
                 normalized(10000), // avg price
-                0 // trading fee
+                0, // trading fee
+                0
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         let feeInfo = await perpTracker_.getFeeInfo(WBTC);
@@ -342,6 +349,7 @@ describe("Position", () => {
                 normalized(25),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -358,7 +366,8 @@ describe("Position", () => {
                 WBTC,
                 normalized(25),
                 normalized(10000), // avg price
-                0 // trading fee
+                0, // trading fee
+                0
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         let feeInfo = await perpTracker_.getFeeInfo(WBTC);
@@ -396,6 +405,7 @@ describe("Position", () => {
                 normalized(-655),
                 normalized(1000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -415,6 +425,7 @@ describe("Position", () => {
                 normalized(6),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -442,6 +453,7 @@ describe("Position", () => {
                 normalized(-5),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -459,6 +471,7 @@ describe("Position", () => {
                 normalized(-5),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -490,6 +503,7 @@ describe("Position", () => {
                 normalized(24.99999),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -522,6 +536,7 @@ describe("Position", () => {
                 normalized(0.00001),
                 normalized(10000),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
