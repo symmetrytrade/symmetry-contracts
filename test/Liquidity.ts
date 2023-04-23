@@ -186,6 +186,7 @@ describe("Liquidity", () => {
                 normalized(1),
                 normalized(1550),
                 normalized(1),
+                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -207,7 +208,8 @@ describe("Liquidity", () => {
                 WETH,
                 normalized(1),
                 "1507241303159670506006", // avg price
-                "1507241303159670506" // trading fee
+                "1507241303159670506", // trading fee
+                "0"
             );
         const lpPosition = await perpTracker_.getLpPosition(WETH);
         expect(lpPosition.longSize).to.deep.eq(0);
