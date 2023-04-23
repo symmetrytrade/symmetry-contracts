@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../market/MarketSettings.sol";
-import "../access/Ownable.sol";
 import "../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "../interfaces/pyth/IPyth.sol";
 import "../utils/Initializable.sol";
-import "../utils/SafeCast.sol";
 import "../utils/SafeDecimalMath.sol";
 
 contract PriceOracle is Ownable, Initializable {

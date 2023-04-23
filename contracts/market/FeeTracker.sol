@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
-import "../utils/SafeCast.sol";
 import "../oracle/PriceOracle.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";

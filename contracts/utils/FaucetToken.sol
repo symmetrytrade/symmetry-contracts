@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.2;
 
-import "../tokenomics/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract FaucetToken is ERC20 {
     constructor(
