@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../market/Market.sol";
 import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
-import "../utils/SafeCast.sol";
 import "../utils/Initializable.sol";
 import "../tokenomics/LPToken.sol";
 

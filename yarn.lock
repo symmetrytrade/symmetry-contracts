@@ -969,6 +969,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin/contracts@npm:4.8.3":
+  version: 4.8.3
+  resolution: "@openzeppelin/contracts@npm:4.8.3"
+  checksum: aea130d38d46840c5cbe3adbaa9a7ac645e4bd66ad3f3baf2fa78588c408d1a686170b3408c9e2e5e05530fba22ecdc00d7efb6b27852a8b29f91accbc0af255
+  languageName: node
+  linkType: hard
+
 "@openzeppelin/hardhat-upgrades@npm:^1.22.1":
   version: 1.22.1
   resolution: "@openzeppelin/hardhat-upgrades@npm:1.22.1"
@@ -5716,6 +5723,7 @@ __metadata:
     "@nomicfoundation/hardhat-toolbox": ^2.0.2
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13"
     "@nomiclabs/hardhat-etherscan": ^3.1.6
+    "@openzeppelin/contracts": 4.8.3
     "@openzeppelin/hardhat-upgrades": ^1.22.1
     "@typechain/ethers-v5": ^10.2.0
     "@typechain/hardhat": ^6.1.5

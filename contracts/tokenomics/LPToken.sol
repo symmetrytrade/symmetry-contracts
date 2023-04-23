@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../access/AccessControlEnumerable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "../utils/Initializable.sol";
 
 contract LPToken is AccessControlEnumerable, Initializable {
