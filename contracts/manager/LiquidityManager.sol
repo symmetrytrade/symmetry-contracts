@@ -7,7 +7,7 @@ import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
-import "../tokenomics/LPToken.sol";
+import "../tokens/LPToken.sol";
 
 contract LiquidityManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;

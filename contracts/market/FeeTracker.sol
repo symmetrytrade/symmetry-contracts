@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../oracle/PriceOracle.sol";
+import "../tokenomics/VotingEscrow.sol";
+import "../tokens/TradingFeeCoupon.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
 
@@ -29,10 +31,19 @@ contract FeeTracker is Ownable, Initializable {
     // setting keys per market
     bytes32 public constant PROPORTION_RATIO = "proportionRatio";
 
+    struct Tier {
+        uint256 portion; // veSYM holding portion
+        uint256 discount; // discount percent
+    }
+
     // states
     address public market; // market
     address public perpTracker; // perpetual position tracker
     address public settings; // settings for markets
+    address public votingEscrow; // voting escrow
+    address public coupon;
+
+    Tier[] public tradingFeeTiers; // trading fee tiers, in decending order
 
     modifier onlyMarket() {
         require(msg.sender == market, "FeeTracker: sender is not market");
@@ -42,10 +53,12 @@ contract FeeTracker is Ownable, Initializable {
     /*=== initialize ===*/
     function initialize(
         address _market,
-        address _perpTracker
+        address _perpTracker,
+        address _coupon
     ) external onlyInitializeOnce {
         market = _market;
         perpTracker = _perpTracker;
+        coupon = _coupon;
         settings = Market(_market).settings();
 
         _transferOwnership(msg.sender);
@@ -63,6 +76,48 @@ contract FeeTracker is Ownable, Initializable {
 
     function setSetting(address _settings) external onlyOwner {
         settings = _settings;
+    }
+
+    function setVotingEscrow(address _votingEscrow) external onlyOwner {
+        votingEscrow = _votingEscrow;
+    }
+
+    function setCoupon(address _coupon) external onlyOwner {
+        coupon = _coupon;
+    }
+
+    function setTradingFeeTiers(Tier[] memory _tiers) external onlyOwner {
+        delete tradingFeeTiers;
+
+        uint len = _tiers.length;
+        for (uint i = 0; i < len; ++i) {
+            tradingFeeTiers.push(_tiers[i]);
+        }
+    }
+
+    /*=== discount === */
+
+    function _vePortionOf(address _account) internal view returns (uint256) {
+        VotingEscrow votingEscrow_ = VotingEscrow(votingEscrow);
+
+        uint256 totalSupply = votingEscrow_.totalSupply();
+        if (totalSupply > 0) {
+            return votingEscrow_.balanceOf(_account).divideDecimal(totalSupply);
+        }
+        return 0;
+    }
+
+    function _tradingFeeDiscount(
+        address _account
+    ) internal view returns (uint256 discount) {
+        uint portion = _vePortionOf(_account);
+        uint len = tradingFeeTiers.length;
+        for (uint i = 0; i < len; ++i) {
+            if (portion > tradingFeeTiers[i].portion) {
+                discount = tradingFeeTiers[i].discount;
+                return discount;
+            }
+        }
     }
 
     /*=== perp trading fee ===*/
@@ -106,7 +161,7 @@ contract FeeTracker is Ownable, Initializable {
         address _account,
         int lp,
         int redeemValue
-    ) external view returns (uint fee) {
+    ) external returns (uint fee) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
 
         uint256 len = perpTracker_.marketTokensLength();
@@ -130,9 +185,10 @@ contract FeeTracker is Ownable, Initializable {
 
             // calculate fill price
             // calculate execution price and fee
-            (int256 execPrice, ) = _discountedTradingFee(
+            (int256 execPrice, , ) = _discountedTradingFee(
                 _account,
                 tradeAmount,
+                new uint256[](0),
                 fillPrice
             );
             // pnl = (oracle_price - exec_price) * volume
@@ -144,17 +200,21 @@ contract FeeTracker is Ownable, Initializable {
     }
 
     function _discountedTradingFee(
-        address,
+        address _account,
         int256 _sizeDelta,
+        uint256[] memory _coupons,
         int256 _price
-    ) internal view returns (int256 execPrice, uint256 fee) {
+    ) internal returns (int256 execPrice, uint256 fee, uint256 couponUsed) {
+        TradingFeeCoupon coupon_ = TradingFeeCoupon(coupon);
+
         // deduct trading fee in the price
         // (p_{oracle}-p_{avg})*size=(p_{oracle}-p_{fill})*size-p_{avg}*|size|*k%
         // p_{avg}=p_{fill} / (1 - k%) for size > 0
         // p_{avg}=p_{fill} / (1 + k%) for size < 0
         // where k is trading fee ratio
         int256 k = MarketSettings(settings).getIntVals(PERP_TRADING_FEE);
-        // TODO: fee discount
+        // apply fee discount
+        k = k.multiplyDecimal(_UNIT - _tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "Market: trading fee ratio > 1");
         if (_sizeDelta > 0) {
             execPrice = _price.divideDecimal(_UNIT - k);
@@ -165,14 +225,35 @@ contract FeeTracker is Ownable, Initializable {
             .multiplyDecimal(_sizeDelta.abs())
             .multiplyDecimal(k)
             .toUint256();
+        // use coupons
+        for (uint i = 0; i < _coupons.length; ++i) {
+            // owner check is necessary here because coupon can be transferred
+            if (coupon_.ownerOf(_coupons[i]) != _account) {
+                continue;
+            }
+            uint value = coupon_.couponValues(_coupons[i]);
+            if (value > 0) {
+                uint amount = value.min(fee - couponUsed);
+                coupon_.spend(_coupons[i], amount);
+                couponUsed += amount;
+            }
+            if (couponUsed == fee) {
+                break;
+            }
+        }
+        // apply couponUsed to execPrice
+        // (p_oracle - p_exec_new) * size = (p_oracle - p_exec_old) * size + coupon_used
+        // p_exec_new = p_exec_old - coupon_used / size
+        execPrice -= couponUsed.toInt256().divideDecimal(_sizeDelta);
     }
 
     function discountedTradingFee(
         address _account,
         int256 _sizeDelta,
+        uint256[] memory _coupons,
         int256 _price
-    ) external view returns (int256, uint256) {
-        return _discountedTradingFee(_account, _sizeDelta, _price);
+    ) external returns (int256, uint256, uint256) {
+        return _discountedTradingFee(_account, _sizeDelta, _coupons, _price);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {
