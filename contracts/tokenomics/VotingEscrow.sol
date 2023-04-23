@@ -7,8 +7,13 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../utils/Initializable.sol";
 
-contract VotingEscrow is ReentrancyGuard, AccessControlEnumerable {
+contract VotingEscrow is
+    ReentrancyGuard,
+    AccessControlEnumerable,
+    Initializable
+{
     using SafeERC20 for IERC20;
 
     /*=== events ===*/
@@ -65,12 +70,12 @@ contract VotingEscrow is ReentrancyGuard, AccessControlEnumerable {
         INCREASE_LOCK_TIME
     }
 
-    constructor(
+    function initialize(
         address _baseToken,
         uint256 _maxTime,
         string memory _name,
         string memory _symbol
-    ) {
+    ) external onlyInitializeOnce {
         baseToken = IERC20(_baseToken);
         maxTime = _maxTime;
 
@@ -89,6 +94,8 @@ contract VotingEscrow is ReentrancyGuard, AccessControlEnumerable {
 
         name = _name;
         symbol = _symbol;
+
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== getter ===*/

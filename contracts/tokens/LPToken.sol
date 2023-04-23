@@ -38,7 +38,7 @@ contract LPToken is AccessControlEnumerable, Initializable {
 
     function mint(address to, uint256 amount) public virtual {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
+            hasRole(MINTER_ROLE, msg.sender),
             "LPToken: must have minter role to mint"
         );
         _mint(to, amount);
@@ -46,7 +46,7 @@ contract LPToken is AccessControlEnumerable, Initializable {
 
     function burn(address account, uint256 amount) public virtual {
         require(
-            hasRole(MINTER_ROLE, _msgSender()),
+            hasRole(MINTER_ROLE, msg.sender),
             "LPToken: must have minter role to burn"
         );
         _burn(account, amount);

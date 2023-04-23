@@ -7,6 +7,7 @@ import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
+import "../tokens/TradingFeeCoupon.sol";
 
 contract PositionManager is Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
@@ -23,6 +24,7 @@ contract PositionManager is Ownable, Initializable {
 
     // states
     address public market;
+    address public coupon;
 
     enum OrderStatus {
         Pending,
@@ -38,6 +40,7 @@ contract PositionManager is Ownable, Initializable {
         uint256 keeperFee;
         uint256 expiracy;
         uint256 submitTime;
+        uint256[] coupons;
         OrderStatus status;
     }
 
@@ -82,8 +85,12 @@ contract PositionManager is Ownable, Initializable {
 
     /*=== initialize ===*/
 
-    function initialize(address _market) external onlyInitializeOnce {
+    function initialize(
+        address _market,
+        address _coupon
+    ) external onlyInitializeOnce {
         market = _market;
+        coupon = _coupon;
 
         _transferOwnership(msg.sender);
     }
@@ -92,6 +99,10 @@ contract PositionManager is Ownable, Initializable {
 
     function setMarket(address _market) external onlyOwner {
         market = _market;
+    }
+
+    function setCoupon(address _coupon) external onlyOwner {
+        coupon = _coupon;
     }
 
     /*=== view ===*/
@@ -151,6 +162,25 @@ contract PositionManager is Ownable, Initializable {
 
     /*=== position ===*/
 
+    function _validateCoupons(
+        address _account,
+        uint256[] memory _coupons
+    ) internal view {
+        TradingFeeCoupon coupon_ = TradingFeeCoupon(coupon);
+
+        uint len = _coupons.length;
+        for (uint i = 0; i < len; ++i) {
+            require(
+                coupon_.ownerOf(_coupons[i]) == _account,
+                "PositionManager: not coupon owner"
+            );
+            require(
+                coupon_.couponValues(_coupons[i]) > 0,
+                "PositionManager: zero value coupon"
+            );
+        }
+    }
+
     /// @notice submit an order to the contract.
     /// @param _token token to long/short
     /// @param _size position size, negative for short, positive for long (in 18 decimals)
@@ -161,6 +191,7 @@ contract PositionManager is Ownable, Initializable {
         int256 _size,
         int256 _acceptablePrice,
         uint256 _keeperFee,
+        uint256[] memory _coupons,
         uint256 _expiracy
     ) external {
         require(_size != 0, "PositionManager: zero size");
@@ -179,6 +210,7 @@ contract PositionManager is Ownable, Initializable {
                 .toUint256() <= _keeperFee,
             "PositionManager: keeper fee too low"
         );
+        _validateCoupons(msg.sender, _coupons);
         // put order
         Order memory order = Order({
             account: msg.sender,
@@ -188,6 +220,7 @@ contract PositionManager is Ownable, Initializable {
             keeperFee: _keeperFee,
             expiracy: _expiracy,
             submitTime: block.timestamp,
+            coupons: _coupons,
             status: OrderStatus.Pending
         });
         orders[orderCnt++] = order;
@@ -262,6 +295,7 @@ contract PositionManager is Ownable, Initializable {
                 order.account,
                 order.token,
                 order.size,
+                order.coupons,
                 fillPrice
             );
             require(
@@ -429,7 +463,13 @@ contract PositionManager is Ownable, Initializable {
             int256 notionalLiquidated
         ) = market_.computePerpLiquidatePrice(_account, _token);
         // close position
-        market_.trade(_account, _token, size, liquidationPrice);
+        market_.trade(
+            _account,
+            _token,
+            size,
+            new uint256[](0),
+            liquidationPrice
+        );
         // update global info
         market_.updateTokenInfo(_token);
         // post trade margin
