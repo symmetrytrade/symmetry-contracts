@@ -455,13 +455,11 @@ contract Market is Ownable, Initializable {
     /// @param _account user address
     /// @param _token token to trade
     /// @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
-    /// @param _coupons trading fee coupons to use
     /// @param _price new trade price
     function trade(
         address _account,
         address _token,
         int256 _sizeDelta,
-        uint256[] memory _coupons,
         int256 _price
     ) external onlyOperator returns (int) {
         PerpTracker perpTracker_ = PerpTracker(perpTracker);
@@ -473,7 +471,7 @@ contract Market is Ownable, Initializable {
 
         (int256 execPrice, uint256 tradingFee, uint256 couponUsed) = FeeTracker(
             feeTracker
-        ).discountedTradingFee(_account, _sizeDelta, _coupons, _price);
+        ).discountedTradingFee(_account, _sizeDelta, _price);
 
         // funding fee
         perpTracker_.settleFunding(_account, _token);

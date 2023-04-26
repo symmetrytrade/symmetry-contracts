@@ -14,7 +14,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    // TODO: add minter & spender
+    // TODO: add minter
 };
 
 deploy.tags = [CONTRACTS.TradingFeeCoupon.name, "prod"];

@@ -195,7 +195,6 @@ describe("Market", () => {
                 normalized(10),
                 normalized(1550),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -256,7 +255,6 @@ describe("Market", () => {
                 normalized(-2),
                 normalized(15000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -287,7 +285,6 @@ describe("Market", () => {
                 normalized(-0.5),
                 normalized(15000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -351,7 +348,6 @@ describe("Market", () => {
                 normalized(0.5),
                 normalized(25000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();

@@ -173,7 +173,6 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -192,7 +191,6 @@ describe("Liquidation", () => {
                 normalized(0.01),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -285,7 +283,6 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -386,7 +383,6 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -479,7 +475,6 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();

@@ -188,7 +188,6 @@ contract FeeTracker is Ownable, Initializable {
             (int256 execPrice, , ) = _discountedTradingFee(
                 _account,
                 tradeAmount,
-                new uint256[](0),
                 fillPrice
             );
             // pnl = (oracle_price - exec_price) * volume
@@ -202,7 +201,6 @@ contract FeeTracker is Ownable, Initializable {
     function _discountedTradingFee(
         address _account,
         int256 _sizeDelta,
-        uint256[] memory _coupons,
         int256 _price
     ) internal returns (int256 execPrice, uint256 fee, uint256 couponUsed) {
         TradingFeeCoupon coupon_ = TradingFeeCoupon(coupon);
@@ -226,21 +224,8 @@ contract FeeTracker is Ownable, Initializable {
             .multiplyDecimal(k)
             .toUint256();
         // use coupons
-        for (uint i = 0; i < _coupons.length; ++i) {
-            // owner check is necessary here because coupon can be transferred
-            if (coupon_.ownerOf(_coupons[i]) != _account) {
-                continue;
-            }
-            uint value = coupon_.couponValues(_coupons[i]);
-            if (value > 0) {
-                uint amount = value.min(fee - couponUsed);
-                coupon_.spend(_coupons[i], amount);
-                couponUsed += amount;
-            }
-            if (couponUsed == fee) {
-                break;
-            }
-        }
+        couponUsed = coupon_.unspents(_account).min(fee);
+        coupon_.spend(_account, couponUsed);
         // apply couponUsed to execPrice
         // (p_oracle - p_exec_new) * size = (p_oracle - p_exec_old) * size + coupon_used
         // p_exec_new = p_exec_old - coupon_used / size
@@ -250,10 +235,9 @@ contract FeeTracker is Ownable, Initializable {
     function discountedTradingFee(
         address _account,
         int256 _sizeDelta,
-        uint256[] memory _coupons,
         int256 _price
     ) external returns (int256, uint256, uint256) {
-        return _discountedTradingFee(_account, _sizeDelta, _coupons, _price);
+        return _discountedTradingFee(_account, _sizeDelta, _price);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {
