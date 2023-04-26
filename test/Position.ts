@@ -161,7 +161,6 @@ describe("Position", () => {
                 normalized(701),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -181,7 +180,6 @@ describe("Position", () => {
                 normalized(-701),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -203,7 +201,6 @@ describe("Position", () => {
                 normalized(600),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -264,7 +261,6 @@ describe("Position", () => {
                 normalized(-60),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -288,7 +284,6 @@ describe("Position", () => {
                 normalized(-20),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -349,7 +344,6 @@ describe("Position", () => {
                 normalized(25),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -405,7 +399,6 @@ describe("Position", () => {
                 normalized(-655),
                 normalized(1000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -425,7 +418,6 @@ describe("Position", () => {
                 normalized(6),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -453,7 +445,6 @@ describe("Position", () => {
                 normalized(-5),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -471,7 +462,6 @@ describe("Position", () => {
                 normalized(-5),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -503,7 +493,6 @@ describe("Position", () => {
                 normalized(24.99999),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();
@@ -536,7 +525,6 @@ describe("Position", () => {
                 normalized(0.00001),
                 normalized(10000),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();

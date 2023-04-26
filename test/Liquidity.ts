@@ -186,7 +186,6 @@ describe("Liquidity", () => {
                 normalized(1),
                 normalized(1550),
                 normalized(1),
-                [],
                 (await helpers.time.latest()) + 100
             )
         ).wait();

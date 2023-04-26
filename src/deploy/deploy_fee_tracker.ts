@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
+    SPENDER_ROLE,
     deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";
@@ -58,6 +59,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         tiers.push([tier.portion, tier.discount]);
     }
     await (await feeTracker_.setTradingFeeTiers(tiers)).wait();
+
+    // add spender role of coupon
+    const TradingFeeCoupon_ = await hre.ethers.getContract(
+        CONTRACTS.TradingFeeCoupon.name,
+        deployer
+    );
+    await (
+        await TradingFeeCoupon_.grantRole(SPENDER_ROLE, feeTracker_.address)
+    ).wait();
 };
 
 deploy.tags = [CONTRACTS.FeeTracker.name, "prod"];

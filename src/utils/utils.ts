@@ -8,7 +8,8 @@ import { BigNumber } from "bignumber.js";
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
-const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
+export const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
+export const SPENDER_ROLE = hardhat.ethers.utils.id("SPENDER_ROLE");
 export const PERP_DOMAIN =
     hardhat.ethers.utils.formatBytes32String("perpDomain");
 export const UNIT = "1000000000000000000";
@@ -132,4 +133,4 @@ async function getProxyContract(
     return hre.ethers.getContractAt(contract.contract, address, signer);
 }
 
-export { deployInBeaconProxy, getProxyContract, CONTRACTS, MINTER_ROLE };
+export { deployInBeaconProxy, getProxyContract, CONTRACTS };
