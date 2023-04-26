@@ -548,22 +548,53 @@ contract PerpTracker is Ownable, Initializable {
         view
         returns (
             int256 nextFundingRate,
-            int256 latestFundingRate,
+            int256 avgFundingRate,
             int256 timeElapsed
         )
     {
         // get latest funding rate
-        latestFundingRate = feeInfos[_token].fundingRate;
+        int256 latestFundingRate = feeInfos[_token].fundingRate;
         // get funding rate velocity
         int256 fundingVelocity = _fundingVelocity(_token);
         // get time epalsed (normalized to days)
         timeElapsed = (int(block.timestamp) - feeInfos[_token].updateTime)
             .max(0)
             .divideDecimal(1 days);
-        // next funding rate
-        nextFundingRate =
-            latestFundingRate +
-            fundingVelocity.multiplyDecimal(timeElapsed);
+        // calculate next funding rate and average funding rate in this period
+        if (tokenInfos[_token].skew * latestFundingRate >= 0) {
+            // sign of funding rate and skew are the same
+            nextFundingRate =
+                latestFundingRate +
+                fundingVelocity.multiplyDecimal(timeElapsed);
+            avgFundingRate = (latestFundingRate + nextFundingRate) / 2;
+        } else {
+            // sign of funding rate and skew are different
+            // velocity is doubled until funding rate is flipped
+            if (
+                (fundingVelocity * 2).multiplyDecimal(timeElapsed).abs() >
+                latestFundingRate.abs()
+            ) {
+                // will flip
+                int256 timeToFlip = (-latestFundingRate).divideDecimal(
+                    fundingVelocity
+                );
+                nextFundingRate =
+                    latestFundingRate +
+                    fundingVelocity.multiplyDecimal(timeToFlip + timeElapsed);
+                avgFundingRate = ((latestFundingRate / 2).multiplyDecimal(
+                    timeToFlip
+                ) +
+                    (nextFundingRate / 2).multiplyDecimal(
+                        timeElapsed - timeToFlip
+                    )).divideDecimal(timeElapsed);
+            } else {
+                // won't flip
+                nextFundingRate =
+                    latestFundingRate +
+                    (fundingVelocity * 2).multiplyDecimal(timeElapsed);
+                avgFundingRate = (latestFundingRate + nextFundingRate) / 2;
+            }
+        }
     }
 
     /**
@@ -582,10 +613,10 @@ contract PerpTracker is Ownable, Initializable {
         // compute next funding rate
         (
             int nextFundingRate,
-            int256 latestFundingRate,
-            int256 timeElapsed
+            int avgFundingRate,
+            int timeElapsed
         ) = _nextFundingRate(_token);
-        int accFundingDelta = ((nextFundingRate + latestFundingRate) / 2)
+        int accFundingDelta = avgFundingRate
             .multiplyDecimal(timeElapsed)
             .multiplyDecimal(_price);
         return (nextFundingRate, feeInfos[_token].accFunding + accFundingDelta);

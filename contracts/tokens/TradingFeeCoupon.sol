@@ -26,7 +26,7 @@ contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
         string memory _tokenBaseURI
     ) ERC721(_name, _symbol) {
         tokenBaseURI = _tokenBaseURI;
-        
+
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
