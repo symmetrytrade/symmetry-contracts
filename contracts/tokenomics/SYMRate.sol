@@ -18,7 +18,7 @@ contract SYMRate is Ownable {
         require(_rates.length > 0, "SYMRate: empty rate");
         require(_rates[_rates.length - 1].rate == 0, "SYMRate: never end");
         delete rates;
-        uint256 t = block.timestamp;
+        uint256 t = 0;
         for (uint256 i = 0; i < _rates.length; ++i) {
             require(_rates[i].startTime > t, "SYMRate: invalid");
             t = _rates[i].startTime;
