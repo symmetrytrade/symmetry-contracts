@@ -69,6 +69,12 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
         name: "TradingFeeCoupon",
         contract: "TradingFeeCoupon",
     },
+    LiquidityGauge: { name: "LiquidityGauge", contract: "LiquidityGauge" },
+    VotingEscrowCallbackRelayer: {
+        name: "VotingEscrowCallbackRelayer",
+        contract: "VotingEscrowCallbackRelayer",
+    },
+    SYMRate: { name: "SYMRate", contract: "SYMRate" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
     WETH: { name: "WETH", contract: "FaucetToken" },

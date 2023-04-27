@@ -1,0 +1,44 @@
+import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { CONTRACTS, getProxyContract } from "../utils/utils";
+import { getConfig } from "../config";
+
+const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    const { deployments, getNamedAccounts } = hre;
+    const { deployer } = await getNamedAccounts();
+    const { deploy } = deployments;
+    const config = getConfig(hre.network.name);
+
+    await deploy(CONTRACTS.VotingEscrowCallbackRelayer.name, {
+        from: deployer,
+        contract: CONTRACTS.VotingEscrowCallbackRelayer.contract,
+        args: [],
+        log: true,
+    });
+
+    const relayer_ = await hre.ethers.getContract(
+        CONTRACTS.VotingEscrowCallbackRelayer.name,
+        deployer
+    );
+    const liquidityGauge_ = await getProxyContract(
+        hre,
+        CONTRACTS.LiquidityGauge,
+        deployer
+    );
+    await (await relayer_.addCallbackHandle(liquidityGauge_.address)).wait();
+
+    const votingEscrow_ = await getProxyContract(
+        hre,
+        CONTRACTS.VotingEscrow,
+        deployer
+    );
+    await (await votingEscrow_.setCallbackRelayer(relayer_.address)).wait();
+};
+
+deploy.tags = [CONTRACTS.VotingEscrowCallbackRelayer.name, "prod"];
+deploy.dependencies = [
+    CONTRACTS.VotingEscrow.name,
+    CONTRACTS.LiquidityGauge.name,
+    "mock",
+];
+export default deploy;

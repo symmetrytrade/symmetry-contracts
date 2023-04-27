@@ -28,6 +28,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await votingEscrow_.initialize(
             baseToken,
             config.otherConfig.lockMaxTime,
+            config.otherConfig.vestingWeeks,
             "Vote-Escrowed Symmetry",
             "veSYM"
         )
