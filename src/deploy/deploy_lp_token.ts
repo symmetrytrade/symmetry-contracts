@@ -7,16 +7,16 @@ import {
 } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
+    const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
+    const { deploy } = deployments;
 
-    await deployInBeaconProxy(hre, CONTRACTS.LPToken);
-
-    const lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, deployer);
-
-    // initialize
-    console.log(`initializing ${CONTRACTS.LPToken.name}..`);
-    await (await lpToken_.initialize("LPToken", "LP", 18)).wait();
+    await deploy(CONTRACTS.LPToken.name, {
+        from: deployer,
+        contract: CONTRACTS.LPToken.contract,
+        args: [],
+        log: true,
+    });
 };
 
 deploy.tags = [CONTRACTS.LPToken.name, "prod"];

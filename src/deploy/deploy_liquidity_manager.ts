@@ -22,7 +22,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityManager.name}..`);
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    const lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, deployer);
+    const lpToken_ = await hre.ethers.getContract(
+        CONTRACTS.LPToken.name,
+        deployer
+    );
     await (
         await liquidityManager_.initialize(market_.address, lpToken_.address)
     ).wait();
