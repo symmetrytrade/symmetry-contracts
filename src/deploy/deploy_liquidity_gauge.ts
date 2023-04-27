@@ -2,6 +2,8 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
+    MINTER_ROLE,
+    VESTING_ROLE,
     deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";
@@ -43,6 +45,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             startTime
         )
     ).wait();
+
+    // add minter role of SYM
+    await (await SYM_.grantRole(MINTER_ROLE, liquidityGauge_.address)).wait();
+    // add vesting role of veSYM
+    await (await votingEscrow_.grantRole(VESTING_ROLE, liquidityGauge_.address)).wait();
 };
 
 deploy.tags = [CONTRACTS.LiquidityGauge.name, "prod"];
