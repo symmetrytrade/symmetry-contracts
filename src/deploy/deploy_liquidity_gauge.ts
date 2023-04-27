@@ -49,7 +49,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // add minter role of SYM
     await (await SYM_.grantRole(MINTER_ROLE, liquidityGauge_.address)).wait();
     // add vesting role of veSYM
-    await (await votingEscrow_.grantRole(VESTING_ROLE, liquidityGauge_.address)).wait();
+    await (
+        await votingEscrow_.grantRole(VESTING_ROLE, liquidityGauge_.address)
+    ).wait();
 };
 
 deploy.tags = [CONTRACTS.LiquidityGauge.name, "prod"];
