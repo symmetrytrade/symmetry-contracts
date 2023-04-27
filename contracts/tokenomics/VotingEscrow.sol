@@ -130,6 +130,16 @@ contract VotingEscrow is
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    /*=== owner ===*/
+
+    function setCallbackRelayer(address _relayer) external {
+        require(
+            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
+            "VotingEscrow: not owner"
+        );
+        callbackRelayer = _relayer;
+    }
+
     /*=== getter ===*/
     /**
      * @dev Gets the last available user point
