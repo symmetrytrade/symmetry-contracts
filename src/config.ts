@@ -41,7 +41,10 @@ interface MarketConfig {
 // to be loaded in separate contracts
 interface OtherConfig {
     lockMaxTime: number;
+    vestingWeeks: number;
+    liquidityGaugeStartTime: number;
     tradingFeeTiers: TradingFeeTier[];
+    symRate: Rate[];
 }
 
 export interface NetworkConfigs {
@@ -57,6 +60,11 @@ export interface NetworkConfigs {
 export interface TradingFeeTier {
     portion: string;
     discount: string;
+}
+
+export interface Rate {
+    startTime: number;
+    rate: string;
 }
 
 const DefaultConfig: NetworkConfigs = {
@@ -92,11 +100,17 @@ const DefaultConfig: NetworkConfigs = {
     },
     otherConfig: {
         lockMaxTime: 3600 * 24 * 365 * 2, // 2 years
+        vestingWeeks: 12, // 12 weeks
+        liquidityGaugeStartTime: 0, // 0 for now
         tradingFeeTiers: [
             { portion: normalized(0.005), discount: normalized(0.1) },
             { portion: normalized(0.001), discount: normalized(0.05) },
             { portion: normalized(0.0001), discount: normalized(0.03) },
             { portion: normalized(0.00001), discount: normalized(0.01) },
+        ],
+        symRate: [
+            { startTime: 0, rate: normalized(1) },
+            { startTime: 3000000000, rate: normalized(0) },
         ],
     },
 };
