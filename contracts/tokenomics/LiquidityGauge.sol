@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./SYMRate.sol";
 import "./VotingEscrow.sol";
+import "./VotingEscrowCallback.sol";
 import "../tokens/SYM.sol";
 import "../utils/Initializable.sol";
 
-contract LiquidityGauge is Initializable {
+contract LiquidityGauge is Initializable, VotingEscrowCallback {
     using SafeERC20 for IERC20;
 
     // user info
@@ -87,9 +88,12 @@ contract LiquidityGauge is Initializable {
         reward =
             (user.workingPower * (accRewardPerShare - user.rewardPerShare)) /
             (10 ** IERC20Metadata(lpToken).decimals());
-        // distribute SYM reward
-        SYM(symToken).mint(_user, reward);
         user.rewardPerShare = accRewardPerShare;
+        // distribute SYM reward and vest
+        if (reward > 0) {
+            SYM(symToken).mint(votingEscrow, reward);
+            VotingEscrow(votingEscrow).vest(_user, reward);
+        }
     }
 
     function _checkpoint(address _user) internal {
@@ -156,5 +160,11 @@ contract LiquidityGauge is Initializable {
             oldWorkingPower > user.workingPower,
             "LiquidityGauge: user working power is up-to-date"
         );
+    }
+
+    function syncWithVotingEscrow(address _account) external override {
+        _update();
+        _updateUser(_account);
+        _checkpoint(_account);
     }
 }

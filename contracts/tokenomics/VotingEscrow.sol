@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../utils/Initializable.sol";
+import "./VotingEscrowCallback.sol";
 
 contract VotingEscrow is
     ReentrancyGuard,
@@ -29,6 +30,8 @@ contract VotingEscrow is
     event Withdraw(address indexed provider, uint256 value, uint256 ts);
     event Stake(address indexed provider, uint256 value, uint256 ts);
     event Unstake(address indexed provider, uint256 value, uint256 ts);
+    event Vested(address indexed account, uint256 value, uint256 ts);
+    event Claimed(address indexed account, uint256 value, uint256 ts);
 
     /*=== constants ===*/
     uint256 private constant WEEK = 7 days;
@@ -38,6 +41,8 @@ contract VotingEscrow is
     /*=== states === */
     IERC20 public baseToken;
     uint256 public maxTime;
+    uint256 public vestWeeks;
+    address public callbackRelayer;
 
     // erc20
     string public name;
@@ -51,12 +56,16 @@ contract VotingEscrow is
     // user locked states
     mapping(address => Point[]) public userPointHistory;
     mapping(address => uint256) public userPointEpoch;
+    mapping(address => mapping(uint256 => int128)) public userSlopeChanges;
     mapping(address => LockedBalance) public locked;
     // user staked states
     mapping(address => StakedPoint[]) public userStakedHistory;
     mapping(address => uint256) public userStakedEpoch;
     mapping(address => uint256) public staked;
     // user vesting states
+    mapping(address => Vest[]) public userVestHistory;
+    mapping(address => uint256) public userVestEpoch;
+    mapping(address => uint256) public userClaimEpoch;
 
     /*=== structs ===*/
     struct Point {
@@ -70,6 +79,11 @@ contract VotingEscrow is
         int128 slope;
         uint256 ts;
         uint256 end; // timestamp to reach max veSYM
+    }
+
+    struct Vest {
+        int128 amount;
+        uint256 ts;
     }
 
     struct LockedBalance {
@@ -89,11 +103,13 @@ contract VotingEscrow is
     function initialize(
         address _baseToken,
         uint256 _maxTime,
+        uint256 _vestWeeks,
         string memory _name,
         string memory _symbol
     ) external onlyInitializeOnce {
         baseToken = IERC20(_baseToken);
         maxTime = _maxTime;
+        vestWeeks = _vestWeeks;
 
         Point memory init = Point({
             bias: int128(0),
@@ -118,19 +134,39 @@ contract VotingEscrow is
     /**
      * @dev Gets the last available user point
      * @param _addr User address
-     * @return bias Value of bias
-     * @return slope Value of slope
-     * @return ts Epoch time of the checkpoint
+     * @return point last locked point
      */
-    function getLastUserPoint(
+    function getLastLockedPoint(
         address _addr
-    ) external view returns (int128 bias, int128 slope, uint256 ts) {
+    ) external view returns (Point memory point) {
         uint256 uepoch = userPointEpoch[_addr];
+        point = Point(0, 0, 0);
         if (uepoch == 0) {
-            return (0, 0, 0);
+            return point;
         }
-        Point memory point = userPointHistory[_addr][uepoch];
-        return (point.bias, point.slope, point.ts);
+        point = userPointHistory[_addr][uepoch];
+    }
+
+    function getLastStakedPoint(
+        address _addr
+    ) public view returns (StakedPoint memory point) {
+        point = StakedPoint({bias: 0, slope: 0, ts: 0, end: 0});
+        uint epoch = userStakedEpoch[_addr];
+        if (epoch == 0) {
+            return point;
+        }
+        point = userStakedHistory[_addr][epoch];
+        point.bias = SafeCast.toInt128(
+            SafeCast.toInt256(_stakedBalance(point, block.timestamp))
+        );
+        point.ts = block.timestamp;
+    }
+
+    function getVest(
+        address _addr,
+        uint256 _idx
+    ) public view returns (Vest memory) {
+        return userVestHistory[_addr][_idx];
     }
 
     /*===  helper functions ===*/
@@ -149,6 +185,12 @@ contract VotingEscrow is
 
     function _startOfWeek(uint256 _t) internal pure returns (uint256) {
         return (_t / WEEK) * WEEK;
+    }
+
+    function _tryCallback(address _addr) internal {
+        if (callbackRelayer != address(0)) {
+            VotingEscrowCallback(callbackRelayer).syncWithVotingEscrow(_addr);
+        }
     }
 
     /*=== Voting Escrow ===*/
@@ -305,6 +347,96 @@ contract VotingEscrow is
             stakedBalanceOfAt(_addr, _timestamp);
     }
 
+    /*=== vesting ===*/
+
+    function _findUserVested(
+        address _addr,
+        uint256 _timestamp
+    ) internal view returns (uint256) {
+        uint256 min = 0;
+        uint256 max = userVestEpoch[_addr];
+        for (uint256 i = 0; i < 128; i++) {
+            if (min >= max) {
+                break;
+            }
+            uint256 mid = (min + max + 1) / 2;
+            if (userVestHistory[_addr][mid].ts <= _timestamp) {
+                min = mid;
+            } else {
+                max = mid - 1;
+            }
+        }
+        return min;
+    }
+
+    function vest(address _addr, uint256 _amount) external {
+        require(
+            hasRole(VESTING_ROLE, msg.sender),
+            "VotingEscrow: not vesting role"
+        );
+        require(_amount > 0, "VotingEscrow: need non-zero value");
+
+        _claimVested(msg.sender);
+
+        uint256 uepoch = userVestEpoch[_addr];
+        if (uepoch == 0) {
+            userVestHistory[_addr].push(Vest(0, 0));
+        }
+
+        uint256 vestTs = _startOfWeek(block.timestamp);
+        uint256 epoch = _findUserVested(_addr, vestTs + WEEK);
+        uint256 len = vestWeeks;
+        int128 vestAmount = SafeCast.toInt128(SafeCast.toInt256(_amount / len));
+        for (uint i = 0; i < len; ++i) {
+            vestTs += WEEK;
+            LockedBalance memory oldLocked = LockedBalance(0, vestTs, 0, false);
+            LockedBalance memory newLocked = LockedBalance(0, vestTs, 0, false);
+            if (userVestHistory[_addr][epoch].ts < vestTs) {
+                userVestHistory[_addr].push(Vest(vestAmount, vestTs));
+                newLocked.amount = vestAmount;
+                ++uepoch;
+            } else {
+                oldLocked.amount = userVestHistory[_addr][epoch].amount;
+                newLocked.amount = oldLocked.amount + vestAmount;
+                userVestHistory[_addr][epoch].amount = newLocked.amount;
+            }
+            ++epoch;
+            _checkpointLocked(_addr, oldLocked, newLocked);
+        }
+        userVestEpoch[_addr] = uepoch;
+
+        // callback here is unnecessary and may lead to reentrancy
+        emit Vested(_addr, _amount, block.timestamp);
+    }
+
+    function claimVested() external {
+        _claimVested(msg.sender);
+    }
+
+    function _claimVested(address _addr) internal {
+        uint256 vestedEpoch = userVestEpoch[_addr];
+        uint256 claimEpoch = userClaimEpoch[_addr];
+
+        if (claimEpoch == 0) {
+            claimEpoch = 1;
+        }
+        int128 toClaim = 0;
+
+        while (claimEpoch <= vestedEpoch) {
+            if (userVestHistory[_addr][claimEpoch].ts > block.timestamp) {
+                break;
+            }
+            toClaim += userVestHistory[_addr][claimEpoch].amount;
+            ++claimEpoch;
+        }
+        if (toClaim > 0) {
+            userClaimEpoch[_addr] = claimEpoch;
+            baseToken.safeTransfer(_addr, SafeCast.toUint256(toClaim));
+
+            emit Claimed(_addr, SafeCast.toUint256(toClaim), block.timestamp);
+        }
+    }
+
     /*=== stake ===*/
     function _checkpointStaked(
         address _addr,
@@ -414,30 +546,17 @@ contract VotingEscrow is
         return _stakedBalance(upoint, _timestamp);
     }
 
-    function _lastStakedPoint(
-        address _addr
-    ) internal view returns (StakedPoint memory point) {
-        point = StakedPoint({bias: 0, slope: 0, ts: 0, end: 0});
-        uint epoch = userStakedEpoch[_addr];
-        if (epoch == 0) {
-            return point;
-        }
-        point = userStakedHistory[_addr][epoch];
-        point.bias = SafeCast.toInt128(
-            SafeCast.toInt256(_stakedBalance(point, block.timestamp))
-        );
-        point.ts = block.timestamp;
-    }
-
     function stake(uint256 _value) external nonReentrant {
         _assertNotContract();
+
+        _claimVested(msg.sender);
 
         require(_value > 0, "VotingEscrow: need non-zero value");
         baseToken.safeTransferFrom(msg.sender, address(this), _value);
         uint256 stakedValue = staked[msg.sender] + _value;
         staked[msg.sender] = stakedValue;
 
-        StakedPoint memory oldStaked = _lastStakedPoint(msg.sender);
+        StakedPoint memory oldStaked = getLastStakedPoint(msg.sender);
         StakedPoint memory newStaked = StakedPoint({
             bias: oldStaked.bias,
             slope: -SafeCast.toInt128(SafeCast.toInt256(stakedValue / maxTime)),
@@ -451,16 +570,19 @@ contract VotingEscrow is
         });
         _checkpointStaked(msg.sender, oldStaked, newStaked);
 
+        _tryCallback(msg.sender);
         emit Stake(msg.sender, _value, block.timestamp);
     }
 
     function unstake(uint256 _value) external nonReentrant {
+        _claimVested(msg.sender);
+
         uint256 stakedValue = staked[msg.sender];
         require(stakedValue > _value, "VotingEscrow: insufficient staked");
         stakedValue -= _value;
         staked[msg.sender] = stakedValue;
 
-        StakedPoint memory oldStaked = _lastStakedPoint(msg.sender);
+        StakedPoint memory oldStaked = getLastStakedPoint(msg.sender);
         StakedPoint memory newStaked = StakedPoint({
             bias: 0,
             slope: -SafeCast.toInt128(SafeCast.toInt256(stakedValue / maxTime)),
@@ -470,6 +592,8 @@ contract VotingEscrow is
         _checkpointStaked(msg.sender, oldStaked, newStaked);
 
         baseToken.transfer(msg.sender, _value);
+
+        _tryCallback(msg.sender);
         emit Unstake(msg.sender, _value, block.timestamp);
     }
 
@@ -488,7 +612,9 @@ contract VotingEscrow is
         Point memory userOldPoint;
         Point memory userNewPoint;
         int128 oldSlopeDelta = 0;
+        int128 oldUserSlopeDelta = 0;
         int128 newSlopeDelta = 0;
+        int128 newUserSlopeDelta = 0;
 
         if (_addr != address(0)) {
             // Calculate slopes and biases
@@ -500,6 +626,7 @@ contract VotingEscrow is
                     SafeCast.toInt128(int256(_oldLocked.lockDuration));
             } else {
                 oldSlopeDelta = slopeChanges[_oldLocked.end];
+                oldUserSlopeDelta = userSlopeChanges[_addr][_oldLocked.end];
                 if (_oldLocked.end > block.timestamp && _oldLocked.amount > 0) {
                     userOldPoint.slope =
                         _oldLocked.amount /
@@ -520,8 +647,12 @@ contract VotingEscrow is
                 if (_newLocked.end != 0) {
                     if (_newLocked.end == _oldLocked.end) {
                         newSlopeDelta = oldSlopeDelta;
+                        newUserSlopeDelta = oldUserSlopeDelta;
                     } else {
                         newSlopeDelta = slopeChanges[_newLocked.end];
+                        newUserSlopeDelta = userSlopeChanges[_addr][
+                            _newLocked.end
+                        ];
                     }
                 }
                 if (_newLocked.end > block.timestamp && _newLocked.amount > 0) {
@@ -567,15 +698,20 @@ contract VotingEscrow is
             if (_oldLocked.end > block.timestamp) {
                 // oldSlopeDelta was <something> - userOldPoint.slope, so we cancel that
                 oldSlopeDelta = oldSlopeDelta + userOldPoint.slope;
+                oldUserSlopeDelta = oldUserSlopeDelta + userOldPoint.slope;
                 if (_newLocked.end == _oldLocked.end) {
                     oldSlopeDelta = oldSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
+                    oldUserSlopeDelta = oldUserSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
                 }
                 slopeChanges[_oldLocked.end] = oldSlopeDelta;
+                userSlopeChanges[_addr][_oldLocked.end] = oldUserSlopeDelta;
             }
             if (_newLocked.end > block.timestamp) {
                 if (_newLocked.end > _oldLocked.end) {
                     newSlopeDelta = newSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
+                    newUserSlopeDelta = newUserSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
                     slopeChanges[_newLocked.end] = newSlopeDelta;
+                    userSlopeChanges[_addr][_newLocked.end] = newSlopeDelta;
                 }
                 // else: we recorded it already in oldSlopeDelta
             }
@@ -644,6 +780,8 @@ contract VotingEscrow is
     ) external nonReentrant {
         _assertNotContract();
 
+        _claimVested(msg.sender);
+
         _unlockTime = _startOfWeek(_unlockTime); // Locktime is rounded down to weeks
         LockedBalance memory oldLocked = locked[msg.sender];
         LockedBalance memory newLocked = LockedBalance({
@@ -676,6 +814,8 @@ contract VotingEscrow is
         }
 
         _depositFor(msg.sender, oldLocked, newLocked, LockAction.CREATE_LOCK);
+
+        _tryCallback(msg.sender);
     }
 
     /**
@@ -683,7 +823,11 @@ contract VotingEscrow is
      * @param _value Amount of tokens to deposit and add to the lock
      */
     function increaseLockAmount(uint256 _value) external nonReentrant {
+        _claimVested(msg.sender);
+
         _increaseLockAmount(_value);
+
+        _tryCallback(msg.sender);
     }
 
     /**
@@ -698,7 +842,11 @@ contract VotingEscrow is
         uint256 _lockDuration,
         bool _autoExtend
     ) external nonReentrant {
+        _claimVested(msg.sender);
+
         _increaseUnlockTime(_unlockTime, _lockDuration, _autoExtend);
+
+        _tryCallback(msg.sender);
     }
 
     function increaseLockAmountAndUnlockTime(
@@ -707,10 +855,12 @@ contract VotingEscrow is
         uint256 _lockDuration,
         bool _autoExtend
     ) external nonReentrant {
-        _assertNotContract();
+        _claimVested(msg.sender);
 
         _increaseLockAmount(_value);
         _increaseUnlockTime(_unlockTime, _lockDuration, _autoExtend);
+
+        _tryCallback(msg.sender);
     }
 
     function _increaseLockAmount(uint256 _value) internal {
@@ -798,6 +948,8 @@ contract VotingEscrow is
      * @dev Withdraw all tokens for `msg.sender`, only possible if the lock has expired
      */
     function withdraw() external {
+        _claimVested(msg.sender);
+
         _withdraw(msg.sender);
     }
 
@@ -847,12 +999,44 @@ contract VotingEscrow is
     }
 
     function _lockedBalance(
+        address _addr,
         Point memory _point,
-        uint256 _ts
-    ) internal pure returns (uint256) {
-        int balance = _point.bias -
-            (_point.slope * SafeCast.toInt128(int256(_ts - _point.ts)));
-        return balance < 0 ? 0 : SafeCast.toUint256(balance);
+        uint256 _t
+    ) internal view returns (uint256) {
+        // _point is the latest point user made operation on veSYM before _t.
+        // Hence, there can be at most $vestWeeks$ slope changes between this point and _t,
+        // and these slope changes must happen in consecutive weeks following _point.
+        // Therefore, we only need to iterate $vestWeeks$ weeks here.
+        Point memory lastPoint = _point;
+        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
+        uint256 len = vestWeeks;
+        for (uint256 i = 0; i < len; ++i) {
+            iterativeTime = iterativeTime + WEEK;
+            int128 dSlope = 0;
+            if (iterativeTime > _t) {
+                iterativeTime = _t;
+            } else {
+                dSlope = userSlopeChanges[_addr][iterativeTime];
+            }
+
+            lastPoint.bias =
+                lastPoint.bias -
+                (lastPoint.slope *
+                    SafeCast.toInt128(int256(iterativeTime - lastPoint.ts)));
+            if (iterativeTime == _t) {
+                break;
+            }
+            lastPoint.slope = lastPoint.slope + dSlope;
+            lastPoint.ts = iterativeTime;
+        }
+        lastPoint.bias =
+            lastPoint.bias -
+            (lastPoint.slope * SafeCast.toInt128(int256(_t - lastPoint.ts)));
+
+        if (lastPoint.bias < 0) {
+            lastPoint.bias = 0;
+        }
+        return SafeCast.toUint256(lastPoint.bias);
     }
 
     /**
@@ -866,7 +1050,7 @@ contract VotingEscrow is
             return 0;
         }
         Point memory lastPoint = userPointHistory[_addr][epoch];
-        return _lockedBalance(lastPoint, block.timestamp);
+        return _lockedBalance(_addr, lastPoint, block.timestamp);
     }
 
     /**
@@ -885,6 +1069,6 @@ contract VotingEscrow is
             return 0;
         }
         Point memory upoint = userPointHistory[_addr][userEpoch];
-        return _lockedBalance(upoint, _timestamp);
+        return _lockedBalance(_addr, upoint, _timestamp);
     }
 }
