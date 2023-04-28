@@ -5,10 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./SYMRate.sol";
-import "./VotingEscrow.sol";
+import "../interfaces/IVotingEscrow.sol";
+import "../interfaces/ISYM.sol";
+import "../interfaces/ISYMRate.sol";
+
 import "./VotingEscrowCallback.sol";
-import "../tokens/SYM.sol";
+
 import "../utils/Initializable.sol";
 
 contract LiquidityGauge is Initializable, VotingEscrowCallback {
@@ -72,7 +74,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
             lastRewardTime = block.timestamp;
             return;
         }
-        uint256 reward = SYMRate(symRate).getSum(
+        uint256 reward = ISYMRate(symRate).getSum(
             lastRewardTime,
             block.timestamp
         );
@@ -91,13 +93,13 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         user.rewardPerShare = accRewardPerShare;
         // distribute SYM reward and vest
         if (reward > 0) {
-            SYM(symToken).mint(votingEscrow, reward);
-            VotingEscrow(votingEscrow).vest(_user, reward);
+            ISYM(symToken).mint(votingEscrow, reward);
+            IVotingEscrow(votingEscrow).vest(_user, reward);
         }
     }
 
     function _checkpoint(address _user) internal {
-        VotingEscrow votingEscrow_ = VotingEscrow(votingEscrow);
+        IVotingEscrow votingEscrow_ = IVotingEscrow(votingEscrow);
 
         UserInfo storage user = userInfo[_user];
         uint256 l = (k * user.amount) / 100;
@@ -148,7 +150,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
     // kick someone from boosting if his/her locked share expired
     function kick(address _user) external {
         require(
-            VotingEscrow(votingEscrow).balanceOf(_user) == 0,
+            IVotingEscrow(votingEscrow).balanceOf(_user) == 0,
             "LiquidityGauge: user locked balance is not zero"
         );
         UserInfo storage user = userInfo[_user];

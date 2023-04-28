@@ -3,12 +3,9 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SYMRate is Ownable {
-    struct Rate {
-        uint256 startTime;
-        uint256 rate;
-    }
+import "../interfaces/ISYMRate.sol";
 
+contract SYMRate is ISYMRate, Ownable {
     // release rate in seconds
     Rate[] public rates;
 

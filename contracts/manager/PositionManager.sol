@@ -2,13 +2,19 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../market/Market.sol";
-import "../market/FeeTracker.sol";
-import "../market/MarketSettings.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "../interfaces/IMarket.sol";
+import "../interfaces/IMarketSettings.sol";
+import "../interfaces/IFeeTracker.sol";
+import "../interfaces/IPerpTracker.sol";
+import "../interfaces/IPriceOracle.sol";
+import "../interfaces/ITradingFeeCoupon.sol";
+
 import "../market/MarketSettingsContext.sol";
+
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
-import "../tokens/TradingFeeCoupon.sol";
 
 contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
@@ -108,21 +114,21 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     /*=== margin ===*/
 
     function depositMargin(uint256 _amount) external {
-        Market(market).transferMarginIn(msg.sender, _amount);
+        IMarket(market).transferMarginIn(msg.sender, _amount);
         // TODO: min margin balance
     }
 
     function withdrawMargin(uint256 _amount) external {
-        Market market_ = Market(market);
+        IMarket market_ = IMarket(market);
         market_.transferMarginOut(msg.sender, _amount);
-        (, int256 currentMargin, int256 positionNotional) = Market(market)
+        (, int256 currentMargin, int256 positionNotional) = IMarket(market)
             .accountMarginStatus(msg.sender);
         require(
             !_leverageRatioExceeded(currentMargin, positionNotional),
             "PositionManager: leverage ratio too large"
         );
         if (positionNotional > 0) {
-            int256 minMargin = MarketSettings(Market(market).settings())
+            int256 minMargin = IMarketSettings(IMarket(market).settings())
                 .getIntVals(MIN_MARGIN);
             require(
                 minMargin < currentMargin,
@@ -132,7 +138,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     }
 
     function isLiquidatable(address _account) public view returns (bool) {
-        (int256 maintenanceMargin, int256 currentMargin, ) = Market(market)
+        (int256 maintenanceMargin, int256 currentMargin, ) = IMarket(market)
             .accountMarginStatus(_account);
         return maintenanceMargin > currentMargin;
     }
@@ -141,7 +147,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         int currentMargin,
         int positionNotional
     ) internal view returns (bool) {
-        int256 maxLeverageRatio = MarketSettings(Market(market).settings())
+        int256 maxLeverageRatio = IMarketSettings(IMarket(market).settings())
             .getIntVals(MAX_LEVERAGE_RATIO);
         return positionNotional / maxLeverageRatio > currentMargin;
     }
@@ -149,7 +155,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     function leverageRatioExceeded(
         address _account
     ) public view returns (bool) {
-        (, int256 currentMargin, int256 positionNotional) = Market(market)
+        (, int256 currentMargin, int256 positionNotional) = IMarket(market)
             .accountMarginStatus(_account);
         return _leverageRatioExceeded(currentMargin, positionNotional);
     }
@@ -169,9 +175,9 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         uint256 _expiracy
     ) external {
         require(_size != 0, "PositionManager: zero size");
-        Market market_ = Market(market);
+        IMarket market_ = IMarket(market);
         require(
-            PerpTracker(market_.perpTracker()).marketTokensListed(_token),
+            IPerpTracker(market_.perpTracker()).marketTokensListed(_token),
             "PositionManager: unlisted token"
         );
         require(
@@ -179,7 +185,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             "PositionManager: invalid expiracy"
         );
         require(
-            MarketSettings(market_.settings())
+            IMarketSettings(market_.settings())
                 .getIntVals(MIN_KEEPER_FEE)
                 .toUint256() <= _keeperFee,
             "PositionManager: keeper fee too low"
@@ -229,12 +235,12 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         Order memory order = orders[_id];
         _validateOrderLiveness(order);
 
-        Market market_ = Market(market);
-        PerpTracker perpTracker_ = PerpTracker(market_.perpTracker());
+        IMarket market_ = IMarket(market);
+        IPerpTracker perpTracker_ = IPerpTracker(market_.perpTracker());
 
         require(
             order.submitTime +
-                MarketSettings(market_.settings())
+                IMarketSettings(market_.settings())
                     .getIntVals(MIN_ORDER_DELAY)
                     .toUint256() <=
                 block.timestamp,
@@ -242,7 +248,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         );
         int prevSize = perpTracker_.getPositionSize(order.account, order.token);
         // update oracle price
-        PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
+        IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
             _priceUpdateData
         );
@@ -329,8 +335,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         int _margin,
         int _notionalLiquidated
     ) internal returns (int liquidationFee) {
-        Market market_ = Market(market);
-        liquidationFee = FeeTracker(market_.feeTracker()).liquidationFee(
+        IMarket market_ = IMarket(market);
+        liquidationFee = IFeeTracker(market_.feeTracker()).liquidationFee(
             _notionalLiquidated
         );
         uint accountOut;
@@ -378,8 +384,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     ) internal returns (int liquidationPenalty) {
         if (_margin <= 0) return 0;
 
-        Market market_ = Market(market);
-        liquidationPenalty = FeeTracker(market_.feeTracker())
+        IMarket market_ = IMarket(market);
+        liquidationPenalty = IFeeTracker(market_.feeTracker())
             .liquidationPenalty(_notionalLiquidated)
             .min(_margin);
         uint penaltyAmount = market_.deductPenaltyToInsurance(
@@ -402,26 +408,26 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     ) internal returns (uint preMintId) {
         if (_margin <= 0) return 0;
 
-        Market market_ = Market(market);
-        uint value = MarketSettings(market_.settings())
+        IMarket market_ = IMarket(market);
+        uint value = IMarketSettings(market_.settings())
             .getIntVals(LIQUIDATION_COUPON_RATIO)
             .multiplyDecimal(_notionalLiquidated.abs())
             .min(_margin)
             .toUint256();
         if (value > 0) {
-        market_.deductFeeToLiquidity(_account, value);
-        return
-            TradingFeeCoupon(coupon).preMint(
-                _account,
-                value,
-                block.timestamp + 1 weeks
-            );
-            }
-            return 0;
+            market_.deductFeeToLiquidity(_account, value);
+            return
+                ITradingFeeCoupon(coupon).preMint(
+                    _account,
+                    value,
+                    block.timestamp + 1 weeks
+                );
+        }
+        return 0;
     }
 
     function _coverDeficitLoss(address _account, int _deficitLoss) internal {
-        (uint insuranceOut, uint lpOut) = Market(market).coverDeficitLoss(
+        (uint insuranceOut, uint lpOut) = IMarket(market).coverDeficitLoss(
             _account,
             _deficitLoss
         );
@@ -439,9 +445,9 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         address _token,
         bytes[] calldata _priceUpdateData
     ) external payable {
-        Market market_ = Market(market);
+        IMarket market_ = IMarket(market);
         // update oracle price
-        PriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
+        IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(
             msg.sender,
             _priceUpdateData
         );

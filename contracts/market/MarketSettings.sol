@@ -3,11 +3,12 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../utils/Initializable.sol";
+import "../interfaces/IMarketSettings.sol";
 
 /**
  * @dev Contract module which holds the setting params for all markets.
  */
-contract MarketSettings is Ownable, Initializable {
+contract MarketSettings is IMarketSettings, Ownable, Initializable {
     mapping(bytes32 => int256) private intVals;
 
     function initialize() external onlyInitializeOnce {

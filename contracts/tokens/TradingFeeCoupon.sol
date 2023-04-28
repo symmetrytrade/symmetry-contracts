@@ -4,7 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
-contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
+import "../interfaces/ITradingFeeCoupon.sol";
+
+contract TradingFeeCoupon is
+    ITradingFeeCoupon,
+    ERC721,
+    AccessControlEnumerable
+{
     // constants
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
@@ -15,19 +21,6 @@ contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
     mapping(uint256 => uint256) public couponValues;
     mapping(address => uint256) public unspents;
     Mintable[] public mintables;
-
-    // structs
-    struct Mintable {
-        address to;
-        uint256 value;
-        uint256 expire;
-    }
-
-    // events
-    event PreMint(uint256 id, address receiver, uint256 value, uint256 expire);
-    event Minted(uint256 id, address receiver, uint256 value);
-    event Redeem(uint256 id, address account, uint256 value);
-    event Spent(address account, uint256 amount);
 
     constructor(
         string memory _name,

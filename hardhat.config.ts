@@ -6,6 +6,7 @@ import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "hardhat-interface-generator";
 
 // environment configs
 import dotenv from "dotenv";

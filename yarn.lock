@@ -1094,6 +1094,13 @@ abbrev@1.0.x:
   resolved "https://registry.npmmirror.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
   integrity sha512-LEyx4aLEC3x6T0UguF6YILf+ntvmOaWsVfENmIW0E9H09vKlLDGelMjjSm0jkDHALj8A8quZ/HapKNigzwge+Q==
 
+abi2solidity@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.npmmirror.com/abi2solidity/-/abi2solidity-0.1.2.tgz#c0058daec2e64e0f70b4fd7ad67f56f792e8293c"
+  integrity sha512-vt67G1tgAGZiN8npK7ad464FB/IHUDrPQO/U3M2KCkyI9u8Z//P9UzRKMwsBc7ZaQiGJ++jAg1+gmAqmDs8Vog==
+  dependencies:
+    commander "^2.19.0"
+
 abort-controller@^3.0.0:
   version "3.0.0"
   resolved "https://registry.npmmirror.com/abort-controller/-/abort-controller-3.0.0.tgz#eaf54d53b62bae4138e809ca225c8439a6efb392"
@@ -1799,6 +1806,11 @@ commander@^10.0.0:
   version "10.0.0"
   resolved "https://registry.npmmirror.com/commander/-/commander-10.0.0.tgz#71797971162cd3cf65f0b9d24eb28f8d303acdf1"
   integrity sha512-zS5PnTI22FIRM6ylNW8G4Ap0IEOyk62fhLSD0+uHRT9McRCLGpkVNvao4bjimpK/GShynyQkFFxHhwMcETmduA==
+
+commander@^2.19.0:
+  version "2.20.3"
+  resolved "https://registry.npmmirror.com/commander/-/commander-2.20.3.tgz#fd485e84c03eb4881c20722ba48035e8531aeb33"
+  integrity sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==
 
 compare-versions@^5.0.0:
   version "5.0.3"
@@ -3011,6 +3023,13 @@ hardhat-gas-reporter@^1.0.9:
     array-uniq "1.0.3"
     eth-gas-reporter "^0.2.25"
     sha1 "^1.1.1"
+
+hardhat-interface-generator@^0.0.6:
+  version "0.0.6"
+  resolved "https://registry.npmmirror.com/hardhat-interface-generator/-/hardhat-interface-generator-0.0.6.tgz#0d23660a3dadbe0d14546314ad5e105ec0e63d44"
+  integrity sha512-VRu5/oOttVb4p/59kK5GL2eyuriPNmZX630tL/FB4bizZ99T5WEWY3rWTMmIvj+FgWBvIvj1FdVo+x4f2okv/w==
+  dependencies:
+    abi2solidity "^0.1.2"
 
 hardhat@^2.12.7:
   version "2.12.7"
