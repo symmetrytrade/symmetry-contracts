@@ -46,6 +46,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     mapping(uint256 => Order) private orders;
     uint256 public orderCnt;
 
+    event MarginDeposit(address account, uint256 amount, bytes32 referral);
+    event MarginWithdraw(address account, uint256 amount);
     event OrderStatusChanged(uint256 orderId, OrderStatus status);
     // liquidationFee in USD, out amount in base token
     event LiquidationFee(
@@ -113,9 +115,10 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
 
     /*=== margin ===*/
 
-    function depositMargin(uint256 _amount) external {
+    function depositMargin(uint256 _amount, bytes32 referral) external {
         IMarket(market).transferMarginIn(msg.sender, _amount);
-        // TODO: min margin balance
+
+        emit MarginDeposit(msg.sender, _amount, referral);
     }
 
     function withdrawMargin(uint256 _amount) external {
@@ -135,6 +138,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
                 "PositionManager: margin too low"
             );
         }
+        emit MarginWithdraw(msg.sender, _amount);
     }
 
     function isLiquidatable(address _account) public view returns (bool) {

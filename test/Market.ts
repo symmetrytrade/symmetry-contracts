@@ -181,7 +181,8 @@ describe("Market", () => {
     it("trade ETH long", async () => {
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1500).mul(UNIT)
+                hre.ethers.BigNumber.from(1500).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
         let status = await market_.accountMarginStatus(

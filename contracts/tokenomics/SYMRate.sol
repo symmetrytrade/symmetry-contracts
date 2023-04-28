@@ -31,14 +31,14 @@ contract SYMRate is ISYMRate, Ownable {
         sum = 0;
         for (uint256 i = 0; i < len; ++i) {
             if (i + 1 < len && start >= rates[i + 1].startTime) continue;
-            uint256 l = rates[i].startTime;
-            if (end <= l) break;
-            if (l < start) l = start;
-            uint256 r = end;
-            if (i + 1 < len && rates[i + 1].startTime < r) {
-                r = rates[i + 1].startTime;
+            uint256 left = rates[i].startTime;
+            if (end <= left) break;
+            if (left < start) left = start;
+            uint256 right = end;
+            if (i + 1 < len && rates[i + 1].startTime < right) {
+                right = rates[i + 1].startTime;
             }
-            sum = sum + rates[i].rate * (r - l);
+            sum = sum + rates[i].rate * (right - left);
         }
     }
 }

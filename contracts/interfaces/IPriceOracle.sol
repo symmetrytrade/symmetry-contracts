@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface IPriceOracle {
-    function PRICE_PRECISION() external view returns (uint256);
-
     function aggregators(address) external view returns (address);
 
     function assetIds(address) external view returns (bytes32);
