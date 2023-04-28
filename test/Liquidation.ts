@@ -225,7 +225,8 @@ describe("Liquidation", () => {
                 await liquidator.getAddress(),
                 normalized(32.13),
                 normalized(91.8),
-                normalized(0)
+                normalized(0),
+                0
             )
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(
@@ -323,7 +324,8 @@ describe("Liquidation", () => {
                 await liquidator.getAddress(),
                 normalized(31.85),
                 normalized(68.15),
-                normalized(0)
+                normalized(0),
+                0
             )
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(
@@ -423,7 +425,8 @@ describe("Liquidation", () => {
                 await liquidator.getAddress(),
                 normalized(31.535),
                 normalized(0),
-                normalized(0)
+                normalized(0),
+                0
             )
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(
@@ -515,7 +518,8 @@ describe("Liquidation", () => {
                 await liquidator.getAddress(),
                 normalized(31.5),
                 normalized(0),
-                normalized(200)
+                normalized(200),
+                0
             )
             .to.emit(positionManager_, "DeficitLoss")
             .withArgs(

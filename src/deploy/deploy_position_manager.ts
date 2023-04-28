@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
+    MINTER_ROLE,
     deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";
@@ -33,6 +34,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
     await (await market_.setOperator(positionManager_.address, true)).wait();
+
+    // add minter role
+    await (
+        await coupon_.grantRole(MINTER_ROLE, positionManager_.address)
+    ).wait();
 };
 
 deploy.tags = [CONTRACTS.PositionManager.name, "prod"];

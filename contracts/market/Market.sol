@@ -13,6 +13,7 @@ import "../oracle/PriceOracle.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
 import "./FeeTracker.sol";
+import "./VolumeTracker.sol";
 import "./MarketSettingsContext.sol";
 
 contract Market is
@@ -32,6 +33,7 @@ contract Market is
     address public priceOracle; // oracle
     address public perpTracker; // perpetual position tracker
     address public feeTracker; // fee tracker
+    address public volumeTracker; // volume tracker
     address public settings; // settings for markets
     mapping(address => bool) public isOperator; // operator contracts
 
@@ -75,6 +77,10 @@ contract Market is
 
     function setFeeTracker(address _feeTracker) external onlyOwner {
         feeTracker = _feeTracker;
+    }
+
+    function setVolumeTracker(address _volumeTracker) external onlyOwner {
+        volumeTracker = _volumeTracker;
     }
 
     function setOperator(address _operator, bool _status) external onlyOwner {
@@ -460,7 +466,11 @@ contract Market is
             );
     }
 
-    function _logTrade(uint256 _volume, uint256 _fee) internal {
+    function _logTrade(
+        address _account,
+        uint256 _volume,
+        uint256 _fee
+    ) internal {
         // veSYM incentives
         uint256 amountToDistribute = tokenToUsd(baseToken, int(_fee), false)
             .multiplyDecimal(
@@ -470,6 +480,7 @@ contract Market is
         IERC20(baseToken).transfer(feeTracker, amountToDistribute);
         FeeTracker(feeTracker).distributeIncentives(amountToDistribute);
         // Volume
+        VolumeTracker(volumeTracker).logTrade(_account, _volume);
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
@@ -495,6 +506,7 @@ contract Market is
             feeTracker
         ).discountedTradingFee(_account, _sizeDelta, _price);
         _logTrade(
+            _account,
             _sizeDelta.multiplyDecimal(_price).abs().toUint256(),
             tradingFee
         );

@@ -64,6 +64,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     LPToken: { name: "LPToken", contract: "LPToken" },
     PerpTracker: { name: "PerpTracker", contract: "PerpTracker" },
     FeeTracker: { name: "FeeTracker", contract: "FeeTracker" },
+    VolumeTracker: { name: "VolumeTracker", contract: "VolumeTracker" },
     VotingEscrow: { name: "VotingEscrow", contract: "VotingEscrow" },
     SYM: { name: "SYM", contract: "SYM" },
     TradingFeeCoupon: {
