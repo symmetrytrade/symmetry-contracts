@@ -408,11 +408,11 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             .multiplyDecimal(_notionalLiquidated.abs())
             .min(_margin)
             .toUint256();
-        uint amount = market_.deductFeeToLiquidity(_account, value);
+        market_.deductFeeToLiquidity(_account, value);
         return
             TradingFeeCoupon(coupon).preMint(
                 _account,
-                amount,
+                value,
                 block.timestamp + 1 weeks
             );
     }
