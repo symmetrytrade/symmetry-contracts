@@ -3,22 +3,28 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../market/MarketSettings.sol";
+
+import "../interfaces/IMarketSettings.sol";
 import "../interfaces/chainlink/AggregatorV2V3Interface.sol";
 import "../interfaces/pyth/IPyth.sol";
+import "../interfaces/IPriceOracle.sol";
+
+import "../market/MarketSettingsContext.sol";
+
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
 
-contract PriceOracle is Ownable, Initializable {
+contract PriceOracle is
+    IPriceOracle,
+    MarketSettingsContext,
+    Ownable,
+    Initializable
+{
     using SafeCast for int256;
     using SafeCast for uint256;
     using SafeDecimalMath for uint256;
 
     uint256 public constant PRICE_PRECISION = 18;
-
-    // setting keys
-    bytes32 public constant PYTH_MAX_AGE = "pythMaxAge";
-    bytes32 public constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
 
     // chainlink price feed aggregators
     mapping(address => address) public aggregators;
@@ -179,7 +185,7 @@ contract PriceOracle is Ownable, Initializable {
         address _token,
         bool _mustUsePyth
     ) public view returns (int256) {
-        MarketSettings settings_ = MarketSettings(settings);
+        IMarketSettings settings_ = IMarketSettings(settings);
 
         (, uint256 updatedAt, uint256 chainlinkPrice) = getLatestChainlinkPrice(
             _token

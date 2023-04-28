@@ -3,15 +3,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 import "../utils/CommonContext.sol";
-import "./Market.sol";
-import "./MarketSettings.sol";
+
+import "../interfaces/IMarket.sol";
+import "../interfaces/IMarketSettings.sol";
+import "../interfaces/IPerpTracker.sol";
+import "../interfaces/IPriceOracle.sol";
+
 import "./MarketSettingsContext.sol";
-import "../oracle/PriceOracle.sol";
 
 contract PerpTracker is
+    IPerpTracker,
     CommonContext,
     MarketSettingsContext,
     Ownable,
@@ -20,36 +25,6 @@ contract PerpTracker is
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
     using SafeCast for int256;
-
-    struct LpPosition {
-        int256 longSize; // long position hold by lp in underlying, positive, 18 decimals
-        int256 shortSize; // short position hold by lp in underlying, negative, 18 decimals
-        int256 avgPrice; // average price for the lp net position (long + short)
-        int256 accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
-        int256 accLongFinancingFee; // accumulate long financing fee for unit position size at the latest position modification
-        int256 accShortFinancingFee; // accumulate short financing fee for unit position size at the latest position modification
-    }
-
-    struct Position {
-        int256 size; // position size, positive for long, negative for short, 18 decimals
-        int256 accFunding; // accumulate funding fee for unit position size at the latest position modification
-        int256 accFinancingFee; // accumulate financing fee for unit position size at the latest position modification
-        int256 avgPrice;
-    }
-
-    struct FeeInfo {
-        int256 accFunding; // the latest accumulate funding fee for unit position size
-        int256 fundingRate; // the latest funding rate
-        int256 accLongFinancingFee; // the latest long financing fee
-        int256 accShortFinancingFee; // the latest short financing fee
-        int256 updateTime; // the latest fee update time
-    }
-
-    struct TokenInfo {
-        int256 lpNetValue; // latest lp net value when any position of the token is updated
-        int256 netOpenInterest; // latest net open interest when any position of the token is updated
-        int256 skew; // latest token skew(in USD) when any position of the token is updated
-    }
 
     address public market;
     address public settings;
@@ -63,22 +38,6 @@ contract PerpTracker is
     mapping(address => FeeInfo) private feeInfos;
     mapping(address => TokenInfo) private tokenInfos;
 
-    event MarginTransferred(address indexed account, int256 delta);
-    event TokenInfoUpdated(
-        address indexed token,
-        int256 lpNetValue,
-        int256 netOpenInterest,
-        int256 skew
-    );
-    event FeeInfoUpdated(
-        address indexed token,
-        int256 nextAccFundingFee,
-        int256 nextFundingRate,
-        int256 nextAccLongFinancingFee,
-        int256 nextAccShortFinancingFee,
-        uint256 updateTime
-    );
-
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
         _;
@@ -88,7 +47,7 @@ contract PerpTracker is
 
     function initialize(address _market) external onlyInitializeOnce {
         market = _market;
-        settings = Market(_market).settings();
+        settings = IMarket(_market).settings();
 
         _transferOwnership(msg.sender);
     }
@@ -199,8 +158,8 @@ contract PerpTracker is
     }
 
     function _modifyMarginByUsd(address _account, int _amount) internal {
-        uint tokenAmount = Market(market)
-            .usdToToken(Market(market).baseToken(), _amount.abs(), false)
+        uint tokenAmount = IMarket(market)
+            .usdToToken(IMarket(market).baseToken(), _amount.abs(), false)
             .toUint256();
         if (_amount > 0) {
             _addMargin(_account, tokenAmount);
@@ -354,7 +313,7 @@ contract PerpTracker is
         int256 _oraclePrice,
         int256 _lpNetValue
     ) external view returns (int256 avgPrice) {
-        MarketSettings settings_ = MarketSettings(settings);
+        IMarketSettings settings_ = IMarketSettings(settings);
 
         int lambda = settings_.getIntVals(MAX_SLIPPAGE);
         int skew = currentSkew(_token);
@@ -509,7 +468,7 @@ contract PerpTracker is
     function _fundingVelocity(
         address _token
     ) internal view returns (int256 velocity) {
-        MarketSettings settings_ = MarketSettings(settings);
+        IMarketSettings settings_ = IMarketSettings(settings);
 
         int numerator = tokenInfos[_token].skew;
         if (numerator == 0) return 0;
@@ -620,7 +579,7 @@ contract PerpTracker is
      *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
      */
     function lpSoftLimit(int256 _lp) public view returns (int) {
-        int threshold = MarketSettings(settings).getIntVals(
+        int threshold = IMarketSettings(settings).getIntVals(
             SOFT_LIMIT_THRESHOLD
         );
         return _lp.multiplyDecimal(threshold);
@@ -630,7 +589,7 @@ contract PerpTracker is
      * @dev get current hard limit
      */
     function lpHardLimit(int256 _lp) public view returns (int) {
-        int threshold = MarketSettings(settings).getIntVals(
+        int threshold = IMarketSettings(settings).getIntVals(
             HARD_LIMIT_THRESHOLD
         );
         return _lp.multiplyDecimal(threshold);
@@ -643,14 +602,14 @@ contract PerpTracker is
         int256 _lp,
         address _token
     ) public view returns (int) {
-        int threshold = MarketSettings(settings).getIntVals(
+        int threshold = IMarketSettings(settings).getIntVals(
             TOKEN_OI_LIMIT_RATIO
         );
-        int pr = MarketSettings(settings).getIntValsByMarket(
+        int pr = IMarketSettings(settings).getIntValsByMarket(
             marketKey(_token),
             PROPORTION_RATIO
         );
-        int oraclePrice = PriceOracle(Market(market).priceOracle()).getPrice(
+        int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(
             _token,
             false
         );
@@ -661,7 +620,7 @@ contract PerpTracker is
     }
 
     function _nextFinancingFeeRate(address _token) internal view returns (int) {
-        MarketSettings settings_ = MarketSettings(settings);
+        IMarketSettings settings_ = IMarketSettings(settings);
 
         int oi = tokenInfos[_token].netOpenInterest;
         int lp = tokenInfos[_token].lpNetValue;

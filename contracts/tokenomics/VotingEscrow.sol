@@ -7,11 +7,16 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../utils/Initializable.sol";
 import "../utils/CommonContext.sol";
+
+import "../interfaces/IVotingEscrow.sol";
+
 import "./VotingEscrowCallback.sol";
 
 contract VotingEscrow is
+    IVotingEscrow,
     CommonContext,
     ReentrancyGuard,
     AccessControlEnumerable,
@@ -19,28 +24,12 @@ contract VotingEscrow is
 {
     using SafeERC20 for IERC20;
 
-    /*=== events ===*/
-    event Deposit(
-        address indexed provider,
-        uint256 value,
-        uint256 locktime,
-        uint256 lockDuration,
-        bool autoExtend,
-        LockAction indexed action,
-        uint256 ts
-    );
-    event Withdraw(address indexed provider, uint256 value, uint256 ts);
-    event Stake(address indexed provider, uint256 value, uint256 ts);
-    event Unstake(address indexed provider, uint256 value, uint256 ts);
-    event Vested(address indexed account, uint256 value, uint256 ts);
-    event Claimed(address indexed account, uint256 value, uint256 ts);
-
     /*=== constants ===*/
     bytes32 public constant WHITELIST_ROLE = keccak256("WHITELIST_ROLE");
     bytes32 public constant VESTING_ROLE = keccak256("VESTING_ROLE");
 
     /*=== states === */
-    IERC20 public baseToken;
+    address public baseToken;
     uint256 public maxTime;
     uint256 public vestWeeks;
     address public callbackRelayer;
@@ -68,39 +57,6 @@ contract VotingEscrow is
     mapping(address => uint256) public userVestEpoch;
     mapping(address => uint256) public userClaimEpoch;
 
-    /*=== structs ===*/
-    struct Point {
-        int128 bias;
-        int128 slope;
-        uint256 ts;
-    }
-
-    struct StakedPoint {
-        int128 bias;
-        int128 slope;
-        uint256 ts;
-        uint256 end; // timestamp to reach max veSYM
-    }
-
-    struct Vest {
-        int128 amount;
-        uint256 ts;
-    }
-
-    struct LockedBalance {
-        int128 amount;
-        uint256 end; // end of lock, used if autoExtend is false, be zero if autoExtend is true
-        uint256 lockDuration; // duration of lock, used if autoExtend is true, be zero if autoExtend is false
-        bool autoExtend;
-    }
-
-    enum LockAction {
-        CREATE_LOCK,
-        INCREASE_LOCK_AMOUNT,
-        INCREASE_LOCK_TIME,
-        VESTING
-    }
-
     function initialize(
         address _baseToken,
         uint256 _maxTime,
@@ -108,7 +64,7 @@ contract VotingEscrow is
         string memory _name,
         string memory _symbol
     ) external onlyInitializeOnce {
-        baseToken = IERC20(_baseToken);
+        baseToken = _baseToken;
         maxTime = _maxTime;
         vestWeeks = _vestWeeks;
 
@@ -438,7 +394,7 @@ contract VotingEscrow is
         }
         if (toClaim > 0) {
             userClaimEpoch[_addr] = claimEpoch;
-            baseToken.safeTransfer(_addr, SafeCast.toUint256(toClaim));
+            IERC20(baseToken).safeTransfer(_addr, SafeCast.toUint256(toClaim));
 
             emit Claimed(_addr, SafeCast.toUint256(toClaim), block.timestamp);
         }
@@ -559,7 +515,7 @@ contract VotingEscrow is
         _claimVested(msg.sender);
 
         require(_value > 0, "VotingEscrow: need non-zero value");
-        baseToken.safeTransferFrom(msg.sender, address(this), _value);
+        IERC20(baseToken).safeTransferFrom(msg.sender, address(this), _value);
         uint256 stakedValue = staked[msg.sender] + _value;
         staked[msg.sender] = stakedValue;
 
@@ -598,7 +554,7 @@ contract VotingEscrow is
         });
         _checkpointStaked(msg.sender, oldStaked, newStaked);
 
-        baseToken.transfer(msg.sender, _value);
+        IERC20(baseToken).transfer(msg.sender, _value);
 
         _tryCallback(msg.sender);
         emit Unstake(msg.sender, _value, block.timestamp);
@@ -758,7 +714,7 @@ contract VotingEscrow is
             _newLocked.amount - _oldLocked.amount
         );
         if (value != 0) {
-            baseToken.safeTransferFrom(_addr, address(this), value);
+            IERC20(baseToken).safeTransferFrom(_addr, address(this), value);
         }
         emit Deposit(
             _addr,
@@ -975,7 +931,7 @@ contract VotingEscrow is
 
         // checkpoint is not necessary here
 
-        baseToken.safeTransfer(_addr, value);
+        IERC20(baseToken).safeTransfer(_addr, value);
 
         emit Withdraw(_addr, value, block.timestamp);
     }

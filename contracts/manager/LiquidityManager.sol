@@ -2,12 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "../market/Market.sol";
-import "../market/FeeTracker.sol";
-import "../market/MarketSettings.sol";
-import "../market/MarketSettingsContext.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
+
+import "../interfaces/IMarketSettings.sol";
+import "../interfaces/IFeeTracker.sol";
+import "../interfaces/IMarket.sol";
+
+import "../market/MarketSettingsContext.sol";
+
 import "../tokens/LPToken.sol";
 
 contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
@@ -83,7 +88,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         uint256 _minLp,
         address _receiver
     ) internal returns (uint256) {
-        Market market_ = Market(market);
+        IMarket market_ = IMarket(market);
         // usd value check
         uint256 usdAmount = market_
             .tokenToUsd(market_.baseToken(), _amount.toInt256(), false)
@@ -127,7 +132,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         uint256 _minOut,
         address _receiver
     ) internal returns (uint256) {
-        Market market_ = Market(market);
+        IMarket market_ = IMarket(market);
         // check lp token price and free lp value
         (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
@@ -137,11 +142,11 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         int redeemFee = 0;
         {
             // redeem trade
-            redeemFee += FeeTracker(market_.feeTracker())
+            redeemFee += IFeeTracker(market_.feeTracker())
                 .redeemTradingFee(_account, lpNetValue, redeemValue)
                 .toInt256();
             // redeem fee
-            redeemFee += MarketSettings(market_.settings())
+            redeemFee += IMarketSettings(market_.settings())
                 .getIntVals(LIQUIDITY_REDEEM_FEE)
                 .multiplyDecimal(redeemValue - redeemFee);
             // TODO: where the fee goes?

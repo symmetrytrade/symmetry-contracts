@@ -3,15 +3,20 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 import "../utils/CommonContext.sol";
-import "../tokens/TradingFeeCoupon.sol";
-import "./Market.sol";
+
+import "../interfaces/IMarket.sol";
+import "../interfaces/IVolumeTracker.sol";
+import "../interfaces/ITradingFeeCoupon.sol";
+
 import "./MarketSettings.sol";
 import "./MarketSettingsContext.sol";
 
 contract VolumeTracker is
+    IVolumeTracker,
     CommonContext,
     MarketSettingsContext,
     Ownable,
@@ -32,11 +37,6 @@ contract VolumeTracker is
 
     Tier[] public rebateTiers; // trading fee rebate tiers
 
-    struct Tier {
-        uint256 requirement;
-        uint256 rebateRatio;
-    }
-
     /*=== modifers ===*/
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -49,7 +49,7 @@ contract VolumeTracker is
     ) external onlyInitializeOnce {
         market = _market;
         coupon = _coupon;
-        settings = Market(_market).settings();
+        settings = IMarket(_market).settings();
 
         _transferOwnership(msg.sender);
     }
@@ -110,12 +110,12 @@ contract VolumeTracker is
         uint256 volume = userWeeklyVolume[msg.sender][_t];
         uint256 rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            uint256 value = MarketSettings(settings)
+            uint256 value = IMarketSettings(settings)
                 .getIntVals(PERP_TRADING_FEE)
                 .toUint256()
                 .multiplyDecimal(volume)
                 .multiplyDecimal(rebateRatio);
-            TradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
+            ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
         }
     }
 }

@@ -6,17 +6,22 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import "../utils/CommonContext.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
-import "../oracle/PriceOracle.sol";
-import "./MarketSettings.sol";
-import "./PerpTracker.sol";
-import "./FeeTracker.sol";
+
+import "../interfaces/IMarket.sol";
+import "../interfaces/IMarketSettings.sol";
+import "../interfaces/IFeeTracker.sol";
+import "../interfaces/IPerpTracker.sol";
+import "../interfaces/IPriceOracle.sol";
+
 import "./VolumeTracker.sol";
 import "./MarketSettingsContext.sol";
 
 contract Market is
+    IMarket,
     CommonContext,
     MarketSettingsContext,
     Ownable,
@@ -41,15 +46,6 @@ contract Market is
     int256 private liquidityBalance;
     // insurance, collection of liquidation penalty
     uint256 public insuranceBalance;
-
-    event Traded(
-        address indexed account,
-        address indexed token,
-        int256 sizeDelta,
-        int256 price,
-        uint256 fee,
-        uint256 couponUsed
-    );
 
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
@@ -127,18 +123,17 @@ contract Market is
     {
         lpNetValue = tokenToUsd(baseToken, liquidityBalance, false);
 
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
         uint256 len = perpTracker_.marketTokensLength();
         for (uint i = 0; i < len; ++i) {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
-            PerpTracker.LpPosition memory position = perpTracker_.getLpPosition(
-                token
-            );
+            IPerpTracker.LpPosition memory position = perpTracker_
+                .getLpPosition(token);
             if (position.longSize == 0 && position.shortSize == 0) continue;
             int size = position.longSize + position.shortSize;
-            int256 price = PriceOracle(priceOracle).getPrice(token, false);
+            int256 price = IPriceOracle(priceOracle).getPrice(token, false);
             // open interest, note here position is lp position(counter party of user)
             netOpenInterest += position
                 .shortSize
@@ -212,7 +207,7 @@ contract Market is
         int256 _loss
     ) external onlyOperator returns (uint insuranceOut, uint lpOut) {
         uint256 amount = usdToToken(baseToken, _loss, false).toUint256();
-        PerpTracker(perpTracker).addMargin(_account, amount);
+        IPerpTracker(perpTracker).addMargin(_account, amount);
         return _deductInsuranceAndLp(amount);
     }
 
@@ -223,7 +218,7 @@ contract Market is
         uint256 _amount
     ) external onlyOperator {
         IERC20(baseToken).safeTransferFrom(_account, address(this), _amount);
-        PerpTracker(perpTracker).addMargin(_account, _amount);
+        IPerpTracker(perpTracker).addMargin(_account, _amount);
     }
 
     function transferMarginOut(
@@ -231,7 +226,7 @@ contract Market is
         uint256 _amount
     ) external onlyOperator {
         IERC20(baseToken).safeTransfer(_account, _amount);
-        PerpTracker(perpTracker).removeMargin(_account, _amount);
+        IPerpTracker(perpTracker).removeMargin(_account, _amount);
     }
 
     /**
@@ -246,7 +241,7 @@ contract Market is
     ) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
-        PerpTracker(perpTracker).removeMargin(_account, amount);
+        IPerpTracker(perpTracker).removeMargin(_account, amount);
     }
 
     /**
@@ -258,7 +253,7 @@ contract Market is
         uint256 _fee
     ) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
-        PerpTracker(perpTracker).removeMargin(_account, amount);
+        IPerpTracker(perpTracker).removeMargin(_account, amount);
         insuranceBalance += amount;
     }
 
@@ -271,7 +266,7 @@ contract Market is
         uint256 _fee
     ) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
-        PerpTracker(perpTracker).removeMargin(_account, amount);
+        IPerpTracker(perpTracker).removeMargin(_account, amount);
         liquidityBalance += int(amount);
     }
 
@@ -287,15 +282,15 @@ contract Market is
         view
         returns (int256 mtm, int256 currentMargin, int256 positionNotional)
     {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        PriceOracle oracle_ = PriceOracle(priceOracle);
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
+        IPriceOracle oracle_ = IPriceOracle(priceOracle);
         uint256 len = perpTracker_.marketTokensLength();
         int pnl = 0;
         int mtmRatio;
         int feeRatio;
         int minFee;
         {
-            MarketSettings settings_ = MarketSettings(settings);
+            IMarketSettings settings_ = IMarketSettings(settings);
             mtmRatio = settings_.getIntVals(MAINTENANCE_MARGIN_RATIO);
             feeRatio = settings_.getIntVals(LIQUIDATION_FEE_RATIO);
             minFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
@@ -304,7 +299,7 @@ contract Market is
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
-            PerpTracker.Position memory position = perpTracker_.getPosition(
+            IPerpTracker.Position memory position = perpTracker_.getPosition(
                 _account,
                 token
             );
@@ -356,8 +351,8 @@ contract Market is
      * @dev make sure the oracle price is updated before calling this function
      */
     function _updateFee(address _token) internal {
-        int256 price = PriceOracle(priceOracle).getPrice(_token, true);
-        PerpTracker(perpTracker).updateFee(_token, price);
+        int256 price = IPriceOracle(priceOracle).getPrice(_token, true);
+        IPerpTracker(perpTracker).updateFee(_token, price);
     }
 
     /**
@@ -373,16 +368,16 @@ contract Market is
     function _updateTokenInfo(
         address _token
     ) internal returns (int lpNetValue, int netOpenInterest) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
 
         (lpNetValue, netOpenInterest) = globalStatus();
         perpTracker_.updateTokenInfo(
             _token,
-            PerpTracker.TokenInfo(
+            IPerpTracker.TokenInfo(
                 lpNetValue,
                 netOpenInterest,
                 perpTracker_.currentSkew(_token).multiplyDecimal(
-                    PriceOracle(priceOracle).getPrice(_token, false)
+                    IPriceOracle(priceOracle).getPrice(_token, false)
                 )
             )
         );
@@ -410,7 +405,7 @@ contract Market is
         bytes[] calldata _priceUpdateData
     ) external payable {
         // update oracle price
-        PriceOracle(priceOracle).updatePythPrice{value: msg.value}(
+        IPriceOracle(priceOracle).updatePythPrice{value: msg.value}(
             msg.sender,
             _priceUpdateData
         );
@@ -429,12 +424,12 @@ contract Market is
         address _account,
         address _token
     ) external view returns (int256, int256, int256) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
-        int256 oraclePrice = PriceOracle(priceOracle).getPrice(_token, true);
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
+        int256 oraclePrice = IPriceOracle(priceOracle).getPrice(_token, true);
         int256 size = -perpTracker_.getPositionSize(_account, _token);
         (int lpNetValue, ) = globalStatus();
         return (
-            PerpTracker(perpTracker).computePerpFillPrice(
+            IPerpTracker(perpTracker).computePerpFillPrice(
                 _token,
                 size,
                 oraclePrice,
@@ -455,10 +450,10 @@ contract Market is
         address _token,
         int256 _size
     ) external view returns (int256) {
-        int256 oraclePrice = PriceOracle(priceOracle).getPrice(_token, true);
+        int256 oraclePrice = IPriceOracle(priceOracle).getPrice(_token, true);
         (int lpNetValue, ) = globalStatus();
         return
-            PerpTracker(perpTracker).computePerpFillPrice(
+            IPerpTracker(perpTracker).computePerpFillPrice(
                 _token,
                 _size,
                 oraclePrice,
@@ -474,11 +469,11 @@ contract Market is
         // veSYM incentives
         uint256 amountToDistribute = tokenToUsd(baseToken, int(_fee), false)
             .multiplyDecimal(
-                MarketSettings(settings).getIntVals(VESYM_FEE_INCENTIVE_RATIO)
+                IMarketSettings(settings).getIntVals(VESYM_FEE_INCENTIVE_RATIO)
             )
             .toUint256();
         IERC20(baseToken).transfer(feeTracker, amountToDistribute);
-        FeeTracker(feeTracker).distributeIncentives(amountToDistribute);
+        IFeeTracker(feeTracker).distributeIncentives(amountToDistribute);
         // Volume
         VolumeTracker(volumeTracker).logTrade(_account, _volume);
     }
@@ -495,16 +490,22 @@ contract Market is
         int256 _sizeDelta,
         int256 _price
     ) external onlyOperator returns (int) {
-        PerpTracker perpTracker_ = PerpTracker(perpTracker);
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
 
         require(
             perpTracker_.latestUpdated(_token) == block.timestamp,
             "Market: fee is not updated"
         );
 
-        (int256 execPrice, uint256 tradingFee, uint256 couponUsed) = FeeTracker(
-            feeTracker
-        ).discountedTradingFee(_account, _sizeDelta, _price);
+        (
+            int256 execPrice,
+            uint256 tradingFee,
+            uint256 couponUsed
+        ) = IFeeTracker(feeTracker).discountedTradingFee(
+                _account,
+                _sizeDelta,
+                _price
+            );
         _logTrade(
             _account,
             _sizeDelta.multiplyDecimal(_price).abs().toUint256(),
@@ -570,7 +571,7 @@ contract Market is
         bool _mustUsePyth
     ) public view returns (int256) {
         return
-            (PriceOracle(priceOracle).getPrice(_token, _mustUsePyth) *
+            (IPriceOracle(priceOracle).getPrice(_token, _mustUsePyth) *
                 _amount) / int(10 ** IERC20Metadata(_token).decimals());
     }
 
@@ -581,6 +582,6 @@ contract Market is
     ) public view returns (int256) {
         return
             (_amount * int(10 ** IERC20Metadata(_token).decimals())) /
-            PriceOracle(priceOracle).getPrice(_token, _mustUsePyth);
+            IPriceOracle(priceOracle).getPrice(_token, _mustUsePyth);
     }
 }

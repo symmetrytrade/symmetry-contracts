@@ -1508,6 +1508,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"abi2solidity@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "abi2solidity@npm:0.1.2"
+  dependencies:
+    commander: ^2.19.0
+  bin:
+    abi2solidity: dist/index.js
+  checksum: 73142a78be7868771dcbb8be917d9f3bbdd296174d9d0e2c95a744530246b36ba2ccc0fdb9112eda7f64c027886da553a097af7dc4a9ee56363cf94b003f818c
+  languageName: node
+  linkType: hard
+
 "abort-controller@npm:^3.0.0":
   version: 3.0.0
   resolution: "abort-controller@npm:3.0.0"
@@ -2490,6 +2501,13 @@ __metadata:
   version: 10.0.0
   resolution: "commander@npm:10.0.0"
   checksum: 9f6495651f878213005ac744dd87a85fa3d9f2b8b90d1c19d0866d666bda7f735adfd7c2f10dfff345782e2f80ea258f98bb4efcef58e4e502f25f883940acfd
+  languageName: node
+  linkType: hard
+
+"commander@npm:^2.19.0":
+  version: 2.20.3
+  resolution: "commander@npm:2.20.3"
+  checksum: ab8c07884e42c3a8dbc5dd9592c606176c7eb5c1ca5ff274bcf907039b2c41de3626f684ea75ccf4d361ba004bbaff1f577d5384c155f3871e456bdf27becf9e
   languageName: node
   linkType: hard
 
@@ -4172,6 +4190,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"hardhat-interface-generator@npm:^0.0.6":
+  version: 0.0.6
+  resolution: "hardhat-interface-generator@npm:0.0.6"
+  dependencies:
+    abi2solidity: ^0.1.2
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: d7f1e73a63341e2ac00a72176636a0e715f5924243c5e8ca8e8c1d4473e7f5ae8d3e85a4cd74ef71faff9031d2f12cd73e94b804810c520466165fdeee65c979
+  languageName: node
+  linkType: hard
+
 "hardhat@npm:^2.12.7":
   version: 2.12.7
   resolution: "hardhat@npm:2.12.7"
@@ -5741,6 +5770,7 @@ __metadata:
     hardhat: ^2.12.7
     hardhat-deploy: ^0.11.23
     hardhat-gas-reporter: ^1.0.9
+    hardhat-interface-generator: ^0.0.6
     prettier: ^2.8.4
     prettier-plugin-solidity: ^1.1.2
     solhint: ^3.4.0
