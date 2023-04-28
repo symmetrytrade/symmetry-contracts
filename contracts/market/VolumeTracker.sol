@@ -35,6 +35,10 @@ contract VolumeTracker is
     mapping(address => mapping(uint256 => uint256)) public userWeeklyVolume;
     mapping(address => mapping(uint256 => uint256)) public userDailyVolume;
 
+    mapping(uint256 => uint256) public luckyCandidates;
+    mapping(uint256 => uint256) public winningNumber;
+    mapping(address => mapping(uint256 => uint256)) public userLuckyNumber;
+
     Tier[] public rebateTiers; // trading fee rebate tiers
 
     /*=== modifers ===*/
@@ -84,7 +88,23 @@ contract VolumeTracker is
     }
 
     function _addDailyVolume(address _account, uint256 _volume) internal {
-        userWeeklyVolume[_account][_startOfDay(block.timestamp)] += _volume;
+        IMarketSettings settings_ = IMarketSettings(settings);
+
+        uint256 t = _startOfDay(block.timestamp);
+        uint256 totalVol = userWeeklyVolume[_account][t] + _volume;
+        userWeeklyVolume[_account][t] = totalVol;
+
+        uint256 n = (totalVol /
+            uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT))).min(10);
+        for (uint i = 0; i < n; ++i) {
+            t += 1 days;
+            if (userLuckyNumber[msg.sender][t] == 0) {
+                uint256 num = luckyCandidates[t] + 1;
+                luckyCandidates[t] = num;
+                userLuckyNumber[msg.sender][t] = num;
+                winningNumber[t] = block.difficulty % 10;
+            }
+        }
     }
 
     function _addWeeklyVolume(address _account, uint256 _volume) internal {
@@ -105,7 +125,7 @@ contract VolumeTracker is
         _t = _startOfWeek(_t);
         require(
             _t < _startOfWeek(block.timestamp),
-            "VoluemTracker: invalid date"
+            "VolumeTracker: invalid date"
         );
         uint256 volume = userWeeklyVolume[msg.sender][_t];
         uint256 rebateRatio = _rebateRatio(volume);
@@ -116,6 +136,23 @@ contract VolumeTracker is
                 .multiplyDecimal(volume)
                 .multiplyDecimal(rebateRatio);
             ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
+        }
+    }
+
+    /*=== I'm feeling lucky ===*/
+    function claimLuckyCoupon(uint256 _t) external {
+        _t = _startOfDay(_t);
+        require(
+            _t < _startOfDay(block.timestamp),
+            "VolumeTracker: invalid date"
+        );
+        uint256 num = userLuckyNumber[msg.sender][_t];
+        require(num > 0, "VolumeTracker: no chance");
+        if (num % 10 == winningNumber[_t]) {
+            ITradingFeeCoupon(coupon).mintCoupon(
+                msg.sender,
+                uint(MarketSettings(settings).getIntVals(ONE_DRAW_REWARD))
+            );
         }
     }
 }

@@ -33,6 +33,8 @@ interface MarketGeneralConfig {
     perpTradingFee: string;
     tokenOILimitRatio: string;
     veSYMFeeIncentiveRatio: string;
+    oneDrawRequirement: string;
+    oneDrawReward: string;
 }
 
 // to be loaded in MarketSetting contract by market key
@@ -99,6 +101,8 @@ const DefaultConfig: NetworkConfigs = {
         perpTradingFee: normalized(0.001), // 0.1%
         tokenOILimitRatio: normalized(0.7),
         veSYMFeeIncentiveRatio: normalized(0), // 0%
+        oneDrawRequirement: normalized(1000),
+        oneDrawReward: normalized(5),
     },
     marketConfig: {
         WBTC: {
