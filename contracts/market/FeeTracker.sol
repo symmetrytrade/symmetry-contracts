@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/CommonContext.sol";
@@ -19,6 +21,7 @@ contract FeeTracker is
     Ownable,
     Initializable
 {
+    using SafeERC20 for IERC20;
     using SafeDecimalMath for uint256;
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
@@ -254,5 +257,29 @@ contract FeeTracker is
     }
 
     /*=== fee incentives ===*/
-    function distributeIncentives(uint256 _fee) external {}
+    function distributeIncentives(uint256 _fee) external {
+        tradingFeeIncentives[_startOfWeek(block.timestamp)] += _fee;
+    }
+
+    function claimIncentives(uint256[] memory _ts) external {
+        VotingEscrow votingEscrow_ = VotingEscrow(votingEscrow);
+
+        uint currentWeek = _startOfWeek(block.timestamp);
+        uint len = _ts.length;
+        uint sum = 0;
+        for (uint i = 0; i < len; ++i) {
+            uint t = _startOfWeek(_ts[i]);
+            require(t < currentWeek, "FeeTracker: invalid date");
+            uint incentives = tradingFeeIncentives[t];
+            if (incentives > 0 && !claimed[msg.sender][t]) {
+                claimed[msg.sender][t] = true;
+                sum +=
+                    (incentives * votingEscrow_.balanceOfAt(msg.sender, t)) /
+                    votingEscrow_.totalSupplyAt(t);
+            }
+        }
+        if (sum > 0) {
+            IERC20(Market(market).baseToken()).safeTransfer(msg.sender, sum);
+        }
+    }
 }

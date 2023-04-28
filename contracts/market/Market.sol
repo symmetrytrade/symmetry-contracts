@@ -448,12 +448,14 @@ contract Market is
     }
 
     function _logTrade(uint256 _volume, uint256 _fee) internal {
-        uint256 feeToDistribute = _fee.multiplyDecimal(
-            MarketSettings(settings)
-                .getIntVals(VESYM_FEE_INCENTIVE_RATIO)
-                .toUint256()
-        );
-        FeeTracker(feeTracker).distributeIncentives(feeToDistribute);
+        // veSYM incentives
+        uint256 amountToDistribute = tokenToUsd(baseToken, int(_fee), false)
+            .multiplyDecimal(
+                MarketSettings(settings).getIntVals(VESYM_FEE_INCENTIVE_RATIO)
+            )
+            .toUint256();
+        IERC20(baseToken).transfer(feeTracker, amountToDistribute);
+        FeeTracker(feeTracker).distributeIncentives(amountToDistribute);
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
