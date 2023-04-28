@@ -8,9 +8,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../utils/Initializable.sol";
+import "../utils/CommonContext.sol";
 import "./VotingEscrowCallback.sol";
 
 contract VotingEscrow is
+    CommonContext,
     ReentrancyGuard,
     AccessControlEnumerable,
     Initializable
@@ -34,7 +36,6 @@ contract VotingEscrow is
     event Claimed(address indexed account, uint256 value, uint256 ts);
 
     /*=== constants ===*/
-    uint256 private constant WEEK = 7 days;
     bytes32 public constant WHITELIST_ROLE = keccak256("WHITELIST_ROLE");
     bytes32 public constant VESTING_ROLE = keccak256("VESTING_ROLE");
 
@@ -193,10 +194,6 @@ contract VotingEscrow is
 
     /* solhint-enable avoid-tx-origin */
 
-    function _startOfWeek(uint256 _t) internal pure returns (uint256) {
-        return (_t / WEEK) * WEEK;
-    }
-
     function _tryCallback(address _addr) internal {
         if (callbackRelayer != address(0)) {
             VotingEscrowCallback(callbackRelayer).syncWithVotingEscrow(_addr);
@@ -217,7 +214,7 @@ contract VotingEscrow is
         for (uint256 i = 0; i < 255; i++) {
             // Hopefully it won't happen that this won't get used in 5 years!
             // If it does, users will be able to withdraw but vote weight will be broken
-            iterativeTime += WEEK;
+            iterativeTime += 1 weeks;
             int128 dSlope = 0;
             if (iterativeTime > block.timestamp) {
                 iterativeTime = block.timestamp;
@@ -294,7 +291,7 @@ contract VotingEscrow is
         uint256 iterativeTime = _startOfWeek(lastPoint.ts);
         // Iterate through all weeks between _point & _t to account for slope changes
         for (uint256 i = 0; i < 255; i++) {
-            iterativeTime = iterativeTime + WEEK;
+            iterativeTime = iterativeTime + 1 weeks;
             int128 dSlope = 0;
             if (iterativeTime > _t) {
                 iterativeTime = _t;
@@ -394,11 +391,11 @@ contract VotingEscrow is
         }
 
         uint256 vestTs = _startOfWeek(block.timestamp);
-        uint256 epoch = _findUserVested(_addr, vestTs + WEEK);
+        uint256 epoch = _findUserVested(_addr, vestTs + 1 weeks);
         uint256 len = vestWeeks;
         int128 vestAmount = SafeCast.toInt128(SafeCast.toInt256(_amount / len));
         for (uint i = 0; i < len; ++i) {
-            vestTs += WEEK;
+            vestTs += 1 weeks;
             LockedBalance memory oldLocked = LockedBalance(0, vestTs, 0, false);
             LockedBalance memory newLocked = LockedBalance(0, vestTs, 0, false);
             if (userVestHistory[_addr][epoch].ts < vestTs) {
@@ -1021,7 +1018,7 @@ contract VotingEscrow is
         uint256 iterativeTime = _startOfWeek(lastPoint.ts);
         uint256 len = vestWeeks;
         for (uint256 i = 0; i < len; ++i) {
-            iterativeTime = iterativeTime + WEEK;
+            iterativeTime = iterativeTime + 1 weeks;
             int128 dSlope = 0;
             if (iterativeTime > _t) {
                 iterativeTime = _t;

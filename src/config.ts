@@ -31,6 +31,7 @@ interface MarketGeneralConfig {
     maxFinancingFeeRate: string;
     perpTradingFee: string;
     tokenOILimitRatio: string;
+    veSYMFeeIncentiveRatio: string;
 }
 
 // to be loaded in MarketSetting contract by market key
@@ -89,6 +90,7 @@ const DefaultConfig: NetworkConfigs = {
         maxFinancingFeeRate: normalized(0.09), // 9% per day
         perpTradingFee: normalized(0.001), // 0.1%
         tokenOILimitRatio: normalized(0.7),
+        veSYMFeeIncentiveRatio: normalized(0), // 0%
     },
     marketConfig: {
         WBTC: {

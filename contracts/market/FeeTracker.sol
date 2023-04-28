@@ -5,31 +5,24 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/CommonContext.sol";
 import "../oracle/PriceOracle.sol";
 import "../tokenomics/VotingEscrow.sol";
 import "../tokens/TradingFeeCoupon.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
+import "./MarketSettingsContext.sol";
 
-contract FeeTracker is Ownable, Initializable {
+contract FeeTracker is
+    CommonContext,
+    MarketSettingsContext,
+    Ownable,
+    Initializable
+{
     using SafeDecimalMath for uint256;
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
     using SafeCast for int256;
-
-    // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
-    int256 private constant _UNIT = int(10 ** 18);
-
-    // general setting keys
-    bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
-    bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
-    bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
-    bytes32 public constant MAX_LIQUIDATION_FEE = "maxLiquidationFee";
-    bytes32 public constant LIQUIDATION_PENALTY_RATIO =
-        "liquidationPenaltyRatio";
-    bytes32 public constant PERP_TRADING_FEE = "perpTradingFee";
-    // setting keys per market
-    bytes32 public constant PROPORTION_RATIO = "proportionRatio";
 
     struct Tier {
         uint256 portion; // veSYM holding portion
@@ -44,6 +37,9 @@ contract FeeTracker is Ownable, Initializable {
     address public coupon;
 
     Tier[] public tradingFeeTiers; // trading fee tiers, in decending order
+
+    mapping(uint256 => uint256) public tradingFeeIncentives;
+    mapping(address => mapping(uint256 => bool)) public claimed;
 
     modifier onlyMarket() {
         require(msg.sender == market, "FeeTracker: sender is not market");
@@ -256,4 +252,7 @@ contract FeeTracker is Ownable, Initializable {
         int maxFee = MarketSettings(settings).getIntVals(MAX_LIQUIDATION_FEE);
         return fee.max(minFee).min(maxFee);
     }
+
+    /*=== fee incentives ===*/
+    function distributeIncentives(uint256 _fee) external {}
 }
