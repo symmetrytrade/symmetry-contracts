@@ -20,6 +20,7 @@ interface MarketGeneralConfig {
     minLiquidationFee: string;
     maxLiquidationFee: string;
     liquidationPenaltyRatio: string;
+    liquidationCouponRatio: string;
     liquidityRedeemFee: string;
     softLimitThreshold: string;
     hardLimitThreshold: string;
@@ -79,6 +80,7 @@ const DefaultConfig: NetworkConfigs = {
         minLiquidationFee: normalized(1), // 1u
         maxLiquidationFee: normalized(1000), // 1000u
         liquidationPenaltyRatio: normalized(0.01), // 1%
+        liquidationCouponRatio: normalized(0), // 0%
         liquidityRedeemFee: normalized(0.001), // 0.1%
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
