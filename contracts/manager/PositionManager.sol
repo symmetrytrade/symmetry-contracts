@@ -408,6 +408,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             .multiplyDecimal(_notionalLiquidated.abs())
             .min(_margin)
             .toUint256();
+        if (value > 0) {
         market_.deductFeeToLiquidity(_account, value);
         return
             TradingFeeCoupon(coupon).preMint(
@@ -415,6 +416,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
                 value,
                 block.timestamp + 1 weeks
             );
+            }
+            return 0;
     }
 
     function _coverDeficitLoss(address _account, int _deficitLoss) internal {

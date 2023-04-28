@@ -34,9 +34,8 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.PerpTracker,
         deployer
     );
-    const coupon_ = await getProxyContract(
-        hre,
-        CONTRACTS.TradingFeeCoupon,
+    const coupon_ = await hre.ethers.getContract(
+        CONTRACTS.TradingFeeCoupon.name,
         deployer
     );
     await (
@@ -61,13 +60,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await feeTracker_.setTradingFeeTiers(tiers)).wait();
 
     // add spender role of coupon
-    const TradingFeeCoupon_ = await hre.ethers.getContract(
-        CONTRACTS.TradingFeeCoupon.name,
-        deployer
-    );
-    await (
-        await TradingFeeCoupon_.grantRole(SPENDER_ROLE, feeTracker_.address)
-    ).wait();
+    await (await coupon_.grantRole(SPENDER_ROLE, feeTracker_.address)).wait();
 };
 
 deploy.tags = [CONTRACTS.FeeTracker.name, "prod"];

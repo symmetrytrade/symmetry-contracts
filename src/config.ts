@@ -46,6 +46,7 @@ interface OtherConfig {
     vestingWeeks: number;
     liquidityGaugeStartTime: number;
     tradingFeeTiers: TradingFeeTier[];
+    tradingFeeRebateTiers: TradingFeeRebateTier[];
     symRate: Rate[];
 }
 
@@ -62,6 +63,11 @@ export interface NetworkConfigs {
 export interface TradingFeeTier {
     portion: string;
     discount: string;
+}
+
+export interface TradingFeeRebateTier {
+    requirement: string;
+    rebateRatio: string;
 }
 
 export interface Rate {
@@ -111,6 +117,11 @@ const DefaultConfig: NetworkConfigs = {
             { portion: normalized(0.001), discount: normalized(0.05) },
             { portion: normalized(0.0001), discount: normalized(0.03) },
             { portion: normalized(0.00001), discount: normalized(0.01) },
+        ],
+        tradingFeeRebateTiers: [
+            { requirement: normalized(25000000), rebateRatio: normalized(0.1) },
+            { requirement: normalized(5000000), rebateRatio: normalized(0.05) },
+            { requirement: normalized(100000), rebateRatio: normalized(0.01) },
         ],
         symRate: [
             { startTime: 0, rate: normalized(1) },

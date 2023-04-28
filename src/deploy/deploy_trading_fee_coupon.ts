@@ -13,8 +13,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         args: ["Symmetry Coupon", "SYMCoupon", "Symmetry Coupon"],
         log: true,
     });
-
-    // TODO: add minter
 };
 
 deploy.tags = [CONTRACTS.TradingFeeCoupon.name, "prod"];
