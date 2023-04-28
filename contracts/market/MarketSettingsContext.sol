@@ -40,6 +40,9 @@ contract MarketSettingsContext {
     // order
     bytes32 internal constant MIN_ORDER_DELAY = "minOrderDelay";
     bytes32 internal constant MIN_KEEPER_FEE = "minKeeperFee";
+    // I'm feeling lucky
+    bytes32 internal constant ONE_DRAW_REQUIREMENT = "oneDrawRequirement";
+    bytes32 internal constant ONE_DRAW_REWARD = "oneDrawReward";
 
     /*=== setting keys per market ===*/
     bytes32 internal constant PROPORTION_RATIO = "proportionRatio";
