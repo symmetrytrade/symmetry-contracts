@@ -73,7 +73,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         address liquidator,
         int liquidationFee,
         int liquidationPenalty,
-        int deficitLoss
+        int deficitLoss,
+        uint preMintId
     );
 
     /*=== initialize ===*/
@@ -394,6 +395,28 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         );
     }
 
+    function _preMintCoupon(
+        address _account,
+        int _margin,
+        int _notionalLiquidated
+    ) internal returns (uint preMintId) {
+        if (_margin <= 0) return 0;
+
+        Market market_ = Market(market);
+        uint value = MarketSettings(market_.settings())
+            .getIntVals(LIQUIDATION_COUPON_RATIO)
+            .multiplyDecimal(_notionalLiquidated.abs())
+            .min(_margin)
+            .toUint256();
+        uint amount = market_.deductFeeToLiquidity(_account, value);
+        return
+            TradingFeeCoupon(coupon).preMint(
+                _account,
+                amount,
+                block.timestamp + 1 weeks
+            );
+    }
+
     function _coverDeficitLoss(address _account, int _deficitLoss) internal {
         (uint insuranceOut, uint lpOut) = Market(market).coverDeficitLoss(
             _account,
@@ -456,6 +479,12 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             (currentMargin - liquidationFee).max(0),
             notionalLiquidated
         );
+        // pre-mint coupon
+        uint preMintId = _preMintCoupon(
+            _account,
+            (currentMargin - liquidationFee - liquidationPenalty).max(0),
+            notionalLiquidated
+        );
         emit Liquidated(
             _account,
             _token,
@@ -463,7 +492,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             msg.sender,
             liquidationFee,
             liquidationPenalty,
-            deficitLoss
+            deficitLoss,
+            preMintId
         );
     }
 }

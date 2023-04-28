@@ -256,6 +256,19 @@ contract Market is
         insuranceBalance += amount;
     }
 
+    /**
+     * @param _account account to pay the fee
+     * @param _fee fee to pay in usd
+     */
+    function deductFeeToLiquidity(
+        address _account,
+        uint256 _fee
+    ) external onlyOperator returns (uint amount) {
+        amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
+        PerpTracker(perpTracker).removeMargin(_account, amount);
+        liquidityBalance += int(amount);
+    }
+
     /// @notice get user's margin status
     /// @param _account user address
     /// @return mtm maintenance margin including liquidation fee and penalty
@@ -456,6 +469,7 @@ contract Market is
             .toUint256();
         IERC20(baseToken).transfer(feeTracker, amountToDistribute);
         FeeTracker(feeTracker).distributeIncentives(amountToDistribute);
+        // Volume
     }
 
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.

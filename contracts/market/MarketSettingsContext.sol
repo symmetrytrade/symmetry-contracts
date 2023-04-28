@@ -16,6 +16,8 @@ contract MarketSettingsContext {
     bytes32 internal constant MAX_LIQUIDATION_FEE = "maxLiquidationFee";
     bytes32 internal constant LIQUIDATION_PENALTY_RATIO =
         "liquidationPenaltyRatio";
+    bytes32 internal constant LIQUIDATION_COUPON_RATIO =
+        "liquidationCouponRatio";
     // incentives
     bytes32 internal constant VESYM_FEE_INCENTIVE_RATIO =
         "veSYMFeeIncentiveRatio";

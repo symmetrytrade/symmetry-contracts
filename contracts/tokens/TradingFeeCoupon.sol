@@ -14,8 +14,17 @@ contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
     uint256 public tokenCount;
     mapping(uint256 => uint256) public couponValues;
     mapping(address => uint256) public unspents;
+    Mintable[] public mintables;
+
+    // structs
+    struct Mintable {
+        address to;
+        uint256 value;
+        uint256 expire;
+    }
 
     // events
+    event PreMint(uint256 id, address receiver, uint256 value, uint256 expire);
     event Minted(uint256 id, address receiver, uint256 value);
     event Redeem(uint256 id, address account, uint256 value);
     event Spent(address account, uint256 amount);
@@ -26,6 +35,7 @@ contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
         string memory _tokenBaseURI
     ) ERC721(_name, _symbol) {
         tokenBaseURI = _tokenBaseURI;
+        mintables.push(Mintable(address(0), 0, 0));
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
@@ -36,10 +46,38 @@ contract TradingFeeCoupon is ERC721, AccessControlEnumerable {
         return super.supportsInterface(interfaceId);
     }
 
+    function preMint(
+        address _to,
+        uint256 _value,
+        uint256 _expire
+    ) external returns (uint256 id) {
+        require(
+            hasRole(MINTER_ROLE, msg.sender),
+            "TradingFeeCoupon: must have minter role to pre-mint"
+        );
+
+        id = mintables.length;
+        mintables.push(Mintable({to: _to, value: _value, expire: _expire}));
+        emit PreMint(id, _to, _value, _expire);
+    }
+
+    function mint(uint256 _preMintId) external {
+        require(
+            _preMintId < mintables.length,
+            "TradingFeeCoupon: invalid pre-mint id"
+        );
+        Mintable memory mintable = mintables[_preMintId];
+        require(mintable.expire > 0, "TradingFeeCoupon: minted");
+        require(mintable.expire > block.timestamp, "TradingFeeCoupon: expired");
+        mintables[_preMintId].expire = 0;
+
+        _mintCoupon(mintable.to, mintable.value);
+    }
+
     function mintCoupon(address _to, uint256 _value) external {
         require(
             hasRole(MINTER_ROLE, msg.sender),
-            "TradingFeeCoupon: must have minter role to mint"
+            "TradingFeeCoupon: must have minter role to pre-mint"
         );
 
         _mintCoupon(_to, _value);
