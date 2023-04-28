@@ -102,17 +102,20 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         IVotingEscrow votingEscrow_ = IVotingEscrow(votingEscrow);
 
         UserInfo storage user = userInfo[_user];
-        uint256 l = (k * user.amount) / 100;
+        uint256 newWorkingPower = (k * user.amount) / 100;
         uint256 votingTotal = votingEscrow_.totalSupply();
         if (votingTotal > 0)
-            l +=
+            newWorkingPower +=
                 (((totalStaked * votingEscrow_.balanceOf(_user)) /
                     votingTotal) * (100 - k)) /
                 100;
-        if (l > user.amount) l = user.amount;
-        totalWorkingPower = totalWorkingPower + l - user.workingPower;
-        user.workingPower = l;
-        emit UpdateWorkingPower(_user, l);
+        if (newWorkingPower > user.amount) newWorkingPower = user.amount;
+        totalWorkingPower =
+            totalWorkingPower +
+            newWorkingPower -
+            user.workingPower;
+        user.workingPower = newWorkingPower;
+        emit UpdateWorkingPower(_user, newWorkingPower);
     }
 
     function deposit(uint256 _amount) external returns (uint256 reward) {

@@ -144,14 +144,18 @@ describe("Position", () => {
         // deposit margins
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000000).mul(UNIT)
+                hre.ethers.BigNumber.from(1000000).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
 
         await (
             await positionManager_
                 .connect(account2)
-                .depositMargin(hre.ethers.BigNumber.from(1000000).mul(UNIT))
+                .depositMargin(
+                    hre.ethers.BigNumber.from(1000000).mul(UNIT),
+                    hre.ethers.constants.HashZero
+                )
         ).wait();
     });
     it("lp limit for token", async () => {

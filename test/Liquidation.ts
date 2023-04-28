@@ -162,7 +162,8 @@ describe("Liquidation", () => {
         // deposit margins
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT)
+                hre.ethers.BigNumber.from(1000).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
 
@@ -272,7 +273,8 @@ describe("Liquidation", () => {
         // deposit margins
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT)
+                hre.ethers.BigNumber.from(1000).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
 
@@ -373,7 +375,8 @@ describe("Liquidation", () => {
         // deposit margins
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT)
+                hre.ethers.BigNumber.from(1000).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
 
@@ -466,7 +469,8 @@ describe("Liquidation", () => {
         // deposit margins
         await (
             await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT)
+                hre.ethers.BigNumber.from(1000).mul(UNIT),
+                hre.ethers.constants.HashZero
             )
         ).wait();
 
