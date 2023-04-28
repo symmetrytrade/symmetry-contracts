@@ -5,18 +5,16 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../market/Market.sol";
 import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
+import "../market/MarketSettingsContext.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 import "../tokens/LPToken.sol";
 
-contract LiquidityManager is Ownable, Initializable {
+contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
     using SafeDecimalMath for uint256;
     using SafeCast for int256;
     using SafeCast for uint256;
-
-    // setting keys
-    bytes32 public constant LIQUIDITY_REDEEM_FEE = "liquidityRedeemFee";
 
     // states
     address public market;

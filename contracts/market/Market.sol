@@ -6,29 +6,26 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../utils/CommonContext.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../oracle/PriceOracle.sol";
 import "./MarketSettings.sol";
 import "./PerpTracker.sol";
 import "./FeeTracker.sol";
+import "./MarketSettingsContext.sol";
 
-contract Market is Ownable, Initializable {
+contract Market is
+    CommonContext,
+    MarketSettingsContext,
+    Ownable,
+    Initializable
+{
     using SafeERC20 for IERC20;
     using SafeDecimalMath for uint256;
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
     using SafeCast for int256;
-
-    // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
-    int256 private constant _UNIT = int(10 ** 18);
-
-    // general setting keys
-    bytes32 public constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
-    bytes32 public constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
-    bytes32 public constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
-    // setting keys per market
-    bytes32 public constant PROPORTION_RATIO = "proportionRatio";
 
     // states
     address public baseToken; // liquidity token
@@ -450,6 +447,15 @@ contract Market is Ownable, Initializable {
             );
     }
 
+    function _logTrade(uint256 _volume, uint256 _fee) internal {
+        uint256 feeToDistribute = _fee.multiplyDecimal(
+            MarketSettings(settings)
+                .getIntVals(VESYM_FEE_INCENTIVE_RATIO)
+                .toUint256()
+        );
+        FeeTracker(feeTracker).distributeIncentives(feeToDistribute);
+    }
+
     /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
     /// @dev make sure the funding & financing fee is updated before calling this function.
     /// @param _account user address
@@ -472,6 +478,10 @@ contract Market is Ownable, Initializable {
         (int256 execPrice, uint256 tradingFee, uint256 couponUsed) = FeeTracker(
             feeTracker
         ).discountedTradingFee(_account, _sizeDelta, _price);
+        _logTrade(
+            _sizeDelta.multiplyDecimal(_price).abs().toUint256(),
+            tradingFee
+        );
 
         // funding fee
         perpTracker_.settleFunding(_account, _token);

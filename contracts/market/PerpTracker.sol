@@ -5,28 +5,21 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
+import "../utils/CommonContext.sol";
 import "./Market.sol";
 import "./MarketSettings.sol";
+import "./MarketSettingsContext.sol";
 import "../oracle/PriceOracle.sol";
 
-contract PerpTracker is Ownable, Initializable {
+contract PerpTracker is
+    CommonContext,
+    MarketSettingsContext,
+    Ownable,
+    Initializable
+{
     using SignedSafeDecimalMath for int256;
     using SafeCast for uint256;
     using SafeCast for int256;
-
-    // global setting keys
-    bytes32 public constant PERP_DOMAIN = "perpDomain";
-    bytes32 public constant SOFT_LIMIT_THRESHOLD = "softLimitThreshold";
-    bytes32 public constant HARD_LIMIT_THRESHOLD = "hardLimitThreshold";
-    bytes32 public constant MAX_SLIPPAGE = "maxSlippage";
-    bytes32 public constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
-    bytes32 public constant MAX_FINANCING_FEE_RATE = "maxFinancingFeeRate";
-    bytes32 public constant TOKEN_OI_LIMIT_RATIO = "tokenOILimitRatio";
-    // setting keys per market
-    bytes32 public constant PROPORTION_RATIO = "proportionRatio";
-
-    // same unit in SafeDeicmalMath and SignedSafeDeicmalMath
-    int256 private constant _UNIT = int(10 ** 18);
 
     struct LpPosition {
         int256 longSize; // long position hold by lp in underlying, positive, 18 decimals

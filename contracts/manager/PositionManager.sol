@@ -5,22 +5,16 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../market/Market.sol";
 import "../market/FeeTracker.sol";
 import "../market/MarketSettings.sol";
+import "../market/MarketSettingsContext.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 import "../tokens/TradingFeeCoupon.sol";
 
-contract PositionManager is Ownable, Initializable {
+contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     using SignedSafeDecimalMath for int256;
     using SafeDecimalMath for uint256;
     using SafeCast for int256;
     using SafeCast for uint256;
-
-    // general setting keys
-    bytes32 public constant MAX_LEVERAGE_RATIO = "maxLeverageRatio";
-    bytes32 public constant MIN_ORDER_DELAY = "minOrderDelay";
-    bytes32 public constant MIN_KEEPER_FEE = "minKeeperFee";
-    bytes32 public constant MIN_MARGIN = "minMargin";
-    // setting keys per market
 
     // states
     address public market;
