@@ -29,6 +29,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.VotingEscrow,
         deployer
     );
+    const lpToken_ = await hre.ethers.getContract(
+        CONTRACTS.LPToken.name,
+        deployer
+    );
     const symRate_ = await hre.ethers.getContract(
         CONTRACTS.SYMRate.name,
         deployer
@@ -40,6 +44,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (
         await liquidityGauge_.initialize(
             votingEscrow_.address,
+            lpToken_.address,
             symRate_.address,
             SYM_.address,
             startTime
@@ -59,6 +64,7 @@ deploy.dependencies = [
     CONTRACTS.VotingEscrow.name,
     CONTRACTS.SYMRate.name,
     CONTRACTS.SYM.name,
+    CONTRACTS.LPToken.name,
     "mock",
 ];
 export default deploy;

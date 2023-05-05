@@ -7,6 +7,12 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 const abiCoder = new hardhat.ethers.utils.AbiCoder();
 
+export const WEEK = 3600 * 24 * 7;
+
+export function startOfWeek(t: number) {
+    return Math.floor(t / WEEK) * WEEK;
+}
+
 export async function increaseNextBlockTimestamp(interval: number) {
     const evmTime = await helpers.time.latest();
     await helpers.time.setNextBlockTimestamp(evmTime + interval);
