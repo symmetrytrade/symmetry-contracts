@@ -13,6 +13,8 @@ import "./VotingEscrowCallback.sol";
 
 import "../utils/Initializable.sol";
 
+import "hardhat/console.sol";
+
 contract LiquidityGauge is Initializable, VotingEscrowCallback {
     using SafeERC20 for IERC20;
 
@@ -49,10 +51,12 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
 
     function initialize(
         address _votingEscrow,
+        address _lpToken,
         address _symRate,
         address _symToken,
         uint256 _startTime
     ) external onlyInitializeOnce {
+        lpToken = _lpToken;
         symRate = _symRate;
         symToken = _symToken;
         votingEscrow = _votingEscrow;

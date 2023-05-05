@@ -49,8 +49,7 @@ interface IVotingEscrow {
     enum LockAction {
         CREATE_LOCK,
         INCREASE_LOCK_AMOUNT,
-        INCREASE_LOCK_TIME,
-        VESTING
+        INCREASE_LOCK_TIME
     }
 
     /*=== function ===*/
