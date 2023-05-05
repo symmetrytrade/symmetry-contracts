@@ -477,6 +477,28 @@ describe("Position", () => {
             positionManager_.executeOrder(orderId, [])
         ).to.be.revertedWith("PositionManager: open interest exceed hardlimit");
     });
+    it("cancel order", async () => {
+        // trade eth long
+        await (
+            await positionManager_.submitOrder(
+                WETH,
+                normalized(600),
+                normalized(1000),
+                normalized(1),
+                (await helpers.time.latest()) + 100
+            )
+        ).wait();
+        const orderId = (await positionManager_.orderCnt()).sub(1);
+        await (await positionManager_.cancelOrder(orderId)).wait();
+
+        await increaseNextBlockTimestamp(
+            config.marketGeneralConfig.minOrderDelay
+        ); // 60s
+
+        await expect(
+            positionManager_.executeOrder(orderId, [])
+        ).to.be.revertedWith("PositionManager: order is not pending");
+    });
     it("withdraw margin", async () => {
         positionManager_ = positionManager_.connect(account2);
         const position = await perpTracker_.getPosition(
