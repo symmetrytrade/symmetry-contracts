@@ -78,18 +78,9 @@ interface IVotingEscrow {
 
     function decimals() external view returns (uint8);
 
-    function getLastLockedPoint(
-        address _addr
-    ) external view returns (Point memory point);
-
     function getLastStakedPoint(
         address _addr
     ) external view returns (StakedPoint memory point);
-
-    function getVest(
-        address _addr,
-        uint256 _idx
-    ) external view returns (Vest memory);
 
     function globalEpoch() external view returns (uint256);
 

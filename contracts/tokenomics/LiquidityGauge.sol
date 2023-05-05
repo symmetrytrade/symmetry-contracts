@@ -13,8 +13,6 @@ import "./VotingEscrowCallback.sol";
 
 import "../utils/Initializable.sol";
 
-import "hardhat/console.sol";
-
 contract LiquidityGauge is Initializable, VotingEscrowCallback {
     using SafeERC20 for IERC20;
 
@@ -154,23 +152,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         emit Withdraw(msg.sender, _amount);
     }
 
-    // kick someone from boosting if his/her locked share expired
-    function kick(address _user) external {
-        require(
-            IVotingEscrow(votingEscrow).balanceOf(_user) == 0,
-            "LiquidityGauge: user locked balance is not zero"
-        );
-        UserInfo storage user = userInfo[_user];
-        uint256 oldWorkingPower = user.workingPower;
-        _update();
-        _updateUser(_user);
-        _checkpoint(_user);
-        require(
-            oldWorkingPower > user.workingPower,
-            "LiquidityGauge: user working power is up-to-date"
-        );
-    }
-
+    // this function is public and it can also be used as kick function
     function syncWithVotingEscrow(address _account) external override {
         _update();
         _updateUser(_account);

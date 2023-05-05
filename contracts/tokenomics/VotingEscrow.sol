@@ -15,8 +15,6 @@ import "../interfaces/IVotingEscrow.sol";
 
 import "./VotingEscrowCallback.sol";
 
-import "hardhat/console.sol";
-
 contract VotingEscrow is
     IVotingEscrow,
     CommonContext,
@@ -100,22 +98,6 @@ contract VotingEscrow is
     }
 
     /*=== getter ===*/
-    /**
-     * @dev Gets the last available user point
-     * @param _addr User address
-     * @return point last locked point
-     */
-    function getLastLockedPoint(
-        address _addr
-    ) external view returns (Point memory point) {
-        uint256 uepoch = userPointEpoch[_addr];
-        point = Point(0, 0, 0);
-        if (uepoch == 0) {
-            return point;
-        }
-        point = userPointHistory[_addr][uepoch];
-    }
-
     function getLastStakedPoint(
         address _addr
     ) public view returns (StakedPoint memory point) {
@@ -129,13 +111,6 @@ contract VotingEscrow is
             SafeCast.toInt256(_stakedBalance(point, block.timestamp))
         );
         point.ts = block.timestamp;
-    }
-
-    function getVest(
-        address _addr,
-        uint256 _idx
-    ) public view returns (Vest memory) {
-        return userVestHistory[_addr][_idx];
     }
 
     /*===  helper functions ===*/
@@ -949,13 +924,14 @@ contract VotingEscrow is
             if (
                 (!newLocked.autoExtend && newLocked.end <= oldLocked.end) ||
                 (newLocked.autoExtend &&
-                    newLocked.lockDuration < oldLocked.end - block.timestamp)
+                    newLocked.lockDuration + block.timestamp < oldLocked.end)
             ) {
                 revert("VotingEscrow: Can only increase unlock time");
             }
         } else if (
             (!newLocked.autoExtend &&
                 newLocked.end < oldLocked.lockDuration + block.timestamp) ||
+            // equation is allowed here to enable user to disable auto-extend
             (newLocked.autoExtend &&
                 newLocked.lockDuration <= oldLocked.lockDuration)
         ) {
