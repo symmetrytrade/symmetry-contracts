@@ -15,6 +15,8 @@ import "../interfaces/IVotingEscrow.sol";
 
 import "./VotingEscrowCallback.sol";
 
+import "hardhat/console.sol";
+
 contract VotingEscrow is
     IVotingEscrow,
     CommonContext,
@@ -163,10 +165,8 @@ contract VotingEscrow is
         if (epoch > 0) {
             lastPoint = pointHistory[epoch];
         }
-        uint256 lastCheckpoint = lastPoint.ts;
-
         // Go over weeks to fill history and calculate what the current point is
-        uint256 iterativeTime = _startOfWeek(lastCheckpoint);
+        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
         for (uint256 i = 0; i < 255; i++) {
             // Hopefully it won't happen that this won't get used in 5 years!
             // If it does, users will be able to withdraw but vote weight will be broken
@@ -178,21 +178,19 @@ contract VotingEscrow is
                 dSlope = slopeChanges[iterativeTime];
             }
             int128 biasDelta = lastPoint.slope *
-                SafeCast.toInt128(int256((iterativeTime - lastCheckpoint)));
+                SafeCast.toInt128(int256((iterativeTime - lastPoint.ts)));
             lastPoint.bias = lastPoint.bias - biasDelta;
             lastPoint.slope = lastPoint.slope + dSlope;
             // This can happen
             if (lastPoint.bias < 0) {
                 lastPoint.bias = 0;
             }
-            lastCheckpoint = iterativeTime;
             lastPoint.ts = iterativeTime;
 
-            // when epoch is incremented, we either push here or after slopes updated below
-            epoch += 1;
             if (iterativeTime == block.timestamp) {
                 break;
             } else {
+                epoch += 1;
                 pointHistory.push(lastPoint);
             }
         }
@@ -288,7 +286,6 @@ contract VotingEscrow is
      * @return Total voting power at `_timestamp`
      */
     function totalSupplyAt(uint256 _timestamp) public view returns (uint256) {
-        require(block.timestamp >= _timestamp, "VotingEscrow: not past time");
         uint256 epoch = globalEpoch;
         uint256 targetEpoch = _findPoint(_timestamp, epoch);
 
@@ -311,7 +308,6 @@ contract VotingEscrow is
     }
 
     /*=== vesting ===*/
-
     function _findUserVested(
         address _addr,
         uint256 _timestamp
@@ -350,11 +346,16 @@ contract VotingEscrow is
         uint256 epoch = _findUserVested(_addr, vestTs + 1 weeks);
         uint256 len = vestWeeks;
         int128 vestAmount = SafeCast.toInt128(SafeCast.toInt256(_amount / len));
+        if (vestAmount == 0) {
+            return;
+        }
+        LockedBalance[] memory oldLocks = new LockedBalance[](len);
+        LockedBalance[] memory newLocks = new LockedBalance[](len);
         for (uint i = 0; i < len; ++i) {
             vestTs += 1 weeks;
             LockedBalance memory oldLocked = LockedBalance(0, vestTs, 0, false);
             LockedBalance memory newLocked = LockedBalance(0, vestTs, 0, false);
-            if (userVestHistory[_addr][epoch].ts < vestTs) {
+            if (epoch > uepoch || userVestHistory[_addr][epoch].ts < vestTs) {
                 userVestHistory[_addr].push(Vest(vestAmount, vestTs));
                 newLocked.amount = vestAmount;
                 ++uepoch;
@@ -364,9 +365,12 @@ contract VotingEscrow is
                 userVestHistory[_addr][epoch].amount = newLocked.amount;
             }
             ++epoch;
-            _checkpointLocked(_addr, oldLocked, newLocked);
+            oldLocks[i] = oldLocked;
+            newLocks[i] = newLocked;
         }
         userVestEpoch[_addr] = uepoch;
+
+        _checkpointLocked(_addr, oldLocks, newLocks);
 
         // callback here is unnecessary and may lead to reentrancy
         emit Vested(_addr, _amount, block.timestamp);
@@ -385,6 +389,7 @@ contract VotingEscrow is
         }
         int128 toClaim = 0;
 
+        // at most $vestWeeks$ iterations
         while (claimEpoch <= vestedEpoch) {
             if (userVestHistory[_addr][claimEpoch].ts > block.timestamp) {
                 break;
@@ -425,6 +430,7 @@ contract VotingEscrow is
             }
         }
 
+        globalEpoch += 1;
         pointHistory.push(lastPoint);
 
         if (_addr != address(0)) {
@@ -436,8 +442,7 @@ contract VotingEscrow is
                 slopeChanges[_oldStaked.end] = oldSlopeDelta;
             }
             if (_newStaked.end > block.timestamp) {
-                // now this cannot be an unstake, so  _newStaked.end is always >= _oldStaked.end
-                if (_newStaked.end > _oldStaked.end) {
+                if (_newStaked.end != _oldStaked.end) {
                     newSlopeDelta = newSlopeDelta - newSlope;
                     slopeChanges[_newStaked.end] = newSlopeDelta;
                 }
@@ -561,6 +566,137 @@ contract VotingEscrow is
     }
 
     /*=== lock ===*/
+    function _userLockedPoint(
+        address _addr,
+        Point memory _point,
+        uint256 _t
+    ) internal view returns (Point memory lastPoint) {
+        // _point is the latest point user made operation on veSYM before _t.
+        // Hence, there can be at most $vestWeeks$ slope changes between this point and _t,
+        // and these slope changes must happen in consecutive weeks following _point.
+        // Therefore, we only need to iterate $vestWeeks$ weeks here.
+        lastPoint = _point;
+        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
+        uint256 len = vestWeeks;
+        for (uint256 i = 0; i < len; ++i) {
+            iterativeTime = iterativeTime + 1 weeks;
+            int128 dSlope = 0;
+            if (iterativeTime > _t) {
+                iterativeTime = _t;
+            } else {
+                dSlope = userSlopeChanges[_addr][iterativeTime];
+            }
+
+            lastPoint.bias =
+                lastPoint.bias -
+                (lastPoint.slope *
+                    SafeCast.toInt128(int256(iterativeTime - lastPoint.ts)));
+            lastPoint.slope = lastPoint.slope + dSlope;
+            lastPoint.ts = iterativeTime;
+            if (iterativeTime == _t) {
+                break;
+            }
+        }
+        // in the rest time period, there is at most one active lock by user
+        lastPoint.bias =
+            lastPoint.bias -
+            (lastPoint.slope * SafeCast.toInt128(int256(_t - lastPoint.ts)));
+        if (lastPoint.bias < 0) {
+            lastPoint.bias = 0;
+        }
+        lastPoint.ts = _t;
+    }
+
+    function _userCheckpoint(
+        address _addr
+    ) internal view returns (Point memory lastPoint) {
+        lastPoint = Point({bias: 0, slope: 0, ts: block.timestamp});
+        uint256 epoch = userPointEpoch[_addr];
+        if (epoch > 0) {
+            lastPoint = userPointHistory[_addr][epoch];
+        }
+        return _userLockedPoint(_addr, lastPoint, block.timestamp);
+    }
+
+    function _updateSlopeChanges(
+        address _addr,
+        LockedBalance memory _oldLocked,
+        LockedBalance memory _newLocked
+    ) internal returns (Point memory userOldPoint, Point memory userNewPoint) {
+        int128 oldSlopeDelta = 0;
+        int128 oldUserSlopeDelta = 0;
+        int128 newSlopeDelta = 0;
+        int128 newUserSlopeDelta = 0;
+
+        // Calculate slopes and biases
+        // Kept at zero when they have to
+        if (_oldLocked.autoExtend) {
+            // userOldPoint.slope = 0;
+            userOldPoint.bias =
+                (_oldLocked.amount / SafeCast.toInt128(int256(maxTime))) *
+                SafeCast.toInt128(int256(_oldLocked.lockDuration));
+        } else {
+            oldSlopeDelta = slopeChanges[_oldLocked.end];
+            oldUserSlopeDelta = userSlopeChanges[_addr][_oldLocked.end];
+            if (_oldLocked.end > block.timestamp && _oldLocked.amount > 0) {
+                userOldPoint.slope =
+                    _oldLocked.amount /
+                    SafeCast.toInt128(int256(maxTime));
+                userOldPoint.bias =
+                    userOldPoint.slope *
+                    SafeCast.toInt128(int256(_oldLocked.end - block.timestamp));
+            }
+        }
+        if (_newLocked.autoExtend) {
+            // userNewPoint.slope = 0;
+            userNewPoint.bias =
+                (_newLocked.amount / SafeCast.toInt128(int256(maxTime))) *
+                SafeCast.toInt128(int256(_newLocked.lockDuration));
+        } else {
+            if (_newLocked.end != 0) {
+                if (_newLocked.end == _oldLocked.end) {
+                    newSlopeDelta = oldSlopeDelta;
+                    newUserSlopeDelta = oldUserSlopeDelta;
+                } else {
+                    newSlopeDelta = slopeChanges[_newLocked.end];
+                    newUserSlopeDelta = userSlopeChanges[_addr][_newLocked.end];
+                }
+            }
+            if (_newLocked.end > block.timestamp && _newLocked.amount > 0) {
+                userNewPoint.slope =
+                    _newLocked.amount /
+                    SafeCast.toInt128(int256(maxTime));
+                userNewPoint.bias =
+                    userNewPoint.slope *
+                    SafeCast.toInt128(int256(_newLocked.end - block.timestamp));
+            }
+        }
+
+        // Schedule the slope changes (slope is going down)
+        // We subtract new_user_slope from [new_locked.end]
+        // and add old_user_slope to [old_locked.end]
+        if (_oldLocked.end > block.timestamp) {
+            // oldSlopeDelta was <something> - userOldPoint.slope, so we cancel that
+            oldSlopeDelta = oldSlopeDelta + userOldPoint.slope;
+            oldUserSlopeDelta = oldUserSlopeDelta + userOldPoint.slope;
+            if (_newLocked.end == _oldLocked.end) {
+                oldSlopeDelta = oldSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
+                oldUserSlopeDelta = oldUserSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
+            }
+            slopeChanges[_oldLocked.end] = oldSlopeDelta;
+            userSlopeChanges[_addr][_oldLocked.end] = oldUserSlopeDelta;
+        }
+        if (_newLocked.end > block.timestamp) {
+            if (_newLocked.end > _oldLocked.end) {
+                newSlopeDelta = newSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
+                newUserSlopeDelta = newUserSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
+                slopeChanges[_newLocked.end] = newSlopeDelta;
+                userSlopeChanges[_addr][_newLocked.end] = newSlopeDelta;
+            }
+            // else: we recorded it already in oldSlopeDelta
+        }
+    }
+
     /**
      * @dev Record global and per-user data to checkpoint on a new lock operation
      * @param _addr User's wallet address. No user checkpoint if 0x0
@@ -569,124 +705,55 @@ contract VotingEscrow is
      */
     function _checkpointLocked(
         address _addr,
-        LockedBalance memory _oldLocked,
-        LockedBalance memory _newLocked
+        LockedBalance[] memory _oldLocked,
+        LockedBalance[] memory _newLocked
     ) internal {
         Point memory userOldPoint;
         Point memory userNewPoint;
-        int128 oldSlopeDelta = 0;
-        int128 oldUserSlopeDelta = 0;
-        int128 newSlopeDelta = 0;
-        int128 newUserSlopeDelta = 0;
-
-        if (_addr != address(0)) {
-            // Calculate slopes and biases
-            // Kept at zero when they have to
-            if (_oldLocked.autoExtend) {
-                // userOldPoint.slope = 0;
-                userOldPoint.bias =
-                    (_oldLocked.amount / SafeCast.toInt128(int256(maxTime))) *
-                    SafeCast.toInt128(int256(_oldLocked.lockDuration));
-            } else {
-                oldSlopeDelta = slopeChanges[_oldLocked.end];
-                oldUserSlopeDelta = userSlopeChanges[_addr][_oldLocked.end];
-                if (_oldLocked.end > block.timestamp && _oldLocked.amount > 0) {
-                    userOldPoint.slope =
-                        _oldLocked.amount /
-                        SafeCast.toInt128(int256(maxTime));
-                    userOldPoint.bias =
-                        userOldPoint.slope *
-                        SafeCast.toInt128(
-                            int256(_oldLocked.end - block.timestamp)
-                        );
-                }
-            }
-            if (_newLocked.autoExtend) {
-                // userNewPoint.slope = 0;
-                userNewPoint.bias =
-                    (_newLocked.amount / SafeCast.toInt128(int256(maxTime))) *
-                    SafeCast.toInt128(int256(_newLocked.lockDuration));
-            } else {
-                if (_newLocked.end != 0) {
-                    if (_newLocked.end == _oldLocked.end) {
-                        newSlopeDelta = oldSlopeDelta;
-                        newUserSlopeDelta = oldUserSlopeDelta;
-                    } else {
-                        newSlopeDelta = slopeChanges[_newLocked.end];
-                        newUserSlopeDelta = userSlopeChanges[_addr][
-                            _newLocked.end
-                        ];
-                    }
-                }
-                if (_newLocked.end > block.timestamp && _newLocked.amount > 0) {
-                    userNewPoint.slope =
-                        _newLocked.amount /
-                        SafeCast.toInt128(int256(maxTime));
-                    userNewPoint.bias =
-                        userNewPoint.slope *
-                        SafeCast.toInt128(
-                            int256(_newLocked.end - block.timestamp)
-                        );
-                }
-            }
+        uint len = _oldLocked.length;
+        for (uint i = 0; i < len; ++i) {
+            (
+                Point memory oldPoint,
+                Point memory newPoint
+            ) = _updateSlopeChanges(_addr, _oldLocked[i], _newLocked[i]);
+            userOldPoint.slope += oldPoint.slope;
+            userOldPoint.bias += oldPoint.bias;
+            userNewPoint.slope += newPoint.slope;
+            userNewPoint.bias += newPoint.bias;
         }
 
         Point memory lastPoint = _checkpoint();
         // Now pointHistory is filled until t=now
 
-        if (_addr != address(0)) {
-            // If last point was in this block, the slope change has been applied already
-            // But in such case we have 0 slope(s)
-            lastPoint.slope =
-                lastPoint.slope +
-                userNewPoint.slope -
-                userOldPoint.slope;
-            lastPoint.bias =
-                lastPoint.bias +
-                userNewPoint.bias -
-                userOldPoint.bias;
-            if (lastPoint.bias < 0) {
-                lastPoint.bias = 0;
-            }
+        // If last point was in this block, the slope change has been applied already
+        // But in such case we have 0 slope(s)
+        lastPoint.slope =
+            lastPoint.slope +
+            userNewPoint.slope -
+            userOldPoint.slope;
+        lastPoint.bias = lastPoint.bias + userNewPoint.bias - userOldPoint.bias;
+        if (lastPoint.bias < 0) {
+            lastPoint.bias = 0;
         }
 
         // Record the changed point into history
         // pointHistory[epoch] = lastPoint;
+        globalEpoch += 1;
         pointHistory.push(lastPoint);
 
-        if (_addr != address(0)) {
-            // Schedule the slope changes (slope is going down)
-            // We subtract new_user_slope from [new_locked.end]
-            // and add old_user_slope to [old_locked.end]
-            if (_oldLocked.end > block.timestamp) {
-                // oldSlopeDelta was <something> - userOldPoint.slope, so we cancel that
-                oldSlopeDelta = oldSlopeDelta + userOldPoint.slope;
-                oldUserSlopeDelta = oldUserSlopeDelta + userOldPoint.slope;
-                if (_newLocked.end == _oldLocked.end) {
-                    oldSlopeDelta = oldSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
-                    oldUserSlopeDelta = oldUserSlopeDelta - userNewPoint.slope; // It was a new deposit, not extension
-                }
-                slopeChanges[_oldLocked.end] = oldSlopeDelta;
-                userSlopeChanges[_addr][_oldLocked.end] = oldUserSlopeDelta;
-            }
-            if (_newLocked.end > block.timestamp) {
-                if (_newLocked.end > _oldLocked.end) {
-                    newSlopeDelta = newSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
-                    newUserSlopeDelta = newUserSlopeDelta - userNewPoint.slope; // old slope disappeared at this point
-                    slopeChanges[_newLocked.end] = newSlopeDelta;
-                    userSlopeChanges[_addr][_newLocked.end] = newSlopeDelta;
-                }
-                // else: we recorded it already in oldSlopeDelta
-            }
-
-            uint256 uEpoch = userPointEpoch[_addr];
-            if (uEpoch == 0) {
-                userPointHistory[_addr].push(userOldPoint);
-            }
-            userPointEpoch[_addr] = uEpoch + 1;
-            userNewPoint.ts = block.timestamp;
-            userPointHistory[_addr].push(userNewPoint);
+        uint256 uEpoch = userPointEpoch[_addr];
+        if (uEpoch == 0) {
+            userPointHistory[_addr].push(userOldPoint);
         }
+        // compute current user point
+        Point memory userPoint = _userCheckpoint(_addr);
+        userPoint.slope =
+            userPoint.slope +
+            userNewPoint.slope -
+            userOldPoint.slope;
+        userPoint.bias = userPoint.bias + userNewPoint.bias - userOldPoint.bias;
+        userPointEpoch[_addr] = uEpoch + 1;
+        userPointHistory[_addr].push(userPoint);
     }
 
     /**
@@ -708,7 +775,11 @@ contract VotingEscrow is
         // Both _oldLocked.end could be current or expired (>/< block.timestamp)
         // value == 0 (extend lock) or value > 0 (add to lock or extend lock)
         // newLocked.end > block.timestamp (always)
-        _checkpointLocked(_addr, _oldLocked, _newLocked);
+        LockedBalance[] memory oldLocks = new LockedBalance[](1);
+        LockedBalance[] memory newLocks = new LockedBalance[](1);
+        oldLocks[0] = _oldLocked;
+        newLocks[0] = _newLocked;
+        _checkpointLocked(_addr, oldLocks, newLocks);
 
         uint256 value = SafeCast.toUint256(
             _newLocked.amount - _oldLocked.amount
@@ -744,7 +815,6 @@ contract VotingEscrow is
         _assertNotContract();
 
         _claimVested(msg.sender);
-
         _unlockTime = _startOfWeek(_unlockTime); // Locktime is rounded down to weeks
         LockedBalance memory oldLocked = locked[msg.sender];
         LockedBalance memory newLocked = LockedBalance({
@@ -966,40 +1036,7 @@ contract VotingEscrow is
         Point memory _point,
         uint256 _t
     ) internal view returns (uint256) {
-        // _point is the latest point user made operation on veSYM before _t.
-        // Hence, there can be at most $vestWeeks$ slope changes between this point and _t,
-        // and these slope changes must happen in consecutive weeks following _point.
-        // Therefore, we only need to iterate $vestWeeks$ weeks here.
-        Point memory lastPoint = _point;
-        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
-        uint256 len = vestWeeks;
-        for (uint256 i = 0; i < len; ++i) {
-            iterativeTime = iterativeTime + 1 weeks;
-            int128 dSlope = 0;
-            if (iterativeTime > _t) {
-                iterativeTime = _t;
-            } else {
-                dSlope = userSlopeChanges[_addr][iterativeTime];
-            }
-
-            lastPoint.bias =
-                lastPoint.bias -
-                (lastPoint.slope *
-                    SafeCast.toInt128(int256(iterativeTime - lastPoint.ts)));
-            if (iterativeTime == _t) {
-                break;
-            }
-            lastPoint.slope = lastPoint.slope + dSlope;
-            lastPoint.ts = iterativeTime;
-        }
-        lastPoint.bias =
-            lastPoint.bias -
-            (lastPoint.slope * SafeCast.toInt128(int256(_t - lastPoint.ts)));
-
-        if (lastPoint.bias < 0) {
-            lastPoint.bias = 0;
-        }
-        return SafeCast.toUint256(lastPoint.bias);
+        return SafeCast.toUint256(_userLockedPoint(_addr, _point, _t).bias);
     }
 
     /**
