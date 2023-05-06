@@ -460,6 +460,12 @@ contract PerpTracker is
 
     /*=== funding & financing fees ===*/
 
+    function nextFundingVelocity(
+        address _token
+    ) external view returns (int256) {
+        return _fundingVelocity(_token);
+    }
+
     /**
      * @dev compute funding velocity:
      * v = min{max{-1, skew / L}, 1} * v_max
@@ -528,7 +534,7 @@ contract PerpTracker is
             ) {
                 // will flip
                 int256 timeToFlip = (-latestFundingRate).divideDecimal(
-                    fundingVelocity
+                    fundingVelocity * 2
                 );
                 nextFundingRate =
                     latestFundingRate +
