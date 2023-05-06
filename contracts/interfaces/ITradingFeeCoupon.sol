@@ -23,7 +23,7 @@ interface ITradingFeeCoupon {
 
     function mint(uint256 _preMintId) external;
 
-    function mintAndRedeem(address _to, uint256 _value) external;
+    function mintAndRedeem(uint256 _preMintId) external;
 
     function mintCoupon(address _to, uint256 _value) external;
 

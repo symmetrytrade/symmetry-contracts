@@ -55,6 +55,17 @@ contract TradingFeeCoupon is
     }
 
     function mint(uint256 _preMintId) external {
+        _mintFromPreMint(_preMintId);
+    }
+
+    function mintAndRedeem(uint256 _preMintId) external {
+        uint256 id = _mintFromPreMint(_preMintId);
+        _redeemCoupon(mintables[_preMintId].to, id);
+    }
+
+    function _mintFromPreMint(
+        uint256 _preMintId
+    ) internal returns (uint256 id) {
         require(
             _preMintId < mintables.length,
             "TradingFeeCoupon: invalid pre-mint id"
@@ -64,7 +75,7 @@ contract TradingFeeCoupon is
         require(mintable.expire > block.timestamp, "TradingFeeCoupon: expired");
         mintables[_preMintId].expire = 0;
 
-        _mintCoupon(mintable.to, mintable.value);
+        return _mintCoupon(mintable.to, mintable.value);
     }
 
     function mintCoupon(address _to, uint256 _value) external {
@@ -74,16 +85,6 @@ contract TradingFeeCoupon is
         );
 
         _mintCoupon(_to, _value);
-    }
-
-    function mintAndRedeem(address _to, uint256 _value) external {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "TradingFeeCoupon: must have minter role to mint"
-        );
-
-        uint256 id = _mintCoupon(_to, _value);
-        _redeemCoupon(_to, id);
     }
 
     function redeemCoupon(uint256 _id) external {

@@ -274,9 +274,13 @@ contract FeeTracker is
             uint incentives = tradingFeeIncentives[t];
             if (incentives > 0 && !claimed[msg.sender][t]) {
                 claimed[msg.sender][t] = true;
-                sum +=
-                    (incentives * votingEscrow_.balanceOfAt(msg.sender, t)) /
-                    votingEscrow_.totalSupplyAt(t);
+                uint total = votingEscrow_.totalSupplyAt(t);
+                if (total > 0) {
+                    sum +=
+                        (incentives *
+                            votingEscrow_.balanceOfAt(msg.sender, t)) /
+                        total;
+                }
             }
         }
         if (sum > 0) {

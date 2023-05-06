@@ -35,6 +35,9 @@ contract VolumeTracker is
     mapping(address => mapping(uint256 => uint256)) public userWeeklyVolume;
     mapping(address => mapping(uint256 => uint256)) public userDailyVolume;
 
+    mapping(address => mapping(uint256 => bool)) public weeklyCouponClaimed;
+    mapping(address => mapping(uint256 => bool)) public dailyCouponClaimed;
+
     mapping(uint256 => uint256) public luckyCandidates;
     mapping(uint256 => uint256) public winningNumber;
     mapping(address => mapping(uint256 => uint256)) public userLuckyNumber;
@@ -129,6 +132,13 @@ contract VolumeTracker is
             _t < _startOfWeek(block.timestamp),
             "VolumeTracker: invalid date"
         );
+
+        require(
+            !weeklyCouponClaimed[msg.sender][_t],
+            "VolumeTracker: claimed already"
+        );
+        weeklyCouponClaimed[msg.sender][_t] = true;
+
         uint256 volume = userWeeklyVolume[msg.sender][_t];
         uint256 rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
@@ -148,6 +158,13 @@ contract VolumeTracker is
             _t < _startOfDay(block.timestamp),
             "VolumeTracker: invalid date"
         );
+
+        require(
+            !dailyCouponClaimed[msg.sender][_t],
+            "VolumeTracker: claimed already"
+        );
+        dailyCouponClaimed[msg.sender][_t] = true;
+
         uint256 num = userLuckyNumber[msg.sender][_t];
         require(num > 0, "VolumeTracker: no chance");
         if (num % 10 == winningNumber[_t]) {
