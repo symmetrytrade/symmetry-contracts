@@ -91,19 +91,21 @@ contract VolumeTracker is
         IMarketSettings settings_ = IMarketSettings(settings);
 
         uint256 t = _startOfDay(block.timestamp);
-        uint256 totalVol = userWeeklyVolume[_account][t] + _volume;
-        userWeeklyVolume[_account][t] = totalVol;
+        uint256 totalVol = userDailyVolume[_account][t] + _volume;
+        userDailyVolume[_account][t] = totalVol;
 
         uint256 n = (totalVol /
             uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT))).min(10);
         for (uint i = 0; i < n; ++i) {
-            t += 1 days;
-            if (userLuckyNumber[msg.sender][t] == 0) {
+            if (userLuckyNumber[_account][t] == 0) {
                 uint256 num = luckyCandidates[t] + 1;
                 luckyCandidates[t] = num;
-                userLuckyNumber[msg.sender][t] = num;
-                winningNumber[t] = block.difficulty % 10;
+                userLuckyNumber[_account][t] = num;
+                winningNumber[t] =
+                    uint(keccak256(abi.encodePacked(block.difficulty, t))) %
+                    10;
             }
+            t += 1 days;
         }
     }
 

@@ -73,6 +73,12 @@ interface IMarket {
 
     function priceOracle() external view returns (address);
 
+    function redeemTradingFee(
+        address _account,
+        int _lp,
+        int _redeemValue
+    ) external returns (uint fee);
+
     function settings() external view returns (address);
 
     function tokenToUsd(
