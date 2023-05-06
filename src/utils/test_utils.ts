@@ -8,6 +8,11 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 const abiCoder = new hardhat.ethers.utils.AbiCoder();
 
 export const WEEK = 3600 * 24 * 7;
+export const DAY = 3600 * 24;
+
+export function startOfDay(t: number) {
+    return Math.floor(t / DAY) * DAY;
+}
 
 export function startOfWeek(t: number) {
     return Math.floor(t / WEEK) * WEEK;
