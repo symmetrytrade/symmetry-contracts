@@ -113,7 +113,7 @@ contract FeeTracker is
         uint portion = _vePortionOf(_account);
         uint len = tradingFeeTiers.length;
         for (uint i = 0; i < len; ++i) {
-            if (portion > tradingFeeTiers[i].portion) {
+            if (portion >= tradingFeeTiers[i].portion) {
                 discount = tradingFeeTiers[i].discount;
                 return discount;
             }
@@ -206,20 +206,20 @@ contract FeeTracker is
         ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
 
         // deduct trading fee in the price
-        // (p_{oracle}-p_{avg})*size=(p_{oracle}-p_{fill})*size-p_{avg}*|size|*k%
-        // p_{avg}=p_{fill} / (1 - k%) for size > 0
-        // p_{avg}=p_{fill} / (1 + k%) for size < 0
+        // (p_{oracle}-p_{exec})*size=(p_{oracle}-p_{fill})*size-p_{fill}*|size|*k%
+        // p_{avg}=p_{fill} * (1 + k%) for size > 0
+        // p_{avg}=p_{fill} * (1 - k%) for size < 0
         // where k is trading fee ratio
         int256 k = IMarketSettings(settings).getIntVals(PERP_TRADING_FEE);
         // apply fee discount
         k = k.multiplyDecimal(_UNIT - _tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "Market: trading fee ratio > 1");
         if (_sizeDelta > 0) {
-            execPrice = _price.divideDecimal(_UNIT - k);
+            execPrice = _price.multiplyDecimal(_UNIT + k);
         } else {
-            execPrice = _price.divideDecimal(_UNIT + k);
+            execPrice = _price.multiplyDecimal(_UNIT - k);
         }
-        fee = execPrice
+        fee = _price
             .multiplyDecimal(_sizeDelta.abs())
             .multiplyDecimal(k)
             .toUint256();

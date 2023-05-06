@@ -272,18 +272,13 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
                     msg.sender
                 );
             }
-            // do trade
-            int execPrice = market_.trade(
-                order.account,
-                order.token,
-                order.size,
-                fillPrice
-            );
             require(
-                (execPrice <= order.acceptablePrice && order.size > 0) ||
-                    (execPrice >= order.acceptablePrice && order.size < 0),
+                (fillPrice <= order.acceptablePrice && order.size > 0) ||
+                    (fillPrice >= order.acceptablePrice && order.size < 0),
                 "PositionManager: unacceptable execution price"
             );
+            // do trade
+            market_.trade(order.account, order.token, order.size, fillPrice);
         }
         // ensure leverage ratio is higher than max laverage ratio, or is position decrement
         require(

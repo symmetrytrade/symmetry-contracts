@@ -207,8 +207,8 @@ describe("Liquidity", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(1),
-                "1507241303159670506006", // avg price
-                "1507241303159670506", // trading fee
+                "1507239795918367346335", // avg price
+                "1505734061856510835", // trading fee
                 "0"
             );
         const lpPosition = await perpTracker_.getLpPosition(WETH);
@@ -228,14 +228,14 @@ describe("Liquidity", () => {
             .withArgs(
                 await account1.getAddress(),
                 amount,
-                "98105241314680774335006",
+                "98105239807439471352335",
                 normalized(98000),
-                "97894871581777838018054"
+                "97894873085787145653945"
             );
         // first remove
         await increaseNextBlockTimestamp(5); // 5s
         expect(await lpToken_.totalSupply()).to.deep.eq(
-            "195894871581777838018054"
+            "195894873085787145653945"
         );
         await expect(
             liquidityManager_.removeLiquidity(
@@ -248,17 +248,17 @@ describe("Liquidity", () => {
             .withArgs(
                 await account1.getAddress(),
                 "97947435790888919009027",
-                "196105241349244085823506",
-                "98052620674622042911753",
-                "103105157384986476660",
-                "99948485221670465750094"
+                "196105239842002783373335",
+                "98052619168189178297658",
+                "103104401548277725801",
+                "99948484455756020991690"
             );
         expect(await lpToken_.totalSupply()).to.deep.eq(
-            "97947435790888919009027"
+            "97947437294898226644918"
         );
         expect(
             await lpToken_.balanceOf(await account1.getAddress())
-        ).to.deep.eq("97947435790888919009027");
+        ).to.deep.eq("97947437294898226644918");
         // second remove
         await increaseNextBlockTimestamp(5); // 5s
         await expect(
