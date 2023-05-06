@@ -93,20 +93,28 @@ contract Market is
 
     /*=== liquidity ===*/
 
+    function _transferLiquidityIn(address _account, uint256 _amount) internal {
+        IERC20(baseToken).safeTransferFrom(_account, address(this), _amount);
+        liquidityBalance += _amount.toInt256();
+    }
+
     function transferLiquidityIn(
         address _account,
         uint256 _amount
     ) external onlyOperator {
-        IERC20(baseToken).safeTransferFrom(_account, address(this), _amount);
-        liquidityBalance += _amount.toInt256();
+        _transferLiquidityIn(_account, _amount);
+    }
+
+    function _transferLiquidityOut(address _account, uint256 _amount) internal {
+        IERC20(baseToken).safeTransfer(_account, _amount);
+        liquidityBalance -= _amount.toInt256();
     }
 
     function transferLiquidityOut(
         address _account,
         uint256 _amount
     ) external onlyOperator {
-        IERC20(baseToken).safeTransfer(_account, _amount);
-        liquidityBalance -= _amount.toInt256();
+        _transferLiquidityOut(_account, _amount);
     }
 
     /**
@@ -413,6 +421,18 @@ contract Market is
         _updateTokenInfo(_token);
     }
 
+    function redeemTradingFee(
+        address _account,
+        int _lp,
+        int _redeemValue
+    ) external onlyOperator returns (uint fee) {
+        fee = IFeeTracker(feeTracker).redeemTradingFee(
+            _account,
+            _lp,
+            _redeemValue
+        );
+    }
+
     /*=== liquidation ===*/
     /**
      * @notice compute the fill price of liquidation
@@ -472,7 +492,7 @@ contract Market is
                 IMarketSettings(settings).getIntVals(VESYM_FEE_INCENTIVE_RATIO)
             )
             .toUint256();
-        IERC20(baseToken).transfer(feeTracker, amountToDistribute);
+        _transferLiquidityOut(feeTracker, amountToDistribute);
         IFeeTracker(feeTracker).distributeIncentives(amountToDistribute);
         // Volume
         VolumeTracker(volumeTracker).logTrade(_account, _volume);

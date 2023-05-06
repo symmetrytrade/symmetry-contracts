@@ -154,14 +154,14 @@ contract FeeTracker is
     /**
      * @notice Compute the trading fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
      * it holds to the lp left in pool.
-     * @param lp lp net value in usd
-     * @param redeemValue lp to redeem in usd
+     * @param _lp lp net value in usd
+     * @param _redeemValue lp to redeem in usd
      */
     function redeemTradingFee(
         address _account,
-        int lp,
-        int redeemValue
-    ) external returns (uint fee) {
+        int _lp,
+        int _redeemValue
+    ) external onlyMarket returns (uint fee) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
 
         uint256 len = perpTracker_.marketTokensLength();
@@ -177,8 +177,8 @@ contract FeeTracker is
             (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(
                 token,
                 oraclePrice,
-                lp,
-                redeemValue,
+                _lp,
+                _redeemValue,
                 lambda
             );
             if (tradeAmount == 0) continue;
@@ -236,7 +236,7 @@ contract FeeTracker is
         address _account,
         int256 _sizeDelta,
         int256 _price
-    ) external returns (int256, uint256, uint256) {
+    ) external onlyMarket returns (int256, uint256, uint256) {
         return _discountedTradingFee(_account, _sizeDelta, _price);
     }
 
@@ -258,7 +258,7 @@ contract FeeTracker is
     }
 
     /*=== fee incentives ===*/
-    function distributeIncentives(uint256 _fee) external {
+    function distributeIncentives(uint256 _fee) external onlyMarket {
         tradingFeeIncentives[_startOfWeek(block.timestamp)] += _fee;
     }
 

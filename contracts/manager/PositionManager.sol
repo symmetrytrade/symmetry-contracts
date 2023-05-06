@@ -331,6 +331,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
 
     function _payLiquidationFee(
         address _account,
+        address _liquidator,
         int _margin,
         int _notionalLiquidated
     ) internal returns (int liquidationFee) {
@@ -346,29 +347,29 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             accountOut = market_.deductFeeFromAccount(
                 _account,
                 liquidationFee.toUint256(),
-                msg.sender
+                _liquidator
             );
         } else if (_margin > 0) {
             // margin is insufficient, deduct fee from user margin, then from insurance, lp
             accountOut = market_.deductFeeFromAccount(
                 _account,
                 _margin.toUint256(),
-                msg.sender
+                _liquidator
             );
             (insuranceOut, lpOut) = market_.deductFeeFromInsurance(
                 (liquidationFee - _margin).toUint256(),
-                msg.sender
+                _liquidator
             );
         } else {
             (insuranceOut, lpOut) = market_.deductFeeFromInsurance(
                 liquidationFee.toUint256(),
-                msg.sender
+                _liquidator
             );
         }
         emit LiquidationFee(
             _account,
             _notionalLiquidated,
-            msg.sender,
+            _liquidator,
             liquidationFee,
             accountOut,
             insuranceOut,
@@ -378,6 +379,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
 
     function _payLiquidationPenalty(
         address _account,
+        address _liquidator,
         int _margin,
         int _notionalLiquidated
     ) internal returns (int liquidationPenalty) {
@@ -394,7 +396,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         emit LiquidationPenalty(
             _account,
             _notionalLiquidated,
-            msg.sender,
+            _liquidator,
             liquidationPenalty,
             penaltyAmount
         );
@@ -478,12 +480,14 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         // deduct liquidation fee to liquidator
         int liquidationFee = _payLiquidationFee(
             _account,
+            msg.sender,
             currentMargin,
             notionalLiquidated
         );
         // deduct liquidation penalty to insurance account
         int liquidationPenalty = _payLiquidationPenalty(
             _account,
+            msg.sender,
             (currentMargin - liquidationFee).max(0),
             notionalLiquidated
         );

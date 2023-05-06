@@ -8,7 +8,6 @@ import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 
 import "../interfaces/IMarketSettings.sol";
-import "../interfaces/IFeeTracker.sol";
 import "../interfaces/IMarket.sol";
 
 import "../market/MarketSettingsContext.sol";
@@ -142,7 +141,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         int redeemFee = 0;
         {
             // redeem trade
-            redeemFee += IFeeTracker(market_.feeTracker())
+            redeemFee += IMarket(market)
                 .redeemTradingFee(_account, lpNetValue, redeemValue)
                 .toInt256();
             // redeem fee
