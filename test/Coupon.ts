@@ -14,7 +14,6 @@ import {
     WEEK,
     getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
     setupPrices,
     startOfDay,
     startOfWeek,
@@ -22,8 +21,6 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
-import { increase } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
-import { TradingFeeCoupon__factory } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -44,7 +41,6 @@ describe("Coupon", () => {
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
     let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
     let priceOracle_: ethers.Contract;
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
@@ -54,7 +50,6 @@ describe("Coupon", () => {
     let coupon_: ethers.Contract;
     let sym_: ethers.Contract;
     let WETH: string;
-    let WBTC: string;
     let USDC_: ethers.Contract;
     let feeTracker_: ethers.Contract;
 
@@ -65,14 +60,8 @@ describe("Coupon", () => {
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        perpTracker_ = await getProxyContract(
-            hre,
-            CONTRACTS.PerpTracker,
-            account1
-        );
         priceOracle_ = await getProxyContract(
             hre,
             CONTRACTS.PriceOracle,

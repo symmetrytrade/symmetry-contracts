@@ -3,7 +3,6 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     CONTRACTS,
     MINTER_ROLE,
-    SPENDER_ROLE,
     deployInBeaconProxy,
     getProxyContract,
 } from "../utils/utils";

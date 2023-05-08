@@ -9,9 +9,7 @@ import {
     normalized,
 } from "../src/utils/utils";
 import {
-    getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
     setupPrices,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";
@@ -38,7 +36,6 @@ describe("Position", () => {
     let config: NetworkConfigs;
     let market_: ethers.Contract;
     let perpTracker_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let marketSettings_: ethers.Contract;
@@ -60,11 +57,6 @@ describe("Position", () => {
         perpTracker_ = await getProxyContract(
             hre,
             CONTRACTS.PerpTracker,
-            account1
-        );
-        priceOracle_ = await getProxyContract(
-            hre,
-            CONTRACTS.PriceOracle,
             account1
         );
         marketSettings_ = await getProxyContract(

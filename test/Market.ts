@@ -11,7 +11,6 @@ import {
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
     setupPrices,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";

@@ -5,14 +5,14 @@ import { task, types } from "hardhat/config";
 
 task("upgrade", "upgrade contract")
     .addParam(
-        "proxy_name",
+        "proxyName",
         "name of the proxy contract",
         undefined,
         types.string,
         false
     )
     .addParam(
-        "impl_artifact",
+        "implArtifact",
         "name of the implementation contract",
         undefined,
         types.string,
@@ -28,11 +28,11 @@ task("upgrade", "upgrade contract")
     .setAction(async (taskArgs, hre) => {
         const { deployer } = await hre.getNamedAccounts();
         const beacon = await hre.ethers.getContract(
-            `${taskArgs.proxy_name}Beacon`,
+            `${taskArgs.proxyName}Beacon`,
             deployer
         );
         const newImpl = await hre.ethers.getContractFactory(
-            taskArgs.impl_artifact
+            taskArgs.implArtifact
         );
         await hre.upgrades.validateUpgrade(beacon.address, newImpl);
 

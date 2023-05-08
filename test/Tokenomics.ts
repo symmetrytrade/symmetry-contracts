@@ -1,20 +1,14 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
-    ADDR0,
     CONTRACTS,
-    MAX_UINT256,
     MINTER_ROLE,
-    UNIT,
     getProxyContract,
     normalized,
 } from "../src/utils/utils";
 import {
     WEEK,
-    getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
-    setupPrices,
     startOfWeek,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";

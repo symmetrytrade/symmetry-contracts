@@ -8,7 +8,6 @@ import {
     perpMarketKey,
 } from "../src/utils/utils";
 import { ethers } from "ethers";
-import { printValues } from "../src/utils/test_utils";
 
 describe("PerpTracker", () => {
     let perpTracker_: ethers.Contract;
