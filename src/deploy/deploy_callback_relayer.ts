@@ -1,13 +1,11 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CONTRACTS, getProxyContract } from "../utils/utils";
-import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
-    const config = getConfig(hre.network.name);
 
     await deploy(CONTRACTS.VotingEscrowCallbackRelayer.name, {
         from: deployer,

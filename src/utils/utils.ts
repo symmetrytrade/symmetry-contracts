@@ -1,5 +1,4 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import hardhat from "hardhat";
 import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import { ethers } from "ethers";
@@ -8,11 +7,10 @@ import { BigNumber } from "bignumber.js";
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
-export const MINTER_ROLE = hardhat.ethers.utils.id("MINTER_ROLE");
-export const SPENDER_ROLE = hardhat.ethers.utils.id("SPENDER_ROLE");
-export const VESTING_ROLE = hardhat.ethers.utils.id("VESTING_ROLE");
-export const PERP_DOMAIN =
-    hardhat.ethers.utils.formatBytes32String("perpDomain");
+export const MINTER_ROLE = ethers.utils.id("MINTER_ROLE");
+export const SPENDER_ROLE = ethers.utils.id("SPENDER_ROLE");
+export const VESTING_ROLE = ethers.utils.id("VESTING_ROLE");
+export const PERP_DOMAIN = ethers.utils.formatBytes32String("perpDomain");
 export const UNIT = "1000000000000000000";
 export const MAX_UINT256 =
     "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
@@ -29,16 +27,16 @@ export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
 }
 
 export function perpMarketKey(market: string) {
-    return hardhat.ethers.utils.solidityKeccak256(
+    return ethers.utils.solidityKeccak256(
         ["address", "bytes32"],
         [market, PERP_DOMAIN]
     );
 }
 
 export function perpConfigKey(market: string, key: string) {
-    return hardhat.ethers.utils.solidityKeccak256(
+    return ethers.utils.solidityKeccak256(
         ["bytes32", "bytes32"],
-        [perpMarketKey(market), hardhat.ethers.utils.formatBytes32String(key)]
+        [perpMarketKey(market), ethers.utils.formatBytes32String(key)]
     );
 }
 
@@ -77,6 +75,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
         contract: "VotingEscrowCallbackRelayer",
     },
     SYMRate: { name: "SYMRate", contract: "SYMRate" },
+    Timelock: { name: "Timelock", contract: "Timelock" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
     WETH: { name: "WETH", contract: "FaucetToken" },

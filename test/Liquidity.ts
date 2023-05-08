@@ -11,7 +11,6 @@ import {
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
     setupPrices,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";
@@ -41,7 +40,6 @@ describe("Liquidity", () => {
     let liquidityManager_: ethers.Contract;
     let lpToken_: ethers.Contract;
     let WETH: string;
-    let WBTC: string;
     let USDC_: ethers.Contract;
 
     before(async () => {
@@ -50,7 +48,6 @@ describe("Liquidity", () => {
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);

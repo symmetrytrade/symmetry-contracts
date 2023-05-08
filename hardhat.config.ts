@@ -23,6 +23,8 @@ const userConfig: HttpNetworkUserConfig = {
 
 // tasks
 import "./src/tasks/codesize";
+import "./src/tasks/upgrade";
+import "./src/tasks/timelock";
 
 const config: HardhatUserConfig = {
     paths: {

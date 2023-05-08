@@ -1,29 +1,20 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import {
-    ADDR0,
     CONTRACTS,
     MAX_UINT256,
-    MINTER_ROLE,
     UNIT,
     getProxyContract,
     normalized,
 } from "../src/utils/utils";
 import {
     DAY,
-    WEEK,
-    getPythUpdateData,
     increaseNextBlockTimestamp,
-    printValues,
     setupPrices,
-    startOfDay,
-    startOfWeek,
 } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
-import { increase } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
-import { TradingFeeCoupon__factory } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -45,18 +36,11 @@ describe("Funding", () => {
     let config: NetworkConfigs;
     let market_: ethers.Contract;
     let perpTracker_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let marketSettings_: ethers.Contract;
-    let volumeTracker_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let coupon_: ethers.Contract;
-    let sym_: ethers.Contract;
     let WETH: string;
-    let WBTC: string;
     let USDC_: ethers.Contract;
-    let feeTracker_: ethers.Contract;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];
@@ -65,17 +49,11 @@ describe("Funding", () => {
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getProxyContract(
             hre,
             CONTRACTS.PerpTracker,
-            account1
-        );
-        priceOracle_ = await getProxyContract(
-            hre,
-            CONTRACTS.PriceOracle,
             account1
         );
         marketSettings_ = await getProxyContract(
@@ -93,26 +71,6 @@ describe("Funding", () => {
             CONTRACTS.PositionManager,
             account1
         );
-        feeTracker_ = await getProxyContract(
-            hre,
-            CONTRACTS.FeeTracker,
-            account1
-        );
-        volumeTracker_ = await getProxyContract(
-            hre,
-            CONTRACTS.VolumeTracker,
-            account1
-        );
-        votingEscrow_ = await getProxyContract(
-            hre,
-            CONTRACTS.VotingEscrow,
-            account1
-        );
-        coupon_ = await hre.ethers.getContract(
-            CONTRACTS.TradingFeeCoupon.name,
-            account1
-        );
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
         config = getConfig(hre.network.name);
 
         await (
@@ -287,7 +245,6 @@ describe("Funding", () => {
 
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        console.log("!!!!!!!");
         fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
         expect(fs[0]).to.deep.eq("-9980019980019979");
         expect(fs[1]).to.deep.eq("25024980019980020000");
