@@ -7,6 +7,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-interface-generator";
+import "hardhat-abi-exporter";
 
 // environment configs
 import dotenv from "dotenv";
@@ -65,6 +66,13 @@ const config: HardhatUserConfig = {
     },
     gasReporter: {
         enabled: process.env.REPORT_GAS ? true : false,
+    },
+    abiExporter: {
+        path: "./abis",
+        runOnCompile: true,
+        clear: true,
+        flat: true,
+        format: "json",
     },
 };
 if (NODE_URL && config.networks) {
