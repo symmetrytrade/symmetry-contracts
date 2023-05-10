@@ -26,9 +26,14 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.LPToken.name,
         deployer
     );
-    await (
-        await liquidityManager_.initialize(market_.address, lpToken_.address)
-    ).wait();
+    if (!(await liquidityManager_.initialized())) {
+        await (
+            await liquidityManager_.initialize(
+                market_.address,
+                lpToken_.address
+            )
+        ).wait();
+    }
 
     // add operator
     console.log(`adding operator role for LiquidityManager to market..`);

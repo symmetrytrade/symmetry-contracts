@@ -26,7 +26,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
     ).address;
     console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
-    await (await oracle_.initialize(marketSettings)).wait();
+    if (!(await oracle_.initialized())) {
+        await (await oracle_.initialize(marketSettings)).wait();
+    }
 
     // set chainlink
     const config = getConfig(hre.network.name);

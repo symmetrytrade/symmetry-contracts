@@ -2,7 +2,7 @@
 ```bash
 yarn
 ```
-# Complie
+# Compile
 ```bash
 yarn build
 ```
@@ -12,8 +12,8 @@ Set `DEPLOYER_KEY` in `.env` file.
 ```bash
 yarn deploy <network>
 ```
-Or to export one file that contains all contracts:
+# Export
 ```bash
-yarn deploy <network> --export <file>
+yarn hardhat --network <network> export --export <export_file_path>
 ```
 

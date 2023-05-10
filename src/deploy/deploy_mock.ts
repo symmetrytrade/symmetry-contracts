@@ -17,7 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await deploy(CONTRACTS[token.symbol].name, {
             from: deployer,
             contract: CONTRACTS[token.symbol].contract,
-            args: [token.name, token.symbol],
+            args: [token.name, token.symbol, 18],
             log: true,
         });
         const faucetToken = await hre.ethers.getContract(

@@ -24,15 +24,17 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`initializing ${CONTRACTS.VotingEscrow.name}..`);
     const baseToken = (await hre.ethers.getContract(CONTRACTS.SYM.name))
         .address;
-    await (
-        await votingEscrow_.initialize(
-            baseToken,
-            config.otherConfig.lockMaxTime,
-            config.otherConfig.vestingWeeks,
-            "Vote-Escrowed Symmetry",
-            "veSYM"
-        )
-    ).wait();
+    if (!(await votingEscrow_.initialized())) {
+        await (
+            await votingEscrow_.initialize(
+                baseToken,
+                config.otherConfig.lockMaxTime,
+                config.otherConfig.vestingWeeks,
+                "Vote-Escrowed Symmetry",
+                "veSYM"
+            )
+        ).wait();
+    }
 };
 
 deploy.tags = [CONTRACTS.VotingEscrow.name, "prod"];

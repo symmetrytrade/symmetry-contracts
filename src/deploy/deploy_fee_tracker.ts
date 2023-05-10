@@ -38,13 +38,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.TradingFeeCoupon.name,
         deployer
     );
-    await (
-        await feeTracker_.initialize(
-            market_.address,
-            perpTracker_.address,
-            coupon_.address
-        )
-    ).wait();
+    if (!(await feeTracker_.initialized())) {
+        await (
+            await feeTracker_.initialize(
+                market_.address,
+                perpTracker_.address,
+                coupon_.address
+            )
+        ).wait();
+    }
 
     // set feeTracker for market
     await (await market_.setFeeTracker(feeTracker_.address)).wait();

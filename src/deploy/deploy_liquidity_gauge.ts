@@ -41,15 +41,17 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const startTime =
         config.otherConfig.liquidityGaugeStartTime ||
         Math.floor(Date.now() / 1000);
-    await (
-        await liquidityGauge_.initialize(
-            votingEscrow_.address,
-            lpToken_.address,
-            symRate_.address,
-            SYM_.address,
-            startTime
-        )
-    ).wait();
+    if (!(await liquidityGauge_.initialized())) {
+        await (
+            await liquidityGauge_.initialize(
+                votingEscrow_.address,
+                lpToken_.address,
+                symRate_.address,
+                SYM_.address,
+                startTime
+            )
+        ).wait();
+    }
 
     // add minter role of SYM
     await (await SYM_.grantRole(MINTER_ROLE, liquidityGauge_.address)).wait();
