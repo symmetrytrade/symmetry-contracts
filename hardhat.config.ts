@@ -26,6 +26,8 @@ const userConfig: HttpNetworkUserConfig = {
 import "./src/tasks/codesize";
 import "./src/tasks/upgrade";
 import "./src/tasks/timelock";
+import "./src/tasks/faucetToken";
+import "./src/tasks/oracle";
 
 const config: HardhatUserConfig = {
     paths: {
@@ -53,6 +55,11 @@ const config: HardhatUserConfig = {
             allowUnlimitedContractSize: true,
             blockGasLimit: 100000000,
             gas: 100000000,
+        },
+        ArbGoerliTestnet: {
+            ...userConfig,
+            //url: "https://endpoints.omniatech.io/v1/arbitrum/goerli/public",
+            url: "https://goerli-rollup.arbitrum.io/rpc",
         },
     },
     namedAccounts: {

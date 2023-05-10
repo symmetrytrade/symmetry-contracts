@@ -1,3 +1,4 @@
+import { ArbGoerliTestnetConfig } from "./networks/ArbGoerli";
 import { normalized } from "./utils/utils";
 
 interface ChainlinkConfig {
@@ -135,24 +136,7 @@ const DefaultConfig: NetworkConfigs = {
 };
 
 const GlobalConfig: { [key: string]: NetworkConfigs } = {
-    arbitrum: {
-        ...DefaultConfig,
-        addresses: {
-            USDC: "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
-        },
-        chainlink: {
-            sequencerUptimeFeed: "0xFdB631F5EE196F0ed6FAa767959853A9F217697D",
-            aggregators: {
-                USDC: "0x50834F3163758fcC1Df9973b6e91f0F0F0434aD3",
-            },
-        },
-        pyth: {
-            priceFeed: "0xff1a0f4744e8582DF1aE09D5611b887B6a12925C",
-            assetIds: {
-                USDC: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
-            },
-        },
-    },
+    ArbGoerliTestnet: ArbGoerliTestnetConfig,
     hardhat: DefaultConfig,
 };
 

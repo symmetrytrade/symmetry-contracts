@@ -23,7 +23,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // initialize
     console.log(`initializing ${CONTRACTS.MarketSettings.name}..`);
-    await (await settings_.initialize()).wait();
+    if (!(await settings_.initialized())) {
+        await (await settings_.initialize()).wait();
+    }
 
     // set general config
     const config = getConfig(hre.network.name);
@@ -32,7 +34,6 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         const value = hre.ethers.BigNumber.from(rawValue);
         await (await settings_.setIntVals(key, value)).wait();
     }
-
     // set market specific config
     for (const [market, conf] of Object.entries(config.marketConfig)) {
         const token =

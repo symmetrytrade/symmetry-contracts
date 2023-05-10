@@ -27,9 +27,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const marketSettings = (
         await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
     ).address;
-    await (
-        await market_.initialize(baseToken, priceOracle, marketSettings)
-    ).wait();
+    if (!(await market_.initialized())) {
+        await (
+            await market_.initialize(baseToken, priceOracle, marketSettings)
+        ).wait();
+    }
 };
 
 deploy.tags = [CONTRACTS.Market.name, "prod"];

@@ -24,7 +24,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.PerpTracker.name}..`);
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    await (await perpTracker_.initialize(market_.address)).wait();
+
+    if (!(await perpTracker_.initialized())) {
+        await (await perpTracker_.initialize(market_.address)).wait();
+    }
 
     // set market tokens
     for (const [market] of Object.entries(config.marketConfig)) {

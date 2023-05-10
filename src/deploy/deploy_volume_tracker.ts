@@ -28,9 +28,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.TradingFeeCoupon.name,
         deployer
     );
-    await (
-        await volumeTracker_.initialize(market_.address, coupon_.address)
-    ).wait();
+    if (!(await volumeTracker_.initialized())) {
+        await (
+            await volumeTracker_.initialize(market_.address, coupon_.address)
+        ).wait();
+    }
 
     // set volumeTracker for market
     await (await market_.setVolumeTracker(volumeTracker_.address)).wait();

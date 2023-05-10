@@ -27,9 +27,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         CONTRACTS.TradingFeeCoupon,
         deployer
     );
-    await (
-        await positionManager_.initialize(market_.address, coupon_.address)
-    ).wait();
+    if (!(await positionManager_.initialized())) {
+        await (
+            await positionManager_.initialize(market_.address, coupon_.address)
+        ).wait();
+    }
 
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
