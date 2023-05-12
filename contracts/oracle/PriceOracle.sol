@@ -128,10 +128,6 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
         require(msg.value >= fee, "PriceOracle: insufficient fee");
 
         pythOracle_.updatePriceFeeds{value: fee}(_priceUpdateData);
-
-        if (msg.value > fee) {
-            payable(_sender).transfer(msg.value - fee);
-        }
     }
 
     /// @notice get token's normalized usd price
