@@ -3,69 +3,60 @@ pragma solidity ^0.8.2;
 
 library SafeDecimalMath {
     uint8 public constant DECIMALS = 18;
-    uint256 public constant UNIT = 10 ** DECIMALS;
+    uint public constant UNIT = 10 ** DECIMALS;
 
-    function unit() external pure returns (uint256) {
+    function unit() external pure returns (uint) {
         return UNIT;
     }
 
-    function multiplyDecimal(
-        uint256 x,
-        uint256 y
-    ) internal pure returns (uint256) {
+    function multiplyDecimal(uint x, uint y) internal pure returns (uint) {
         return (x * y) / UNIT;
     }
 
-    function divideDecimal(
-        uint256 x,
-        uint256 y
-    ) internal pure returns (uint256) {
+    function divideDecimal(uint x, uint y) internal pure returns (uint) {
         return (x * UNIT) / y;
     }
 
-    function min(uint256 x, uint256 y) internal pure returns (uint256) {
+    function min(uint x, uint y) internal pure returns (uint) {
         return x < y ? x : y;
     }
 
-    function max(uint256 x, uint256 y) internal pure returns (uint256) {
+    function max(uint x, uint y) internal pure returns (uint) {
         return x < y ? y : x;
     }
 }
 
 library SignedSafeDecimalMath {
     uint8 public constant DECIMALS = 18;
-    int256 public constant UNIT = int(10 ** DECIMALS);
+    int public constant UNIT = int(10 ** DECIMALS);
 
-    function unit() external pure returns (int256) {
+    function unit() external pure returns (int) {
         return UNIT;
     }
 
-    function multiplyDecimal(
-        int256 x,
-        int256 y
-    ) internal pure returns (int256) {
+    function multiplyDecimal(int x, int y) internal pure returns (int) {
         return (x * y) / UNIT;
     }
 
-    function divideDecimal(int256 x, int256 y) internal pure returns (int256) {
+    function divideDecimal(int x, int y) internal pure returns (int) {
         return (x * UNIT) / y;
     }
 
-    function sign(int256 x) internal pure returns (int256) {
+    function sign(int x) internal pure returns (int) {
         if (x > 0) return UNIT;
         if (x < 0) return -UNIT;
         return 0;
     }
 
-    function abs(int256 x) internal pure returns (int256) {
+    function abs(int x) internal pure returns (int) {
         return x < 0 ? -x : x;
     }
 
-    function min(int256 x, int256 y) internal pure returns (int256) {
+    function min(int x, int y) internal pure returns (int) {
         return x < y ? x : y;
     }
 
-    function max(int256 x, int256 y) internal pure returns (int256) {
+    function max(int x, int y) internal pure returns (int) {
         return x < y ? y : x;
     }
 }

@@ -15,13 +15,7 @@ import "../interfaces/IVotingEscrow.sol";
 
 import "./VotingEscrowCallback.sol";
 
-contract VotingEscrow is
-    IVotingEscrow,
-    CommonContext,
-    ReentrancyGuard,
-    AccessControlEnumerable,
-    Initializable
-{
+contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessControlEnumerable, Initializable {
     using SafeERC20 for IERC20;
 
     /*=== constants ===*/
@@ -30,8 +24,8 @@ contract VotingEscrow is
 
     /*=== states === */
     address public baseToken;
-    uint256 public maxTime;
-    uint256 public vestWeeks;
+    uint public maxTime;
+    uint public vestWeeks;
     address public callbackRelayer;
 
     // erc20
@@ -40,27 +34,27 @@ contract VotingEscrow is
     uint8 public decimals;
 
     // global states
-    uint256 public globalEpoch;
+    uint public globalEpoch;
     Point[] public pointHistory;
-    mapping(uint256 => int128) public slopeChanges;
+    mapping(uint => int128) public slopeChanges;
     // user locked states
     mapping(address => Point[]) public userPointHistory;
-    mapping(address => uint256) public userPointEpoch;
-    mapping(address => mapping(uint256 => int128)) public userSlopeChanges;
+    mapping(address => uint) public userPointEpoch;
+    mapping(address => mapping(uint => int128)) public userSlopeChanges;
     mapping(address => LockedBalance) public locked;
     // user staked states
     mapping(address => StakedPoint[]) public userStakedHistory;
-    mapping(address => uint256) public userStakedEpoch;
-    mapping(address => uint256) public staked;
+    mapping(address => uint) public userStakedEpoch;
+    mapping(address => uint) public staked;
     // user vesting states
     mapping(address => Vest[]) public userVestHistory;
-    mapping(address => uint256) public userVestEpoch;
-    mapping(address => uint256) public userClaimEpoch;
+    mapping(address => uint) public userVestEpoch;
+    mapping(address => uint) public userClaimEpoch;
 
     function initialize(
         address _baseToken,
-        uint256 _maxTime,
-        uint256 _vestWeeks,
+        uint _maxTime,
+        uint _vestWeeks,
         string memory _name,
         string memory _symbol
     ) external onlyInitializeOnce {
@@ -68,18 +62,11 @@ contract VotingEscrow is
         maxTime = _maxTime;
         vestWeeks = _vestWeeks;
 
-        Point memory init = Point({
-            bias: int128(0),
-            slope: int128(0),
-            ts: block.timestamp
-        });
+        Point memory init = Point({bias: int128(0), slope: int128(0), ts: block.timestamp});
         pointHistory.push(init);
 
         decimals = IERC20Metadata(_baseToken).decimals();
-        require(
-            decimals <= 18,
-            "VotingEscrow: Cannot have more than 18 decimals"
-        );
+        require(decimals <= 18, "VotingEscrow: Cannot have more than 18 decimals");
 
         name = _name;
         symbol = _symbol;
@@ -90,26 +77,19 @@ contract VotingEscrow is
     /*=== owner ===*/
 
     function setCallbackRelayer(address _relayer) external {
-        require(
-            hasRole(DEFAULT_ADMIN_ROLE, msg.sender),
-            "VotingEscrow: not owner"
-        );
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VotingEscrow: not owner");
         callbackRelayer = _relayer;
     }
 
     /*=== getter ===*/
-    function getLastStakedPoint(
-        address _addr
-    ) public view returns (StakedPoint memory point) {
+    function getLastStakedPoint(address _addr) public view returns (StakedPoint memory point) {
         point = StakedPoint({bias: 0, slope: 0, ts: 0, end: 0});
         uint epoch = userStakedEpoch[_addr];
         if (epoch == 0) {
             return point;
         }
         point = userStakedHistory[_addr][epoch];
-        point.bias = SafeCast.toInt128(
-            SafeCast.toInt256(_stakedBalance(point, block.timestamp))
-        );
+        point.bias = SafeCast.toInt128(SafeCast.toInt256(_stakedBalance(point, block.timestamp)));
         point.ts = block.timestamp;
     }
 
@@ -118,10 +98,7 @@ contract VotingEscrow is
     /* solhint-disable avoid-tx-origin */
     function _assertNotContract() private view {
         if (msg.sender != tx.origin) {
-            require(
-                hasRole(WHITELIST_ROLE, msg.sender),
-                "VotingEscrow: Smart contract depositors not allowed"
-            );
+            require(hasRole(WHITELIST_ROLE, msg.sender), "VotingEscrow: Smart contract depositors not allowed");
         }
     }
 
@@ -136,13 +113,13 @@ contract VotingEscrow is
     /*=== Voting Escrow ===*/
     function _checkpoint() internal returns (Point memory lastPoint) {
         lastPoint = Point({bias: 0, slope: 0, ts: block.timestamp});
-        uint256 epoch = globalEpoch;
+        uint epoch = globalEpoch;
         if (epoch > 0) {
             lastPoint = pointHistory[epoch];
         }
         // Go over weeks to fill history and calculate what the current point is
-        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
-        for (uint256 i = 0; i < 255; i++) {
+        uint iterativeTime = _startOfWeek(lastPoint.ts);
+        for (uint i = 0; i < 255; i++) {
             // Hopefully it won't happen that this won't get used in 5 years!
             // If it does, users will be able to withdraw but vote weight will be broken
             iterativeTime += 1 weeks;
@@ -152,8 +129,7 @@ contract VotingEscrow is
             } else {
                 dSlope = slopeChanges[iterativeTime];
             }
-            int128 biasDelta = lastPoint.slope *
-                SafeCast.toInt128(int256((iterativeTime - lastPoint.ts)));
+            int128 biasDelta = lastPoint.slope * SafeCast.toInt128(int((iterativeTime - lastPoint.ts)));
             lastPoint.bias = lastPoint.bias - biasDelta;
             lastPoint.slope = lastPoint.slope + dSlope;
             // This can happen
@@ -185,17 +161,14 @@ contract VotingEscrow is
      * @param _timestamp Find the most recent point history before this timestamp
      * @param _maxEpoch Do not search pointHistories past this index
      */
-    function _findPoint(
-        uint256 _timestamp,
-        uint256 _maxEpoch
-    ) internal view returns (uint256) {
+    function _findPoint(uint _timestamp, uint _maxEpoch) internal view returns (uint) {
         // Binary search
-        uint256 min = 0;
-        uint256 max = _maxEpoch;
+        uint min = 0;
+        uint max = _maxEpoch;
         // Will be always enough for 128-bit numbers
-        for (uint256 i = 0; i < 128; i++) {
+        for (uint i = 0; i < 128; i++) {
             if (min >= max) break;
-            uint256 mid = (min + max + 1) / 2;
+            uint mid = (min + max + 1) / 2;
             if (pointHistory[mid].ts <= _timestamp) {
                 min = mid;
             } else {
@@ -211,15 +184,12 @@ contract VotingEscrow is
      * @param _t Time at which to calculate supply
      * @return totalSupply at given point in time
      */
-    function _supplyAt(
-        Point memory _point,
-        uint256 _t
-    ) internal view returns (uint256) {
+    function _supplyAt(Point memory _point, uint _t) internal view returns (uint) {
         Point memory lastPoint = _point;
         // Floor the timestamp to weekly interval
-        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
+        uint iterativeTime = _startOfWeek(lastPoint.ts);
         // Iterate through all weeks between _point & _t to account for slope changes
-        for (uint256 i = 0; i < 255; i++) {
+        for (uint i = 0; i < 255; i++) {
             iterativeTime = iterativeTime + 1 weeks;
             int128 dSlope = 0;
             if (iterativeTime > _t) {
@@ -228,10 +198,7 @@ contract VotingEscrow is
                 dSlope = slopeChanges[iterativeTime];
             }
 
-            lastPoint.bias =
-                lastPoint.bias -
-                (lastPoint.slope *
-                    SafeCast.toInt128(int256(iterativeTime - lastPoint.ts)));
+            lastPoint.bias = lastPoint.bias - (lastPoint.slope * SafeCast.toInt128(int(iterativeTime - lastPoint.ts)));
             if (iterativeTime == _t) {
                 break;
             }
@@ -249,8 +216,8 @@ contract VotingEscrow is
      * @dev Calculate total voting power
      * @return Total total voting power
      */
-    function totalSupply() public view returns (uint256) {
-        uint256 epoch_ = globalEpoch;
+    function totalSupply() public view returns (uint) {
+        uint epoch_ = globalEpoch;
         Point memory lastPoint = pointHistory[epoch_];
         return _supplyAt(lastPoint, block.timestamp);
     }
@@ -260,40 +227,32 @@ contract VotingEscrow is
      * @param _timestamp Time at which to calculate supply
      * @return Total voting power at `_timestamp`
      */
-    function totalSupplyAt(uint256 _timestamp) public view returns (uint256) {
-        uint256 epoch = globalEpoch;
-        uint256 targetEpoch = _findPoint(_timestamp, epoch);
+    function totalSupplyAt(uint _timestamp) public view returns (uint) {
+        uint epoch = globalEpoch;
+        uint targetEpoch = _findPoint(_timestamp, epoch);
 
         Point memory point = pointHistory[targetEpoch];
 
         return _supplyAt(point, _timestamp);
     }
 
-    function balanceOf(address _addr) public view returns (uint256) {
+    function balanceOf(address _addr) public view returns (uint) {
         return lockedBalanceOf(_addr) + stakedBalanceOf(_addr);
     }
 
-    function balanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) public view returns (uint256) {
-        return
-            lockedBalanceOfAt(_addr, _timestamp) +
-            stakedBalanceOfAt(_addr, _timestamp);
+    function balanceOfAt(address _addr, uint _timestamp) public view returns (uint) {
+        return lockedBalanceOfAt(_addr, _timestamp) + stakedBalanceOfAt(_addr, _timestamp);
     }
 
     /*=== vesting ===*/
-    function _findUserVested(
-        address _addr,
-        uint256 _timestamp
-    ) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = userVestEpoch[_addr];
-        for (uint256 i = 0; i < 128; i++) {
+    function _findUserVested(address _addr, uint _timestamp) internal view returns (uint) {
+        uint min = 0;
+        uint max = userVestEpoch[_addr];
+        for (uint i = 0; i < 128; i++) {
             if (min >= max) {
                 break;
             }
-            uint256 mid = (min + max + 1) / 2;
+            uint mid = (min + max + 1) / 2;
             if (userVestHistory[_addr][mid].ts <= _timestamp) {
                 min = mid;
             } else {
@@ -303,23 +262,20 @@ contract VotingEscrow is
         return min;
     }
 
-    function vest(address _addr, uint256 _amount) external {
-        require(
-            hasRole(VESTING_ROLE, msg.sender),
-            "VotingEscrow: not vesting role"
-        );
+    function vest(address _addr, uint _amount) external {
+        require(hasRole(VESTING_ROLE, msg.sender), "VotingEscrow: not vesting role");
         require(_amount > 0, "VotingEscrow: need non-zero value");
 
         _claimVested(msg.sender);
 
-        uint256 uepoch = userVestEpoch[_addr];
+        uint uepoch = userVestEpoch[_addr];
         if (uepoch == 0) {
             userVestHistory[_addr].push(Vest(0, 0));
         }
 
-        uint256 vestTs = _startOfWeek(block.timestamp);
-        uint256 epoch = _findUserVested(_addr, vestTs + 1 weeks);
-        uint256 len = vestWeeks;
+        uint vestTs = _startOfWeek(block.timestamp);
+        uint epoch = _findUserVested(_addr, vestTs + 1 weeks);
+        uint len = vestWeeks;
         int128 vestAmount = SafeCast.toInt128(SafeCast.toInt256(_amount / len));
         if (vestAmount == 0) {
             return;
@@ -356,8 +312,8 @@ contract VotingEscrow is
     }
 
     function _claimVested(address _addr) internal {
-        uint256 vestedEpoch = userVestEpoch[_addr];
-        uint256 claimEpoch = userClaimEpoch[_addr];
+        uint vestedEpoch = userVestEpoch[_addr];
+        uint claimEpoch = userClaimEpoch[_addr];
 
         if (claimEpoch == 0) {
             claimEpoch = 1;
@@ -381,17 +337,9 @@ contract VotingEscrow is
     }
 
     /*=== stake ===*/
-    function _checkpointStaked(
-        address _addr,
-        StakedPoint memory _oldStaked,
-        StakedPoint memory _newStaked
-    ) internal {
-        int128 oldSlope = block.timestamp >= _oldStaked.end
-            ? int128(0)
-            : _oldStaked.slope;
-        int128 newSlope = block.timestamp >= _newStaked.end
-            ? int128(0)
-            : _newStaked.slope;
+    function _checkpointStaked(address _addr, StakedPoint memory _oldStaked, StakedPoint memory _newStaked) internal {
+        int128 oldSlope = block.timestamp >= _oldStaked.end ? int128(0) : _oldStaked.slope;
+        int128 newSlope = block.timestamp >= _newStaked.end ? int128(0) : _newStaked.slope;
         int128 oldSlopeDelta = slopeChanges[_oldStaked.end];
         int128 newSlopeDelta = slopeChanges[_newStaked.end];
 
@@ -423,7 +371,7 @@ contract VotingEscrow is
                 }
             }
 
-            uint256 uEpoch = userStakedEpoch[_addr];
+            uint uEpoch = userStakedEpoch[_addr];
             if (uEpoch == 0) {
                 userStakedHistory[_addr].push(_oldStaked);
             }
@@ -432,17 +380,14 @@ contract VotingEscrow is
         }
     }
 
-    function _findUserStaked(
-        address _addr,
-        uint256 _timestamp
-    ) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = userStakedEpoch[_addr];
-        for (uint256 i = 0; i < 128; i++) {
+    function _findUserStaked(address _addr, uint _timestamp) internal view returns (uint) {
+        uint min = 0;
+        uint max = userStakedEpoch[_addr];
+        for (uint i = 0; i < 128; i++) {
             if (min >= max) {
                 break;
             }
-            uint256 mid = (min + max + 1) / 2;
+            uint mid = (min + max + 1) / 2;
             if (userStakedHistory[_addr][mid].ts <= _timestamp) {
                 min = mid;
             } else {
@@ -452,22 +397,17 @@ contract VotingEscrow is
         return min;
     }
 
-    function _stakedBalance(
-        StakedPoint memory _point,
-        uint256 _ts
-    ) internal pure returns (uint256) {
+    function _stakedBalance(StakedPoint memory _point, uint _ts) internal pure returns (uint) {
         // since end time is rounded down to week, so this is possible
         if (_point.ts >= _point.end) {
             return SafeCast.toUint256(_point.bias);
         }
-        int interval = SafeCast.toInt128(
-            int256(_ts > _point.end ? _point.end - _point.ts : _ts - _point.ts)
-        );
+        int interval = SafeCast.toInt128(int(_ts > _point.end ? _point.end - _point.ts : _ts - _point.ts));
         // slope is non-positive, bias >= 0
         return SafeCast.toUint256(_point.bias - (_point.slope * interval));
     }
 
-    function stakedBalanceOf(address _addr) public view returns (uint256) {
+    function stakedBalanceOf(address _addr) public view returns (uint) {
         uint epoch = userStakedEpoch[_addr];
         if (epoch == 0) {
             return 0;
@@ -476,12 +416,9 @@ contract VotingEscrow is
         return _stakedBalance(lastPoint, block.timestamp);
     }
 
-    function stakedBalanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) public view returns (uint256) {
+    function stakedBalanceOfAt(address _addr, uint _timestamp) public view returns (uint) {
         // Get most recent user staked point
-        uint256 userEpoch = _findUserStaked(_addr, _timestamp);
+        uint userEpoch = _findUserStaked(_addr, _timestamp);
         if (userEpoch == 0) {
             return 0;
         }
@@ -489,14 +426,14 @@ contract VotingEscrow is
         return _stakedBalance(upoint, _timestamp);
     }
 
-    function stake(uint256 _value) external nonReentrant {
+    function stake(uint _value) external nonReentrant {
         _assertNotContract();
 
         _claimVested(msg.sender);
 
         require(_value > 0, "VotingEscrow: need non-zero value");
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), _value);
-        uint256 stakedValue = staked[msg.sender] + _value;
+        uint stakedValue = staked[msg.sender] + _value;
         staked[msg.sender] = stakedValue;
 
         StakedPoint memory oldStaked = getLastStakedPoint(msg.sender);
@@ -505,10 +442,7 @@ contract VotingEscrow is
             slope: -SafeCast.toInt128(SafeCast.toInt256(stakedValue / maxTime)),
             ts: block.timestamp,
             end: _startOfWeek(
-                block.timestamp +
-                    ((stakedValue - SafeCast.toUint256(oldStaked.bias)) *
-                        maxTime) /
-                    stakedValue
+                block.timestamp + ((stakedValue - SafeCast.toUint256(oldStaked.bias)) * maxTime) / stakedValue
             )
         });
         _checkpointStaked(msg.sender, oldStaked, newStaked);
@@ -517,10 +451,10 @@ contract VotingEscrow is
         emit Stake(msg.sender, _value, block.timestamp);
     }
 
-    function unstake(uint256 _value) external nonReentrant {
+    function unstake(uint _value) external nonReentrant {
         _claimVested(msg.sender);
 
-        uint256 stakedValue = staked[msg.sender];
+        uint stakedValue = staked[msg.sender];
         require(stakedValue > _value, "VotingEscrow: insufficient staked");
         stakedValue -= _value;
         staked[msg.sender] = stakedValue;
@@ -544,16 +478,16 @@ contract VotingEscrow is
     function _userLockedPoint(
         address _addr,
         Point memory _point,
-        uint256 _t
+        uint _t
     ) internal view returns (Point memory lastPoint) {
         // _point is the latest point user made operation on veSYM before _t.
         // Hence, there can be at most $vestWeeks$ slope changes between this point and _t,
         // and these slope changes must happen in consecutive weeks following _point.
         // Therefore, we only need to iterate $vestWeeks$ weeks here.
         lastPoint = _point;
-        uint256 iterativeTime = _startOfWeek(lastPoint.ts);
-        uint256 len = vestWeeks;
-        for (uint256 i = 0; i < len; ++i) {
+        uint iterativeTime = _startOfWeek(lastPoint.ts);
+        uint len = vestWeeks;
+        for (uint i = 0; i < len; ++i) {
             iterativeTime = iterativeTime + 1 weeks;
             int128 dSlope = 0;
             if (iterativeTime > _t) {
@@ -562,10 +496,7 @@ contract VotingEscrow is
                 dSlope = userSlopeChanges[_addr][iterativeTime];
             }
 
-            lastPoint.bias =
-                lastPoint.bias -
-                (lastPoint.slope *
-                    SafeCast.toInt128(int256(iterativeTime - lastPoint.ts)));
+            lastPoint.bias = lastPoint.bias - (lastPoint.slope * SafeCast.toInt128(int(iterativeTime - lastPoint.ts)));
             lastPoint.slope = lastPoint.slope + dSlope;
             lastPoint.ts = iterativeTime;
             if (iterativeTime == _t) {
@@ -573,20 +504,16 @@ contract VotingEscrow is
             }
         }
         // in the rest time period, there is at most one active lock by user
-        lastPoint.bias =
-            lastPoint.bias -
-            (lastPoint.slope * SafeCast.toInt128(int256(_t - lastPoint.ts)));
+        lastPoint.bias = lastPoint.bias - (lastPoint.slope * SafeCast.toInt128(int(_t - lastPoint.ts)));
         if (lastPoint.bias < 0) {
             lastPoint.bias = 0;
         }
         lastPoint.ts = _t;
     }
 
-    function _userCheckpoint(
-        address _addr
-    ) internal view returns (Point memory lastPoint) {
+    function _userCheckpoint(address _addr) internal view returns (Point memory lastPoint) {
         lastPoint = Point({bias: 0, slope: 0, ts: block.timestamp});
-        uint256 epoch = userPointEpoch[_addr];
+        uint epoch = userPointEpoch[_addr];
         if (epoch > 0) {
             lastPoint = userPointHistory[_addr][epoch];
         }
@@ -608,25 +535,21 @@ contract VotingEscrow is
         if (_oldLocked.autoExtend) {
             // userOldPoint.slope = 0;
             userOldPoint.bias =
-                (_oldLocked.amount / SafeCast.toInt128(int256(maxTime))) *
-                SafeCast.toInt128(int256(_oldLocked.lockDuration));
+                (_oldLocked.amount / SafeCast.toInt128(int(maxTime))) *
+                SafeCast.toInt128(int(_oldLocked.lockDuration));
         } else {
             oldSlopeDelta = slopeChanges[_oldLocked.end];
             oldUserSlopeDelta = userSlopeChanges[_addr][_oldLocked.end];
             if (_oldLocked.end > block.timestamp && _oldLocked.amount > 0) {
-                userOldPoint.slope =
-                    _oldLocked.amount /
-                    SafeCast.toInt128(int256(maxTime));
-                userOldPoint.bias =
-                    userOldPoint.slope *
-                    SafeCast.toInt128(int256(_oldLocked.end - block.timestamp));
+                userOldPoint.slope = _oldLocked.amount / SafeCast.toInt128(int(maxTime));
+                userOldPoint.bias = userOldPoint.slope * SafeCast.toInt128(int(_oldLocked.end - block.timestamp));
             }
         }
         if (_newLocked.autoExtend) {
             // userNewPoint.slope = 0;
             userNewPoint.bias =
-                (_newLocked.amount / SafeCast.toInt128(int256(maxTime))) *
-                SafeCast.toInt128(int256(_newLocked.lockDuration));
+                (_newLocked.amount / SafeCast.toInt128(int(maxTime))) *
+                SafeCast.toInt128(int(_newLocked.lockDuration));
         } else {
             if (_newLocked.end != 0) {
                 if (_newLocked.end == _oldLocked.end) {
@@ -638,12 +561,8 @@ contract VotingEscrow is
                 }
             }
             if (_newLocked.end > block.timestamp && _newLocked.amount > 0) {
-                userNewPoint.slope =
-                    _newLocked.amount /
-                    SafeCast.toInt128(int256(maxTime));
-                userNewPoint.bias =
-                    userNewPoint.slope *
-                    SafeCast.toInt128(int256(_newLocked.end - block.timestamp));
+                userNewPoint.slope = _newLocked.amount / SafeCast.toInt128(int(maxTime));
+                userNewPoint.bias = userNewPoint.slope * SafeCast.toInt128(int(_newLocked.end - block.timestamp));
             }
         }
 
@@ -687,10 +606,7 @@ contract VotingEscrow is
         Point memory userNewPoint;
         uint len = _oldLocked.length;
         for (uint i = 0; i < len; ++i) {
-            (
-                Point memory oldPoint,
-                Point memory newPoint
-            ) = _updateSlopeChanges(_addr, _oldLocked[i], _newLocked[i]);
+            (Point memory oldPoint, Point memory newPoint) = _updateSlopeChanges(_addr, _oldLocked[i], _newLocked[i]);
             userOldPoint.slope += oldPoint.slope;
             userOldPoint.bias += oldPoint.bias;
             userNewPoint.slope += newPoint.slope;
@@ -702,10 +618,7 @@ contract VotingEscrow is
 
         // If last point was in this block, the slope change has been applied already
         // But in such case we have 0 slope(s)
-        lastPoint.slope =
-            lastPoint.slope +
-            userNewPoint.slope -
-            userOldPoint.slope;
+        lastPoint.slope = lastPoint.slope + userNewPoint.slope - userOldPoint.slope;
         lastPoint.bias = lastPoint.bias + userNewPoint.bias - userOldPoint.bias;
         if (lastPoint.bias < 0) {
             lastPoint.bias = 0;
@@ -716,16 +629,13 @@ contract VotingEscrow is
         globalEpoch += 1;
         pointHistory.push(lastPoint);
 
-        uint256 uEpoch = userPointEpoch[_addr];
+        uint uEpoch = userPointEpoch[_addr];
         if (uEpoch == 0) {
             userPointHistory[_addr].push(userOldPoint);
         }
         // compute current user point
         Point memory userPoint = _userCheckpoint(_addr);
-        userPoint.slope =
-            userPoint.slope +
-            userNewPoint.slope -
-            userOldPoint.slope;
+        userPoint.slope = userPoint.slope + userNewPoint.slope - userOldPoint.slope;
         userPoint.bias = userPoint.bias + userNewPoint.bias - userOldPoint.bias;
         userPointEpoch[_addr] = uEpoch + 1;
         userPointHistory[_addr].push(userPoint);
@@ -756,9 +666,7 @@ contract VotingEscrow is
         newLocks[0] = _newLocked;
         _checkpointLocked(_addr, oldLocks, newLocks);
 
-        uint256 value = SafeCast.toUint256(
-            _newLocked.amount - _oldLocked.amount
-        );
+        uint value = SafeCast.toUint256(_newLocked.amount - _oldLocked.amount);
         if (value != 0) {
             IERC20(baseToken).safeTransferFrom(_addr, address(this), value);
         }
@@ -781,12 +689,7 @@ contract VotingEscrow is
      * @param _lockDuration Time length of tokens to lock
      * @param _autoExtend If the lock will be auto extended
      */
-    function createLock(
-        uint256 _value,
-        uint256 _unlockTime,
-        uint256 _lockDuration,
-        bool _autoExtend
-    ) external nonReentrant {
+    function createLock(uint _value, uint _unlockTime, uint _lockDuration, bool _autoExtend) external nonReentrant {
         _assertNotContract();
 
         _claimVested(msg.sender);
@@ -800,25 +703,13 @@ contract VotingEscrow is
         });
 
         require(_value > 0, "VotingEscrow: need non-zero value");
-        require(
-            oldLocked.amount == 0,
-            "VotingEscrow: Withdraw old tokens first"
-        );
+        require(oldLocked.amount == 0, "VotingEscrow: Withdraw old tokens first");
 
         if (_autoExtend) {
-            require(
-                _lockDuration > 0,
-                "VotingEscrow: need non-zero lock duration"
-            );
+            require(_lockDuration > 0, "VotingEscrow: need non-zero lock duration");
         } else {
-            require(
-                _unlockTime > block.timestamp,
-                "VotingEscrow: Can only lock until time in the future"
-            );
-            require(
-                _unlockTime <= block.timestamp + maxTime,
-                "VotingEscrow: Voting lock exceeds max time"
-            );
+            require(_unlockTime > block.timestamp, "VotingEscrow: Can only lock until time in the future");
+            require(_unlockTime <= block.timestamp + maxTime, "VotingEscrow: Voting lock exceeds max time");
         }
 
         _depositFor(msg.sender, oldLocked, newLocked, LockAction.CREATE_LOCK);
@@ -830,7 +721,7 @@ contract VotingEscrow is
      * @dev Deposit `_value` additional tokens for `msg.sender` without modifying the unlock time
      * @param _value Amount of tokens to deposit and add to the lock
      */
-    function increaseLockAmount(uint256 _value) external nonReentrant {
+    function increaseLockAmount(uint _value) external nonReentrant {
         _claimVested(msg.sender);
 
         _increaseLockAmount(_value);
@@ -845,11 +736,7 @@ contract VotingEscrow is
      * @param _lockDuration Time length of tokens to lock
      * @param _autoExtend If the lock will be auto extended
      */
-    function increaseUnlockTime(
-        uint256 _unlockTime,
-        uint256 _lockDuration,
-        bool _autoExtend
-    ) external nonReentrant {
+    function increaseUnlockTime(uint _unlockTime, uint _lockDuration, bool _autoExtend) external nonReentrant {
         _claimVested(msg.sender);
 
         _increaseUnlockTime(_unlockTime, _lockDuration, _autoExtend);
@@ -858,9 +745,9 @@ contract VotingEscrow is
     }
 
     function increaseLockAmountAndUnlockTime(
-        uint256 _value,
-        uint256 _unlockTime,
-        uint256 _lockDuration,
+        uint _value,
+        uint _unlockTime,
+        uint _lockDuration,
         bool _autoExtend
     ) external nonReentrant {
         _claimVested(msg.sender);
@@ -871,13 +758,12 @@ contract VotingEscrow is
         _tryCallback(msg.sender);
     }
 
-    function _increaseLockAmount(uint256 _value) internal {
+    function _increaseLockAmount(uint _value) internal {
         _assertNotContract();
 
         LockedBalance memory oldLocked = locked[msg.sender];
         LockedBalance memory newLocked = LockedBalance({
-            amount: oldLocked.amount +
-                SafeCast.toInt128(SafeCast.toInt256(_value)),
+            amount: oldLocked.amount + SafeCast.toInt128(SafeCast.toInt256(_value)),
             end: oldLocked.end,
             lockDuration: oldLocked.lockDuration,
             autoExtend: oldLocked.autoExtend
@@ -886,25 +772,13 @@ contract VotingEscrow is
         require(_value > 0, "VotingEscrow: need non-zero value");
         require(oldLocked.amount > 0, "VotingEscrow: No existing lock found");
         if (!oldLocked.autoExtend) {
-            require(
-                oldLocked.end > block.timestamp,
-                "VotingEscrow: Cannot add to expired lock. Withdraw"
-            );
+            require(oldLocked.end > block.timestamp, "VotingEscrow: Cannot add to expired lock. Withdraw");
         }
 
-        _depositFor(
-            msg.sender,
-            oldLocked,
-            newLocked,
-            LockAction.INCREASE_LOCK_AMOUNT
-        );
+        _depositFor(msg.sender, oldLocked, newLocked, LockAction.INCREASE_LOCK_AMOUNT);
     }
 
-    function _increaseUnlockTime(
-        uint256 _unlockTime,
-        uint256 _lockDuration,
-        bool _autoExtend
-    ) internal {
+    function _increaseUnlockTime(uint _unlockTime, uint _lockDuration, bool _autoExtend) internal {
         _assertNotContract();
 
         _unlockTime = _startOfWeek(_unlockTime); // Locktime is rounded down to weeks
@@ -917,40 +791,28 @@ contract VotingEscrow is
         });
 
         if (!oldLocked.autoExtend) {
-            require(
-                oldLocked.end > block.timestamp,
-                "VotingEscrow: Lock expired"
-            );
+            require(oldLocked.end > block.timestamp, "VotingEscrow: Lock expired");
             if (
                 (!newLocked.autoExtend && newLocked.end <= oldLocked.end) ||
-                (newLocked.autoExtend &&
-                    newLocked.lockDuration + block.timestamp < oldLocked.end)
+                (newLocked.autoExtend && newLocked.lockDuration + block.timestamp < oldLocked.end)
             ) {
                 revert("VotingEscrow: Can only increase unlock time");
             }
         } else if (
-            (!newLocked.autoExtend &&
-                newLocked.end < oldLocked.lockDuration + block.timestamp) ||
+            (!newLocked.autoExtend && newLocked.end < oldLocked.lockDuration + block.timestamp) ||
             // equation is allowed here to enable user to disable auto-extend
-            (newLocked.autoExtend &&
-                newLocked.lockDuration <= oldLocked.lockDuration)
+            (newLocked.autoExtend && newLocked.lockDuration <= oldLocked.lockDuration)
         ) {
             revert("VotingEscrow: Can only increase unlock time");
         }
         require(oldLocked.amount > 0, "VotingEscrow: Nothing is locked");
         require(
-            (!newLocked.autoExtend &&
-                newLocked.end <= block.timestamp + maxTime) ||
+            (!newLocked.autoExtend && newLocked.end <= block.timestamp + maxTime) ||
                 (newLocked.autoExtend && newLocked.lockDuration <= maxTime),
             "VotingEscrow: Voting lock exceeds max time"
         );
 
-        _depositFor(
-            msg.sender,
-            oldLocked,
-            newLocked,
-            LockAction.INCREASE_LOCK_TIME
-        );
+        _depositFor(msg.sender, oldLocked, newLocked, LockAction.INCREASE_LOCK_TIME);
     }
 
     /**
@@ -965,12 +827,9 @@ contract VotingEscrow is
     function _withdraw(address _addr) internal nonReentrant {
         LockedBalance memory oldLock = locked[_addr];
         require(!oldLock.autoExtend, "VotingEscrow: lock is auto extended");
-        require(
-            block.timestamp >= oldLock.end,
-            "VotingEscrow: The lock didn't expire"
-        );
+        require(block.timestamp >= oldLock.end, "VotingEscrow: The lock didn't expire");
 
-        uint256 value = SafeCast.toUint256(oldLock.amount);
+        uint value = SafeCast.toUint256(oldLock.amount);
 
         LockedBalance memory empty;
         locked[_addr] = empty;
@@ -987,17 +846,14 @@ contract VotingEscrow is
      * @param _addr user address
      * @param _timestamp Find the most recent point history before this timestamp
      */
-    function _findUserPoint(
-        address _addr,
-        uint256 _timestamp
-    ) internal view returns (uint256) {
-        uint256 min = 0;
-        uint256 max = userPointEpoch[_addr];
-        for (uint256 i = 0; i < 128; i++) {
+    function _findUserPoint(address _addr, uint _timestamp) internal view returns (uint) {
+        uint min = 0;
+        uint max = userPointEpoch[_addr];
+        for (uint i = 0; i < 128; i++) {
             if (min >= max) {
                 break;
             }
-            uint256 mid = (min + max + 1) / 2;
+            uint mid = (min + max + 1) / 2;
             if (userPointHistory[_addr][mid].ts <= _timestamp) {
                 min = mid;
             } else {
@@ -1007,21 +863,17 @@ contract VotingEscrow is
         return min;
     }
 
-    function _lockedBalance(
-        address _addr,
-        Point memory _point,
-        uint256 _t
-    ) internal view returns (uint256) {
+    function _lockedBalance(address _addr, Point memory _point, uint _t) internal view returns (uint) {
         return SafeCast.toUint256(_userLockedPoint(_addr, _point, _t).bias);
     }
 
     /**
      * @dev Get the current voting power for `msg.sender`
      * @param _addr User wallet address
-     * @return uint256 voting power of user
+     * @return uint voting power of user
      */
-    function lockedBalanceOf(address _addr) public view returns (uint256) {
-        uint256 epoch = userPointEpoch[_addr];
+    function lockedBalanceOf(address _addr) public view returns (uint) {
+        uint epoch = userPointEpoch[_addr];
         if (epoch == 0) {
             return 0;
         }
@@ -1033,14 +885,11 @@ contract VotingEscrow is
      * @dev Get the voting power for `msg.sender` at specific time
      * @param _addr User wallet address
      * @param _timestamp Time to query
-     * @return uint256 voting power of user
+     * @return uint voting power of user
      */
-    function lockedBalanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) public view returns (uint256) {
+    function lockedBalanceOfAt(address _addr, uint _timestamp) public view returns (uint) {
         // Get most recent user Point
-        uint256 userEpoch = _findUserPoint(_addr, _timestamp);
+        uint userEpoch = _findUserPoint(_addr, _timestamp);
         if (userEpoch == 0) {
             return 0;
         }

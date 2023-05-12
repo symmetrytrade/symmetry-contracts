@@ -12,18 +12,14 @@ contract MarketSettingsContext {
     bytes32 internal constant PYTH_MAX_AGE = "pythMaxAge";
     bytes32 internal constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";
     // margin
-    bytes32 internal constant MAINTENANCE_MARGIN_RATIO =
-        "maintenanceMarginRatio";
+    bytes32 internal constant MAINTENANCE_MARGIN_RATIO = "maintenanceMarginRatio";
     bytes32 internal constant LIQUIDATION_FEE_RATIO = "liquidationFeeRatio";
     bytes32 internal constant MIN_LIQUIDATION_FEE = "minLiquidationFee";
     bytes32 internal constant MAX_LIQUIDATION_FEE = "maxLiquidationFee";
-    bytes32 internal constant LIQUIDATION_PENALTY_RATIO =
-        "liquidationPenaltyRatio";
-    bytes32 internal constant LIQUIDATION_COUPON_RATIO =
-        "liquidationCouponRatio";
+    bytes32 internal constant LIQUIDATION_PENALTY_RATIO = "liquidationPenaltyRatio";
+    bytes32 internal constant LIQUIDATION_COUPON_RATIO = "liquidationCouponRatio";
     // incentives
-    bytes32 internal constant VESYM_FEE_INCENTIVE_RATIO =
-        "veSYMFeeIncentiveRatio";
+    bytes32 internal constant VESYM_FEE_INCENTIVE_RATIO = "veSYMFeeIncentiveRatio";
     // fee
     bytes32 internal constant PERP_TRADING_FEE = "perpTradingFee";
     bytes32 internal constant LIQUIDITY_REDEEM_FEE = "liquidityRedeemFee";

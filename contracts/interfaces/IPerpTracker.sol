@@ -37,12 +37,7 @@ interface IPerpTracker {
     /*=== event ===*/
 
     event MarginTransferred(address indexed account, int256 delta);
-    event TokenInfoUpdated(
-        address indexed token,
-        int256 lpNetValue,
-        int256 netOpenInterest,
-        int256 skew
-    );
+    event TokenInfoUpdated(address indexed token, int256 lpNetValue, int256 netOpenInterest, int256 skew);
     event FeeInfoUpdated(
         address indexed token,
         int256 nextAccFundingFee,
@@ -56,10 +51,7 @@ interface IPerpTracker {
 
     function addMargin(address _account, uint256 _amount) external;
 
-    function computeFinancingFee(
-        address _account,
-        address _token
-    ) external view returns (int256);
+    function computeFinancingFee(address _account, address _token) external view returns (int256);
 
     function computeLpFunding(address _token) external view returns (int256);
 
@@ -89,36 +81,21 @@ interface IPerpTracker {
 
     function getFeeInfo(address _token) external view returns (FeeInfo memory);
 
-    function getLpPosition(
-        address _token
-    ) external view returns (LpPosition memory);
+    function getLpPosition(address _token) external view returns (LpPosition memory);
 
-    function getNetPositionSize(
-        address _token
-    ) external view returns (int256, int256);
+    function getNetPositionSize(address _token) external view returns (int256, int256);
 
-    function getPosition(
-        address _account,
-        address _token
-    ) external view returns (Position memory);
+    function getPosition(address _account, address _token) external view returns (Position memory);
 
-    function getPositionSize(
-        address _account,
-        address _token
-    ) external view returns (int256);
+    function getPositionSize(address _account, address _token) external view returns (int256);
 
-    function getTokenInfo(
-        address _token
-    ) external view returns (TokenInfo memory);
+    function getTokenInfo(address _token) external view returns (TokenInfo memory);
 
     function latestUpdated(address _token) external view returns (uint256);
 
     function lpHardLimit(int256 _lp) external view returns (int256);
 
-    function lpLimitForToken(
-        int256 _lp,
-        address _token
-    ) external view returns (int256);
+    function lpLimitForToken(int256 _lp, address _token) external view returns (int256);
 
     function lpPositions(
         address
@@ -149,18 +126,9 @@ interface IPerpTracker {
     function nextAccFinancingFee(
         address _token,
         int256 _price
-    )
-        external
-        view
-        returns (
-            int256 nextAccLongFinancingFee,
-            int256 nextAccShortFinancingFee
-        );
+    ) external view returns (int256 nextAccLongFinancingFee, int256 nextAccShortFinancingFee);
 
-    function nextAccFunding(
-        address _token,
-        int256 _price
-    ) external view returns (int256, int256);
+    function nextAccFunding(address _token, int256 _price) external view returns (int256, int256);
 
     function removeMargin(address _account, uint256 _amount) external;
 
@@ -187,10 +155,7 @@ interface IPerpTracker {
 
     function updateFee(address _token, int256 _price) external;
 
-    function updateTokenInfo(
-        address _token,
-        TokenInfo memory _tokenInfo
-    ) external;
+    function updateTokenInfo(address _token, TokenInfo memory _tokenInfo) external;
 
     function userMargin(address) external view returns (int256);
 }

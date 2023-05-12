@@ -14,16 +14,13 @@ contract SYM is ISYM, ERC20, AccessControlEnumerable {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function mint(address _to, uint256 _amount) external {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "SYM: must have minter role to mint"
-        );
+    function mint(address _to, uint _amount) external {
+        require(hasRole(MINTER_ROLE, msg.sender), "SYM: must have minter role to mint");
 
         _mint(_to, _amount);
     }
 
-    function burn(uint256 _amount) external {
+    function burn(uint _amount) external {
         _burn(msg.sender, _amount);
     }
 }

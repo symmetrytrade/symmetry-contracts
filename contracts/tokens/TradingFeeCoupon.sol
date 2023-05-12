@@ -6,27 +6,19 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/ITradingFeeCoupon.sol";
 
-contract TradingFeeCoupon is
-    ITradingFeeCoupon,
-    ERC721,
-    AccessControlEnumerable
-{
+contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable {
     // constants
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
     // states
     string private tokenBaseURI;
-    uint256 public tokenCount;
-    mapping(uint256 => uint256) public couponValues;
-    mapping(address => uint256) public unspents;
+    uint public tokenCount;
+    mapping(uint => uint) public couponValues;
+    mapping(address => uint) public unspents;
     Mintable[] public mintables;
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        string memory _tokenBaseURI
-    ) ERC721(_name, _symbol) {
+    constructor(string memory _name, string memory _symbol, string memory _tokenBaseURI) ERC721(_name, _symbol) {
         tokenBaseURI = _tokenBaseURI;
         mintables.push(Mintable(address(0), 0, 0));
 
@@ -39,37 +31,25 @@ contract TradingFeeCoupon is
         return super.supportsInterface(interfaceId);
     }
 
-    function preMint(
-        address _to,
-        uint256 _value,
-        uint256 _expire
-    ) external returns (uint256 id) {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "TradingFeeCoupon: must have minter role to pre-mint"
-        );
+    function preMint(address _to, uint _value, uint _expire) external returns (uint id) {
+        require(hasRole(MINTER_ROLE, msg.sender), "TradingFeeCoupon: must have minter role to pre-mint");
 
         id = mintables.length;
         mintables.push(Mintable({to: _to, value: _value, expire: _expire}));
         emit PreMint(id, _to, _value, _expire);
     }
 
-    function mint(uint256 _preMintId) external {
+    function mint(uint _preMintId) external {
         _mintFromPreMint(_preMintId);
     }
 
-    function mintAndRedeem(uint256 _preMintId) external {
-        uint256 id = _mintFromPreMint(_preMintId);
+    function mintAndRedeem(uint _preMintId) external {
+        uint id = _mintFromPreMint(_preMintId);
         _redeemCoupon(mintables[_preMintId].to, id);
     }
 
-    function _mintFromPreMint(
-        uint256 _preMintId
-    ) internal returns (uint256 id) {
-        require(
-            _preMintId < mintables.length,
-            "TradingFeeCoupon: invalid pre-mint id"
-        );
+    function _mintFromPreMint(uint _preMintId) internal returns (uint id) {
+        require(_preMintId < mintables.length, "TradingFeeCoupon: invalid pre-mint id");
         Mintable memory mintable = mintables[_preMintId];
         require(mintable.expire > 0, "TradingFeeCoupon: minted");
         require(mintable.expire > block.timestamp, "TradingFeeCoupon: expired");
@@ -78,23 +58,17 @@ contract TradingFeeCoupon is
         return _mintCoupon(mintable.to, mintable.value);
     }
 
-    function mintCoupon(address _to, uint256 _value) external {
-        require(
-            hasRole(MINTER_ROLE, msg.sender),
-            "TradingFeeCoupon: must have minter role to pre-mint"
-        );
+    function mintCoupon(address _to, uint _value) external {
+        require(hasRole(MINTER_ROLE, msg.sender), "TradingFeeCoupon: must have minter role to pre-mint");
 
         _mintCoupon(_to, _value);
     }
 
-    function redeemCoupon(uint256 _id) external {
+    function redeemCoupon(uint _id) external {
         _redeemCoupon(msg.sender, _id);
     }
 
-    function _mintCoupon(
-        address _to,
-        uint256 _value
-    ) internal returns (uint256 id) {
+    function _mintCoupon(address _to, uint _value) internal returns (uint id) {
         id = tokenCount;
         couponValues[id] = _value;
         _safeMint(_to, id);
@@ -103,7 +77,7 @@ contract TradingFeeCoupon is
         emit Minted(id, _to, _value);
     }
 
-    function _redeemCoupon(address _account, uint256 _id) internal {
+    function _redeemCoupon(address _account, uint _id) internal {
         require(_account != address(0), "TradingFeeCoupont: zero address");
         require(_ownerOf(_id) == _account, "TradingFeeCoupon: not owner");
 
@@ -113,15 +87,9 @@ contract TradingFeeCoupon is
         emit Redeem(_id, _account, couponValues[_id]);
     }
 
-    function spend(address _account, uint256 _amount) external {
-        require(
-            hasRole(SPENDER_ROLE, msg.sender),
-            "TradingFeeCoupon: must have spender role to spend"
-        );
-        require(
-            unspents[_account] >= _amount,
-            "TradingFeeCoupon: insufficient unspents"
-        );
+    function spend(address _account, uint _amount) external {
+        require(hasRole(SPENDER_ROLE, msg.sender), "TradingFeeCoupon: must have spender role to spend");
+        require(unspents[_account] >= _amount, "TradingFeeCoupon: insufficient unspents");
 
         unspents[_account] -= _amount;
 

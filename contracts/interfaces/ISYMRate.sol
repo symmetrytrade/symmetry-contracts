@@ -11,12 +11,7 @@ interface ISYMRate {
 
     /*=== function ===*/
 
-    function getSum(
-        uint256 start,
-        uint256 end
-    ) external view returns (uint256 sum);
+    function getSum(uint256 start, uint256 end) external view returns (uint256 sum);
 
-    function rates(
-        uint256
-    ) external view returns (uint256 startTime, uint256 rate);
+    function rates(uint256) external view returns (uint256 startTime, uint256 rate);
 }

@@ -18,17 +18,17 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
 
     // user info
     struct UserInfo {
-        uint256 amount; // Amount of tokens the user staked.
-        uint256 workingPower; // boosted user share.
-        uint256 rewardPerShare; // Accumulated reward per share.
+        uint amount; // Amount of tokens the user staked.
+        uint workingPower; // boosted user share.
+        uint rewardPerShare; // Accumulated reward per share.
     }
 
     // global info
     address public lpToken;
-    uint256 public lastRewardTime; // Last timestamp that SYM distribution occurs.
-    uint256 public totalStaked; // Total token staked.
-    uint256 public totalWorkingPower; // Total boosted working power.
-    uint256 public accRewardPerShare; // Accumulated reward per working power.
+    uint public lastRewardTime; // Last timestamp that SYM distribution occurs.
+    uint public totalStaked; // Total token staked.
+    uint public totalWorkingPower; // Total boosted working power.
+    uint public accRewardPerShare; // Accumulated reward per working power.
 
     // states
     address public symToken;
@@ -38,21 +38,21 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
     //   user_stake_amount,
     //   k% * user_stake_amount + (1 - k%) * total_stake_amount * (user_veSYM / total_veSYM)
     // )
-    uint256 public k;
+    uint public k;
 
     // Info of each user that stakes LP tokens.
     mapping(address => UserInfo) public userInfo;
 
-    event Deposit(address indexed user, uint256 amount);
-    event Withdraw(address indexed user, uint256 amount);
-    event UpdateWorkingPower(address indexed user, uint256 workingPower);
+    event Deposit(address indexed user, uint amount);
+    event Withdraw(address indexed user, uint amount);
+    event UpdateWorkingPower(address indexed user, uint workingPower);
 
     function initialize(
         address _votingEscrow,
         address _lpToken,
         address _symRate,
         address _symToken,
-        uint256 _startTime
+        uint _startTime
     ) external onlyInitializeOnce {
         lpToken = _lpToken;
         symRate = _symRate;
@@ -76,18 +76,13 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
             lastRewardTime = block.timestamp;
             return;
         }
-        uint256 reward = ISYMRate(symRate).getSum(
-            lastRewardTime,
-            block.timestamp
-        );
+        uint reward = ISYMRate(symRate).getSum(lastRewardTime, block.timestamp);
         // update prefix sum
-        accRewardPerShare +=
-            (reward * (10 ** IERC20Metadata(lpToken).decimals())) /
-            totalWorkingPower;
+        accRewardPerShare += (reward * (10 ** IERC20Metadata(lpToken).decimals())) / totalWorkingPower;
         lastRewardTime = block.timestamp;
     }
 
-    function _updateUser(address _user) internal returns (uint256 reward) {
+    function _updateUser(address _user) internal returns (uint reward) {
         UserInfo storage user = userInfo[_user];
         reward =
             (user.workingPower * (accRewardPerShare - user.rewardPerShare)) /
@@ -104,32 +99,22 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         IVotingEscrow votingEscrow_ = IVotingEscrow(votingEscrow);
 
         UserInfo storage user = userInfo[_user];
-        uint256 newWorkingPower = (k * user.amount) / 100;
-        uint256 votingTotal = votingEscrow_.totalSupply();
+        uint newWorkingPower = (k * user.amount) / 100;
+        uint votingTotal = votingEscrow_.totalSupply();
         if (votingTotal > 0)
-            newWorkingPower +=
-                (((totalStaked * votingEscrow_.balanceOf(_user)) /
-                    votingTotal) * (100 - k)) /
-                100;
+            newWorkingPower += (((totalStaked * votingEscrow_.balanceOf(_user)) / votingTotal) * (100 - k)) / 100;
         if (newWorkingPower > user.amount) newWorkingPower = user.amount;
-        totalWorkingPower =
-            totalWorkingPower +
-            newWorkingPower -
-            user.workingPower;
+        totalWorkingPower = totalWorkingPower + newWorkingPower - user.workingPower;
         user.workingPower = newWorkingPower;
         emit UpdateWorkingPower(_user, newWorkingPower);
     }
 
-    function deposit(uint256 _amount) external returns (uint256 reward) {
+    function deposit(uint _amount) external returns (uint reward) {
         _update();
         reward = _updateUser(msg.sender);
         UserInfo storage user = userInfo[msg.sender];
         if (_amount > 0) {
-            IERC20(lpToken).safeTransferFrom(
-                address(msg.sender),
-                address(this),
-                _amount
-            );
+            IERC20(lpToken).safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount += _amount;
             totalStaked += _amount;
         }
@@ -137,7 +122,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         emit Deposit(msg.sender, _amount);
     }
 
-    function withdraw(uint256 _amount) external returns (uint256 reward) {
+    function withdraw(uint _amount) external returns (uint reward) {
         UserInfo storage user = userInfo[msg.sender];
         require(user.amount >= _amount, "LiquidityGauge: bad withdraw amount");
 

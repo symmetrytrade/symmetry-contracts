@@ -15,39 +15,30 @@ import "../market/MarketSettingsContext.sol";
 import "../tokens/LPToken.sol";
 
 contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
-    using SignedSafeDecimalMath for int256;
-    using SafeDecimalMath for uint256;
-    using SafeCast for int256;
-    using SafeCast for uint256;
+    using SignedSafeDecimalMath for int;
+    using SafeDecimalMath for uint;
+    using SafeCast for int;
+    using SafeCast for uint;
 
     // states
     address public market;
     address public lpToken;
-    mapping(address => uint256) public latestMint;
+    mapping(address => uint) public latestMint;
 
-    event AddLiquidity(
-        address account,
-        uint256 amount,
-        int256 lpNetValue,
-        uint256 usdAmount,
-        uint256 mintAmount
-    );
+    event AddLiquidity(address account, uint amount, int lpNetValue, uint usdAmount, uint mintAmount);
 
     event RemoveLiquidity(
         address account,
-        uint256 redeemAmount,
-        int256 lpNetValue,
-        uint256 redeemUsdAmount,
-        uint256 redeemFee,
-        uint256 amountOut
+        uint redeemAmount,
+        int lpNetValue,
+        uint redeemUsdAmount,
+        uint redeemFee,
+        uint amountOut
     );
 
     /*=== initialize ===*/
 
-    function initialize(
-        address _market,
-        address _lpToken
-    ) external onlyInitializeOnce {
+    function initialize(address _market, address _lpToken) external onlyInitializeOnce {
         market = _market;
         lpToken = _lpToken;
 
@@ -63,121 +54,71 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
 
     /*=== liquidity ===*/
 
-    function addLiquidity(
-        uint256 _amount,
-        uint256 _minUsd,
-        uint256 _minLp,
-        address _receiver
-    ) external returns (uint256) {
+    function addLiquidity(uint _amount, uint _minUsd, uint _minLp, address _receiver) external returns (uint) {
         return _addLiquidity(msg.sender, _amount, _minUsd, _minLp, _receiver);
     }
 
-    function removeLiquidity(
-        uint256 _amount,
-        uint256 _minOut,
-        address _receiver
-    ) external returns (uint256) {
+    function removeLiquidity(uint _amount, uint _minOut, address _receiver) external returns (uint) {
         return _removeLiquidity(msg.sender, _amount, _minOut, _receiver);
     }
 
     function _addLiquidity(
         address _account,
-        uint256 _amount,
-        uint256 _minUsd,
-        uint256 _minLp,
+        uint _amount,
+        uint _minUsd,
+        uint _minLp,
         address _receiver
-    ) internal returns (uint256) {
+    ) internal returns (uint) {
         IMarket market_ = IMarket(market);
         // usd value check
-        uint256 usdAmount = market_
-            .tokenToUsd(market_.baseToken(), _amount.toInt256(), false)
-            .toUint256();
-        require(
-            usdAmount >= _minUsd,
-            "LiquidityManager: insufficient usd amount"
-        );
+        uint usdAmount = market_.tokenToUsd(market_.baseToken(), _amount.toInt256(), false).toUint256();
+        require(usdAmount >= _minUsd, "LiquidityManager: insufficient usd amount");
         // mint lp tokens
         LPToken lpToken_ = LPToken(lpToken);
-        uint256 lpSupply = lpToken_.totalSupply();
-        uint256 mintAmount = usdAmount;
-        int256 lpNetValue = 0;
+        uint lpSupply = lpToken_.totalSupply();
+        uint mintAmount = usdAmount;
+        int lpNetValue = 0;
         if (lpSupply > 0) {
             (lpNetValue, ) = market_.globalStatus();
-            if (lpNetValue > 0)
-                mintAmount = (lpSupply * usdAmount) / uint256(lpNetValue);
+            if (lpNetValue > 0) mintAmount = (lpSupply * usdAmount) / uint(lpNetValue);
         }
-        require(
-            mintAmount >= _minLp,
-            "LiquidityManager: insufficient lp amount"
-        );
+        require(mintAmount >= _minLp, "LiquidityManager: insufficient lp amount");
         latestMint[_receiver] = block.timestamp;
         // transfer funds
         market_.transferLiquidityIn(_account, _amount);
         lpToken_.mint(_receiver, mintAmount);
 
-        emit AddLiquidity(
-            _receiver,
-            _amount,
-            lpNetValue,
-            usdAmount,
-            mintAmount
-        );
+        emit AddLiquidity(_receiver, _amount, lpNetValue, usdAmount, mintAmount);
         return mintAmount;
     }
 
-    function _removeLiquidity(
-        address _account,
-        uint256 _amount,
-        uint256 _minOut,
-        address _receiver
-    ) internal returns (uint256) {
+    function _removeLiquidity(address _account, uint _amount, uint _minOut, address _receiver) internal returns (uint) {
         IMarket market_ = IMarket(market);
         // check lp token price and free lp value
         (int lpNetValue, int netOpenInterest) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
-        int redeemValue = (lpNetValue * _amount.toInt256()) /
-            lpToken_.totalSupply().toInt256(); // must be non-negative
+        int redeemValue = (lpNetValue * _amount.toInt256()) / lpToken_.totalSupply().toInt256(); // must be non-negative
         int redeemFee = 0;
         {
             // redeem trade
-            redeemFee += IMarket(market)
-                .redeemTradingFee(_account, lpNetValue, redeemValue)
-                .toInt256();
+            redeemFee += IMarket(market).redeemTradingFee(_account, lpNetValue, redeemValue).toInt256();
             // redeem fee
-            redeemFee += IMarketSettings(market_.settings())
-                .getIntVals(LIQUIDITY_REDEEM_FEE)
-                .multiplyDecimal(redeemValue - redeemFee);
+            redeemFee += IMarketSettings(market_.settings()).getIntVals(LIQUIDITY_REDEEM_FEE).multiplyDecimal(
+                redeemValue - redeemFee
+            );
             // TODO: where the fee goes?
         }
-        require(
-            redeemValue > redeemFee,
-            "LiquidityManager: non-positive redeem value"
-        );
-        require(
-            lpNetValue - netOpenInterest >= redeemValue - redeemFee,
-            "LiquidityManager: insufficient free lp"
-        );
+        require(redeemValue > redeemFee, "LiquidityManager: non-positive redeem value");
+        require(lpNetValue - netOpenInterest >= redeemValue - redeemFee, "LiquidityManager: insufficient free lp");
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
-        uint256 amountOut = market_
-            .usdToToken(market_.baseToken(), redeemValue - redeemFee, false)
-            .toUint256();
-        require(
-            amountOut >= _minOut,
-            "LiquidityManager: insufficient amountOut"
-        );
+        uint amountOut = market_.usdToToken(market_.baseToken(), redeemValue - redeemFee, false).toUint256();
+        require(amountOut >= _minOut, "LiquidityManager: insufficient amountOut");
         market_.transferLiquidityOut(_receiver, amountOut);
 
-        emit RemoveLiquidity(
-            _account,
-            _amount,
-            lpNetValue,
-            redeemValue.toUint256(),
-            redeemFee.toUint256(),
-            amountOut
-        );
+        emit RemoveLiquidity(_account, _amount, lpNetValue, redeemValue.toUint256(), redeemFee.toUint256(), amountOut);
 
         return amountOut;
     }
