@@ -33,19 +33,13 @@ interface IFeeTracker {
 
     function perpTracker() external view returns (address);
 
-    function redeemTradingFee(
-        address _account,
-        int256 lp,
-        int256 redeemValue
-    ) external returns (uint256 fee);
+    function redeemTradingFee(address _account, int256 lp, int256 redeemValue) external returns (uint256 fee);
 
     function settings() external view returns (address);
 
     function tradingFeeIncentives(uint256) external view returns (uint256);
 
-    function tradingFeeTiers(
-        uint256
-    ) external view returns (uint256 portion, uint256 discount);
+    function tradingFeeTiers(uint256) external view returns (uint256 portion, uint256 discount);
 
     function votingEscrow() external view returns (address);
 }

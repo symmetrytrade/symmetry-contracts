@@ -27,15 +27,9 @@ interface ITradingFeeCoupon {
 
     function mintCoupon(address _to, uint256 _value) external;
 
-    function mintables(
-        uint256
-    ) external view returns (address to, uint256 value, uint256 expire);
+    function mintables(uint256) external view returns (address to, uint256 value, uint256 expire);
 
-    function preMint(
-        address _to,
-        uint256 _value,
-        uint256 _expire
-    ) external returns (uint256 id);
+    function preMint(address _to, uint256 _value, uint256 _expire) external returns (uint256 id);
 
     function redeemCoupon(uint256 _id) external;
 

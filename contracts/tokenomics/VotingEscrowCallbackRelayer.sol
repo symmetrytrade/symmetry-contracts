@@ -14,14 +14,10 @@ contract VotingEscrowCallbackRelayer is VotingEscrowCallback, Ownable {
 
     EnumerableSet.AddressSet private _handles;
 
-    function getCallbackHandles()
-        external
-        view
-        returns (address[] memory handles)
-    {
-        uint256 length = _handles.length();
+    function getCallbackHandles() external view returns (address[] memory handles) {
+        uint length = _handles.length();
         handles = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
+        for (uint i = 0; i < length; i++) {
             handles[i] = _handles.at(i);
         }
     }
@@ -39,8 +35,8 @@ contract VotingEscrowCallbackRelayer is VotingEscrowCallback, Ownable {
     }
 
     function syncWithVotingEscrow(address _account) external override {
-        uint256 len = _handles.length();
-        for (uint256 i = 0; i < len; ++i) {
+        uint len = _handles.length();
+        for (uint i = 0; i < len; ++i) {
             VotingEscrowCallback(_handles.at(i)).syncWithVotingEscrow(_account);
         }
     }

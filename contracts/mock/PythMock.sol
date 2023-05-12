@@ -12,9 +12,7 @@ contract PythMock {
         return 1;
     }
 
-    function getPriceUnsafe(
-        bytes32 id
-    ) external view returns (PythStructs.Price memory price) {
+    function getPriceUnsafe(bytes32 id) external view returns (PythStructs.Price memory price) {
         require(prices[id].publishTime > 0, "PythMock: no price");
         return prices[id];
     }
@@ -22,8 +20,10 @@ contract PythMock {
     function updatePriceFeeds(bytes[] calldata updateData) external payable {
         require(msg.value == 1, "PythMock: fee insufficient");
         for (uint i = 0; i < updateData.length; ++i) {
-            (bytes32 id, int64 price, int32 expo, uint publishTime) = abi
-                .decode(updateData[i], (bytes32, int64, int32, uint));
+            (bytes32 id, int64 price, int32 expo, uint publishTime) = abi.decode(
+                updateData[i],
+                (bytes32, int64, int32, uint)
+            );
             if (publishTime > prices[id].publishTime) {
                 prices[id] = PythStructs.Price(price, 0, expo, publishTime);
             }

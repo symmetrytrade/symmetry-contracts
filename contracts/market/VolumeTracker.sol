@@ -15,32 +15,26 @@ import "../interfaces/ITradingFeeCoupon.sol";
 import "./MarketSettings.sol";
 import "./MarketSettingsContext.sol";
 
-contract VolumeTracker is
-    IVolumeTracker,
-    CommonContext,
-    MarketSettingsContext,
-    Ownable,
-    Initializable
-{
-    using SafeDecimalMath for uint256;
-    using SignedSafeDecimalMath for int256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
+contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+    using SafeDecimalMath for uint;
+    using SignedSafeDecimalMath for int;
+    using SafeCast for uint;
+    using SafeCast for int;
 
     // states
     address public market;
     address public settings;
     address public coupon;
 
-    mapping(address => mapping(uint256 => uint256)) public userWeeklyVolume;
-    mapping(address => mapping(uint256 => uint256)) public userDailyVolume;
+    mapping(address => mapping(uint => uint)) public userWeeklyVolume;
+    mapping(address => mapping(uint => uint)) public userDailyVolume;
 
-    mapping(address => mapping(uint256 => bool)) public weeklyCouponClaimed;
-    mapping(address => mapping(uint256 => bool)) public dailyCouponClaimed;
+    mapping(address => mapping(uint => bool)) public weeklyCouponClaimed;
+    mapping(address => mapping(uint => bool)) public dailyCouponClaimed;
 
-    mapping(uint256 => uint256) public luckyCandidates;
-    mapping(uint256 => uint256) public winningNumber;
-    mapping(address => mapping(uint256 => uint256)) public userLuckyNumber;
+    mapping(uint => uint) public luckyCandidates;
+    mapping(uint => uint) public winningNumber;
+    mapping(address => mapping(uint => uint)) public userLuckyNumber;
 
     Tier[] public rebateTiers; // trading fee rebate tiers
 
@@ -50,10 +44,7 @@ contract VolumeTracker is
         _;
     }
 
-    function initialize(
-        address _market,
-        address _coupon
-    ) external onlyInitializeOnce {
+    function initialize(address _market, address _coupon) external onlyInitializeOnce {
         market = _market;
         coupon = _coupon;
         settings = IMarket(_market).settings();
@@ -85,39 +76,36 @@ contract VolumeTracker is
     }
 
     /*=== volume ===*/
-    function logTrade(address _account, uint256 _volume) external onlyMarket {
+    function logTrade(address _account, uint _volume) external onlyMarket {
         _addDailyVolume(_account, _volume);
         _addWeeklyVolume(_account, _volume);
     }
 
-    function _addDailyVolume(address _account, uint256 _volume) internal {
+    function _addDailyVolume(address _account, uint _volume) internal {
         IMarketSettings settings_ = IMarketSettings(settings);
 
-        uint256 t = _startOfDay(block.timestamp);
-        uint256 totalVol = userDailyVolume[_account][t] + _volume;
+        uint t = _startOfDay(block.timestamp);
+        uint totalVol = userDailyVolume[_account][t] + _volume;
         userDailyVolume[_account][t] = totalVol;
 
-        uint256 n = (totalVol /
-            uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT))).min(10);
+        uint n = (totalVol / uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT))).min(10);
         for (uint i = 0; i < n; ++i) {
             if (userLuckyNumber[_account][t] == 0) {
-                uint256 num = luckyCandidates[t] + 1;
+                uint num = luckyCandidates[t] + 1;
                 luckyCandidates[t] = num;
                 userLuckyNumber[_account][t] = num;
-                winningNumber[t] =
-                    uint(keccak256(abi.encodePacked(block.difficulty, t))) %
-                    10;
+                winningNumber[t] = uint(keccak256(abi.encodePacked(block.difficulty, t))) % 10;
             }
             t += 1 days;
         }
     }
 
-    function _addWeeklyVolume(address _account, uint256 _volume) internal {
+    function _addWeeklyVolume(address _account, uint _volume) internal {
         userWeeklyVolume[_account][_startOfWeek(block.timestamp)] += _volume;
     }
 
     /*=== weekly trading fee coupon ===*/
-    function _rebateRatio(uint256 _volume) internal view returns (uint256) {
+    function _rebateRatio(uint _volume) internal view returns (uint) {
         uint len = rebateTiers.length;
         for (uint i = 0; i < len; ++i)
             if (_volume >= rebateTiers[i].requirement) {
@@ -126,23 +114,17 @@ contract VolumeTracker is
         return 0;
     }
 
-    function claimWeeklyTradingFeeCoupon(uint256 _t) external {
+    function claimWeeklyTradingFeeCoupon(uint _t) external {
         _t = _startOfWeek(_t);
-        require(
-            _t < _startOfWeek(block.timestamp),
-            "VolumeTracker: invalid date"
-        );
+        require(_t < _startOfWeek(block.timestamp), "VolumeTracker: invalid date");
 
-        require(
-            !weeklyCouponClaimed[msg.sender][_t],
-            "VolumeTracker: claimed already"
-        );
+        require(!weeklyCouponClaimed[msg.sender][_t], "VolumeTracker: claimed already");
         weeklyCouponClaimed[msg.sender][_t] = true;
 
-        uint256 volume = userWeeklyVolume[msg.sender][_t];
-        uint256 rebateRatio = _rebateRatio(volume);
+        uint volume = userWeeklyVolume[msg.sender][_t];
+        uint rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            uint256 value = IMarketSettings(settings)
+            uint value = IMarketSettings(settings)
                 .getIntVals(PERP_TRADING_FEE)
                 .toUint256()
                 .multiplyDecimal(volume)
@@ -152,20 +134,14 @@ contract VolumeTracker is
     }
 
     /*=== I'm feeling lucky ===*/
-    function claimLuckyCoupon(uint256 _t) external {
+    function claimLuckyCoupon(uint _t) external {
         _t = _startOfDay(_t);
-        require(
-            _t < _startOfDay(block.timestamp),
-            "VolumeTracker: invalid date"
-        );
+        require(_t < _startOfDay(block.timestamp), "VolumeTracker: invalid date");
 
-        require(
-            !dailyCouponClaimed[msg.sender][_t],
-            "VolumeTracker: claimed already"
-        );
+        require(!dailyCouponClaimed[msg.sender][_t], "VolumeTracker: claimed already");
         dailyCouponClaimed[msg.sender][_t] = true;
 
-        uint256 num = userLuckyNumber[msg.sender][_t];
+        uint num = userLuckyNumber[msg.sender][_t];
         require(num > 0, "VolumeTracker: no chance");
         if (num % 10 == winningNumber[_t]) {
             ITradingFeeCoupon(coupon).mintCoupon(

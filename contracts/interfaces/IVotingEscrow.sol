@@ -56,10 +56,7 @@ interface IVotingEscrow {
 
     function balanceOf(address _addr) external view returns (uint256);
 
-    function balanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) external view returns (uint256);
+    function balanceOfAt(address _addr, uint256 _timestamp) external view returns (uint256);
 
     function baseToken() external view returns (address);
 
@@ -69,18 +66,11 @@ interface IVotingEscrow {
 
     function claimVested() external;
 
-    function createLock(
-        uint256 _value,
-        uint256 _unlockTime,
-        uint256 _lockDuration,
-        bool _autoExtend
-    ) external;
+    function createLock(uint256 _value, uint256 _unlockTime, uint256 _lockDuration, bool _autoExtend) external;
 
     function decimals() external view returns (uint8);
 
-    function getLastStakedPoint(
-        address _addr
-    ) external view returns (StakedPoint memory point);
+    function getLastStakedPoint(address _addr) external view returns (StakedPoint memory point);
 
     function globalEpoch() external view returns (uint256);
 
@@ -93,38 +83,19 @@ interface IVotingEscrow {
         bool _autoExtend
     ) external;
 
-    function increaseUnlockTime(
-        uint256 _unlockTime,
-        uint256 _lockDuration,
-        bool _autoExtend
-    ) external;
+    function increaseUnlockTime(uint256 _unlockTime, uint256 _lockDuration, bool _autoExtend) external;
 
-    function locked(
-        address
-    )
-        external
-        view
-        returns (
-            int128 amount,
-            uint256 end,
-            uint256 lockDuration,
-            bool autoExtend
-        );
+    function locked(address) external view returns (int128 amount, uint256 end, uint256 lockDuration, bool autoExtend);
 
     function lockedBalanceOf(address _addr) external view returns (uint256);
 
-    function lockedBalanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) external view returns (uint256);
+    function lockedBalanceOfAt(address _addr, uint256 _timestamp) external view returns (uint256);
 
     function maxTime() external view returns (uint256);
 
     function name() external view returns (string calldata);
 
-    function pointHistory(
-        uint256
-    ) external view returns (int128 bias, int128 slope, uint256 ts);
+    function pointHistory(uint256) external view returns (int128 bias, int128 slope, uint256 ts);
 
     function slopeChanges(uint256) external view returns (int128);
 
@@ -134,10 +105,7 @@ interface IVotingEscrow {
 
     function stakedBalanceOf(address _addr) external view returns (uint256);
 
-    function stakedBalanceOfAt(
-        address _addr,
-        uint256 _timestamp
-    ) external view returns (uint256);
+    function stakedBalanceOfAt(address _addr, uint256 _timestamp) external view returns (uint256);
 
     function symbol() external view returns (string calldata);
 
@@ -151,10 +119,7 @@ interface IVotingEscrow {
 
     function userPointEpoch(address) external view returns (uint256);
 
-    function userPointHistory(
-        address,
-        uint256
-    ) external view returns (int128 bias, int128 slope, uint256 ts);
+    function userPointHistory(address, uint256) external view returns (int128 bias, int128 slope, uint256 ts);
 
     function userSlopeChanges(address, uint256) external view returns (int128);
 
@@ -163,17 +128,11 @@ interface IVotingEscrow {
     function userStakedHistory(
         address,
         uint256
-    )
-        external
-        view
-        returns (int128 bias, int128 slope, uint256 ts, uint256 end);
+    ) external view returns (int128 bias, int128 slope, uint256 ts, uint256 end);
 
     function userVestEpoch(address) external view returns (uint256);
 
-    function userVestHistory(
-        address,
-        uint256
-    ) external view returns (int128 amount, uint256 ts);
+    function userVestHistory(address, uint256) external view returns (int128 amount, uint256 ts);
 
     function vest(address _addr, uint256 _amount) external;
 

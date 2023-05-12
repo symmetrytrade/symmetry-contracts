@@ -19,9 +19,7 @@ interface IVolumeTracker {
 
     function market() external view returns (address);
 
-    function rebateTiers(
-        uint256
-    ) external view returns (uint256 requirement, uint256 rebateRatio);
+    function rebateTiers(uint256) external view returns (uint256 requirement, uint256 rebateRatio);
 
     function settings() external view returns (address);
 

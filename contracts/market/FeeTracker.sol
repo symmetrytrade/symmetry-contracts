@@ -20,18 +20,12 @@ import "../interfaces/ITradingFeeCoupon.sol";
 
 import "./MarketSettingsContext.sol";
 
-contract FeeTracker is
-    IFeeTracker,
-    CommonContext,
-    MarketSettingsContext,
-    Ownable,
-    Initializable
-{
+contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
     using SafeERC20 for IERC20;
-    using SafeDecimalMath for uint256;
-    using SignedSafeDecimalMath for int256;
-    using SafeCast for uint256;
-    using SafeCast for int256;
+    using SafeDecimalMath for uint;
+    using SignedSafeDecimalMath for int;
+    using SafeCast for uint;
+    using SafeCast for int;
 
     // states
     address public market; // market
@@ -42,8 +36,8 @@ contract FeeTracker is
 
     Tier[] public tradingFeeTiers; // trading fee tiers, in decending order
 
-    mapping(uint256 => uint256) public tradingFeeIncentives;
-    mapping(address => mapping(uint256 => bool)) public claimed;
+    mapping(uint => uint) public tradingFeeIncentives;
+    mapping(address => mapping(uint => bool)) public claimed;
 
     modifier onlyMarket() {
         require(msg.sender == market, "FeeTracker: sender is not market");
@@ -51,11 +45,7 @@ contract FeeTracker is
     }
 
     /*=== initialize ===*/
-    function initialize(
-        address _market,
-        address _perpTracker,
-        address _coupon
-    ) external onlyInitializeOnce {
+    function initialize(address _market, address _perpTracker, address _coupon) external onlyInitializeOnce {
         market = _market;
         perpTracker = _perpTracker;
         coupon = _coupon;
@@ -97,19 +87,17 @@ contract FeeTracker is
 
     /*=== discount === */
 
-    function _vePortionOf(address _account) internal view returns (uint256) {
+    function _vePortionOf(address _account) internal view returns (uint) {
         IVotingEscrow votingEscrow_ = IVotingEscrow(votingEscrow);
 
-        uint256 totalSupply = votingEscrow_.totalSupply();
+        uint totalSupply = votingEscrow_.totalSupply();
         if (totalSupply > 0) {
             return votingEscrow_.balanceOf(_account).divideDecimal(totalSupply);
         }
         return 0;
     }
 
-    function _tradingFeeDiscount(
-        address _account
-    ) internal view returns (uint256 discount) {
+    function _tradingFeeDiscount(address _account) internal view returns (uint discount) {
         uint portion = _vePortionOf(_account);
         uint len = tradingFeeTiers.length;
         for (uint i = 0; i < len; ++i) {
@@ -135,20 +123,9 @@ contract FeeTracker is
         int skew = perpTracker_.currentSkew(_token);
         if (skew == 0) return (0, 0);
         tradeAmount = skew.multiplyDecimal(_redeemValue).divideDecimal(_lp);
-        int kLP = settings_.getIntValsByMarket(
-            perpTracker_.marketKey(_token),
-            PROPORTION_RATIO
-        );
-        kLP = kLP.multiplyDecimal(_lp - _redeemValue).divideDecimal(
-            _oraclePrice
-        );
-        fillPrice = perpTracker_.computePerpFillPriceRaw(
-            skew - tradeAmount,
-            tradeAmount,
-            _oraclePrice,
-            kLP,
-            _lambda
-        );
+        int kLP = settings_.getIntValsByMarket(perpTracker_.marketKey(_token), PROPORTION_RATIO);
+        kLP = kLP.multiplyDecimal(_lp - _redeemValue).divideDecimal(_oraclePrice);
+        fillPrice = perpTracker_.computePerpFillPriceRaw(skew - tradeAmount, tradeAmount, _oraclePrice, kLP, _lambda);
     }
 
     /**
@@ -157,52 +134,35 @@ contract FeeTracker is
      * @param _lp lp net value in usd
      * @param _redeemValue lp to redeem in usd
      */
-    function redeemTradingFee(
-        address _account,
-        int _lp,
-        int _redeemValue
-    ) external onlyMarket returns (uint fee) {
+    function redeemTradingFee(address _account, int _lp, int _redeemValue) external onlyMarket returns (uint fee) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
 
-        uint256 len = perpTracker_.marketTokensLength();
+        uint len = perpTracker_.marketTokensLength();
 
         int lambda = IMarketSettings(settings).getIntVals(MAX_SLIPPAGE);
         for (uint i = 0; i < len; ++i) {
             address token = perpTracker_.marketTokensList(i);
             if (!perpTracker_.marketTokensListed(token)) continue;
 
-            int oraclePrice = IPriceOracle(IMarket(market).priceOracle())
-                .getPrice(token, false);
+            int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(token, false);
 
-            (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(
-                token,
-                oraclePrice,
-                _lp,
-                _redeemValue,
-                lambda
-            );
+            (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(token, oraclePrice, _lp, _redeemValue, lambda);
             if (tradeAmount == 0) continue;
 
             // calculate fill price
             // calculate execution price and fee
-            (int256 execPrice, , ) = _discountedTradingFee(
-                _account,
-                tradeAmount,
-                fillPrice
-            );
+            (int execPrice, , ) = _discountedTradingFee(_account, tradeAmount, fillPrice);
             // pnl = (oracle_price - exec_price) * volume
             // fee = |pnl| = -pnl
-            fee += (execPrice - oraclePrice)
-                .multiplyDecimal(tradeAmount)
-                .toUint256();
+            fee += (execPrice - oraclePrice).multiplyDecimal(tradeAmount).toUint256();
         }
     }
 
     function _discountedTradingFee(
         address _account,
-        int256 _sizeDelta,
-        int256 _price
-    ) internal returns (int256 execPrice, uint256 fee, uint256 couponUsed) {
+        int _sizeDelta,
+        int _price
+    ) internal returns (int execPrice, uint fee, uint couponUsed) {
         ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
 
         // deduct trading fee in the price
@@ -210,7 +170,7 @@ contract FeeTracker is
         // p_{avg}=p_{fill} * (1 + k%) for size > 0
         // p_{avg}=p_{fill} * (1 - k%) for size < 0
         // where k is trading fee ratio
-        int256 k = IMarketSettings(settings).getIntVals(PERP_TRADING_FEE);
+        int k = IMarketSettings(settings).getIntVals(PERP_TRADING_FEE);
         // apply fee discount
         k = k.multiplyDecimal(_UNIT - _tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "Market: trading fee ratio > 1");
@@ -219,10 +179,7 @@ contract FeeTracker is
         } else {
             execPrice = _price.multiplyDecimal(_UNIT - k);
         }
-        fee = _price
-            .multiplyDecimal(_sizeDelta.abs())
-            .multiplyDecimal(k)
-            .toUint256();
+        fee = _price.multiplyDecimal(_sizeDelta.abs()).multiplyDecimal(k).toUint256();
         // use coupons
         couponUsed = coupon_.unspents(_account).min(fee);
         coupon_.spend(_account, couponUsed);
@@ -234,23 +191,19 @@ contract FeeTracker is
 
     function discountedTradingFee(
         address _account,
-        int256 _sizeDelta,
-        int256 _price
-    ) external onlyMarket returns (int256, uint256, uint256) {
+        int _sizeDelta,
+        int _price
+    ) external onlyMarket returns (int, uint, uint) {
         return _discountedTradingFee(_account, _sizeDelta, _price);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {
-        int256 liquidationPenaltyRatio = IMarketSettings(settings).getIntVals(
-            LIQUIDATION_PENALTY_RATIO
-        );
+        int liquidationPenaltyRatio = IMarketSettings(settings).getIntVals(LIQUIDATION_PENALTY_RATIO);
         return notional.abs().multiplyDecimal(liquidationPenaltyRatio);
     }
 
     function liquidationFee(int notional) external view returns (int) {
-        int liquidationFeeRatio = IMarketSettings(settings).getIntVals(
-            LIQUIDATION_FEE_RATIO
-        );
+        int liquidationFeeRatio = IMarketSettings(settings).getIntVals(LIQUIDATION_FEE_RATIO);
         int fee = notional.abs().multiplyDecimal(liquidationFeeRatio);
         int minFee = IMarketSettings(settings).getIntVals(MIN_LIQUIDATION_FEE);
         int maxFee = IMarketSettings(settings).getIntVals(MAX_LIQUIDATION_FEE);
@@ -258,11 +211,11 @@ contract FeeTracker is
     }
 
     /*=== fee incentives ===*/
-    function distributeIncentives(uint256 _fee) external onlyMarket {
+    function distributeIncentives(uint _fee) external onlyMarket {
         tradingFeeIncentives[_startOfWeek(block.timestamp)] += _fee;
     }
 
-    function claimIncentives(uint256[] memory _ts) external {
+    function claimIncentives(uint[] memory _ts) external {
         IVotingEscrow votingEscrow_ = IVotingEscrow(votingEscrow);
 
         uint currentWeek = _startOfWeek(block.timestamp);
@@ -276,10 +229,7 @@ contract FeeTracker is
                 claimed[msg.sender][t] = true;
                 uint total = votingEscrow_.totalSupplyAt(t);
                 if (total > 0) {
-                    sum +=
-                        (incentives *
-                            votingEscrow_.balanceOfAt(msg.sender, t)) /
-                        total;
+                    sum += (incentives * votingEscrow_.balanceOfAt(msg.sender, t)) / total;
                 }
             }
         }

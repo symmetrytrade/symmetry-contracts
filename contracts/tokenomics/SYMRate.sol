@@ -15,26 +15,23 @@ contract SYMRate is ISYMRate, Ownable {
         require(_rates.length > 0, "SYMRate: empty rate");
         require(_rates[_rates.length - 1].rate == 0, "SYMRate: never end");
         delete rates;
-        uint256 t = 0;
-        for (uint256 i = 0; i < _rates.length; ++i) {
+        uint t = 0;
+        for (uint i = 0; i < _rates.length; ++i) {
             require(_rates[i].startTime > t, "SYMRate: invalid");
             t = _rates[i].startTime;
             rates.push(_rates[i]);
         }
     }
 
-    function getSum(
-        uint256 start,
-        uint256 end
-    ) external view returns (uint256 sum) {
-        uint256 len = rates.length;
+    function getSum(uint start, uint end) external view returns (uint sum) {
+        uint len = rates.length;
         sum = 0;
-        for (uint256 i = 0; i < len; ++i) {
+        for (uint i = 0; i < len; ++i) {
             if (i + 1 < len && start >= rates[i + 1].startTime) continue;
-            uint256 left = rates[i].startTime;
+            uint left = rates[i].startTime;
             if (end <= left) break;
             if (left < start) left = start;
-            uint256 right = end;
+            uint right = end;
             if (i + 1 < len && rates[i + 1].startTime < right) {
                 right = rates[i + 1].startTime;
             }

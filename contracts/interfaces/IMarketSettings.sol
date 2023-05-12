@@ -6,8 +6,5 @@ interface IMarketSettings {
 
     function getIntVals(bytes32 _key) external view returns (int256);
 
-    function getIntValsByMarket(
-        bytes32 _marketKey,
-        bytes32 _key
-    ) external view returns (int256);
+    function getIntValsByMarket(bytes32 _marketKey, bytes32 _key) external view returns (int256);
 }
