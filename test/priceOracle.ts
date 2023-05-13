@@ -100,7 +100,6 @@ describe("PriceOracle", () => {
                     data,
                 ])
             ).to.be.revertedWith("PriceOracle: insufficient fee");
-            const fee = await pyth_.getUpdateFee([data]);
             const balanceBefore = await hre.ethers.provider.getBalance(
                 account1.getAddress()
             );
@@ -118,7 +117,7 @@ describe("PriceOracle", () => {
                 account1.getAddress()
             );
             // check fee cost
-            expect(balanceBefore.sub(balanceAfter)).to.deep.eq(gasFee.add(fee));
+            expect(balanceBefore.sub(balanceAfter)).to.deep.eq(gasFee.add(10));
             // check answer
             const tokenAddress = (await hre.ethers.getContract(token.symbol))
                 .address;

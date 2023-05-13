@@ -7,42 +7,39 @@ interface IMarket {
     event Traded(
         address indexed account,
         address indexed token,
-        int256 sizeDelta,
-        int256 price,
-        uint256 fee,
-        uint256 couponUsed
+        int sizeDelta,
+        int fillPrice,
+        uint fee,
+        uint couponUsed
     );
 
     /*=== function ==*/
 
     function accountMarginStatus(
         address _account
-    ) external view returns (int256 mtm, int256 currentMargin, int256 positionNotional);
+    ) external view returns (int mtm, int currentMargin, int positionNotional);
 
     function baseToken() external view returns (address);
 
-    function computePerpFillPrice(address _token, int256 _size) external view returns (int256);
+    function computePerpFillPrice(address _token, int _size) external view returns (int);
 
-    function computePerpLiquidatePrice(address _account, address _token) external view returns (int256, int256, int256);
+    function computePerpLiquidatePrice(address _account, address _token) external view returns (int, int, int);
 
-    function coverDeficitLoss(address _account, int256 _loss) external returns (uint256 insuranceOut, uint256 lpOut);
+    function coverDeficitLoss(address _account, int _loss) external returns (uint insuranceOut, uint lpOut);
 
-    function deductFeeFromAccount(address _account, uint256 _fee, address _receiver) external returns (uint256 amount);
+    function deductFeeFromAccount(address _account, uint _fee, address _receiver) external returns (uint amount);
 
-    function deductFeeFromInsurance(
-        uint256 _fee,
-        address _receiver
-    ) external returns (uint256 insuranceOut, uint256 lpOut);
+    function deductFeeFromInsurance(uint _fee, address _receiver) external returns (uint insuranceOut, uint lpOut);
 
-    function deductFeeToLiquidity(address _account, uint256 _fee) external returns (uint256 amount);
+    function deductFeeToLiquidity(address _account, uint _fee) external returns (uint amount);
 
-    function deductPenaltyToInsurance(address _account, uint256 _fee) external returns (uint256 amount);
+    function deductPenaltyToInsurance(address _account, uint _fee) external returns (uint amount);
 
     function feeTracker() external view returns (address);
 
-    function globalStatus() external view returns (int256 lpNetValue, int256 netOpenInterest);
+    function globalStatus() external view returns (int lpNetValue, int netOpenInterest);
 
-    function insuranceBalance() external view returns (uint256);
+    function insuranceBalance() external view returns (uint);
 
     function perpTracker() external view returns (address);
 
@@ -52,25 +49,25 @@ interface IMarket {
 
     function settings() external view returns (address);
 
-    function tokenToUsd(address _token, int256 _amount, bool _mustUsePyth) external view returns (int256);
+    function tokenToUsd(address _token, int _amount, bool _mustUsePyth) external view returns (int);
 
-    function trade(address _account, address _token, int256 _sizeDelta, int256 _price) external returns (int256);
+    function trade(address _account, address _token, int _sizeDelta, int _price) external returns (int);
 
-    function transferLiquidityIn(address _account, uint256 _amount) external;
+    function transferLiquidityIn(address _account, uint _amount) external;
 
-    function transferLiquidityOut(address _account, uint256 _amount) external;
+    function transferLiquidityOut(address _account, uint _amount) external;
 
-    function transferMarginIn(address _account, uint256 _amount) external;
+    function transferMarginIn(address _account, uint _amount) external;
 
-    function transferMarginOut(address _account, uint256 _amount) external;
+    function transferMarginOut(address _account, uint _amount) external;
 
     function updateFee(address _token) external;
 
     function updateInfoWithPrice(address _token, bytes[] calldata _priceUpdateData) external payable;
 
-    function updateTokenInfo(address _token) external returns (int256, int256);
+    function updateTokenInfo(address _token) external returns (int, int);
 
-    function usdToToken(address _token, int256 _amount, bool _mustUsePyth) external view returns (int256);
+    function usdToToken(address _token, int _amount, bool _mustUsePyth) external view returns (int);
 
     function volumeTracker() external view returns (address);
 }

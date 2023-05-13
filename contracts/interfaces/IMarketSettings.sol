@@ -2,9 +2,11 @@
 pragma solidity ^0.8.0;
 
 interface IMarketSettings {
-    function setIntVals(bytes32 _key, int256 _value) external;
+    event SetKey(bytes32 key, int value);
 
-    function getIntVals(bytes32 _key) external view returns (int256);
+    function setIntVals(bytes32 _key, int _value) external;
 
-    function getIntValsByMarket(bytes32 _marketKey, bytes32 _key) external view returns (int256);
+    function getIntVals(bytes32 _key) external view returns (int);
+
+    function getIntValsByMarket(bytes32 _marketKey, bytes32 _key) external view returns (int);
 }

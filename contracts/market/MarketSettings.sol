@@ -19,6 +19,8 @@ contract MarketSettings is IMarketSettings, Ownable, Initializable {
 
     function setIntVals(bytes32 _key, int _value) external onlyOwner {
         intVals[_key] = _value;
+
+        emit SetKey(_key, _value);
     }
 
     /*=== getters ===*/

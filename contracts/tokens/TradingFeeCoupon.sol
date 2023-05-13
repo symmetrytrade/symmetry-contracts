@@ -55,6 +55,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         require(mintable.expire > block.timestamp, "TradingFeeCoupon: expired");
         mintables[_preMintId].expire = 0;
 
+        emit PreMintComsumed(_preMintId);
         return _mintCoupon(mintable.to, mintable.value);
     }
 
