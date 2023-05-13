@@ -392,7 +392,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         VolumeTracker(volumeTracker).logTrade(_account, _volume);
     }
 
-    /// @notice update a position with a new trade. Will settle p&l if it is a position decreasement.
+    /// @notice update a position with a new trade. Will settle p&l if it is a position decrement.
     /// @dev make sure the funding & financing fee is updated before calling this function.
     /// @param _account user address
     /// @param _token token to trade
