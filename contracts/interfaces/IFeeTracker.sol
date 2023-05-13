@@ -5,41 +5,37 @@ interface IFeeTracker {
     /*=== struct ===*/
 
     struct Tier {
-        uint256 portion; // veSYM holding portion
-        uint256 discount; // discount percent
+        uint portion; // veSYM holding portion
+        uint discount; // discount percent
     }
 
     /*=== functions ===*/
 
-    function claimIncentives(uint256[] calldata _ts) external;
+    function claimIncentives(uint[] calldata _ts) external;
 
-    function claimed(address, uint256) external view returns (bool);
+    function claimed(address, uint) external view returns (bool);
 
     function coupon() external view returns (address);
 
-    function discountedTradingFee(
-        address _account,
-        int256 _sizeDelta,
-        int256 _price
-    ) external returns (int256, uint256, uint256);
+    function discountedTradingFee(address _account, int _sizeDelta, int _price) external returns (int, uint, uint);
 
-    function distributeIncentives(uint256 _fee) external;
+    function distributeIncentives(uint _fee) external;
 
-    function liquidationFee(int256 notional) external view returns (int256);
+    function liquidationFee(int notional) external view returns (int);
 
-    function liquidationPenalty(int256 notional) external view returns (int256);
+    function liquidationPenalty(int notional) external view returns (int);
 
     function market() external view returns (address);
 
     function perpTracker() external view returns (address);
 
-    function redeemTradingFee(address _account, int256 lp, int256 redeemValue) external returns (uint256 fee);
+    function redeemTradingFee(address _account, int lp, int redeemValue) external returns (uint fee);
 
     function settings() external view returns (address);
 
-    function tradingFeeIncentives(uint256) external view returns (uint256);
+    function tradingFeeIncentives(uint) external view returns (uint);
 
-    function tradingFeeTiers(uint256) external view returns (uint256 portion, uint256 discount);
+    function tradingFeeTiers(uint) external view returns (uint portion, uint discount);
 
     function votingEscrow() external view returns (address);
 }

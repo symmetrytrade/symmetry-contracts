@@ -6,13 +6,13 @@ interface IPriceOracle {
 
     function assetIds(address) external view returns (bytes32);
 
-    function getLatestChainlinkPrice(address _token) external view returns (uint80, uint256, uint256);
+    function getLatestChainlinkPrice(address _token) external view returns (uint80, uint, uint);
 
-    function getPrice(address _token, bool _mustUsePyth) external view returns (int256);
+    function getPrice(address _token, bool _mustUsePyth) external view returns (int);
 
-    function getPythPrice(address _token) external view returns (uint256, int256);
+    function getPythPrice(address _token) external view returns (uint, int);
 
-    function gracePeriodTime() external view returns (uint256);
+    function gracePeriodTime() external view returns (uint);
 
     function pythOracle() external view returns (address);
 

@@ -204,7 +204,7 @@ describe("Liquidity", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(1),
-                "1507239795918367346335", // avg price
+                "1505734061856510835500", // avg price
                 "1505734061856510835", // trading fee
                 "0"
             );

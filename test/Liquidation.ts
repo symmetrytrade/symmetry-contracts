@@ -220,8 +220,8 @@ describe("Liquidation", () => {
             .withArgs(
                 await account1.getAddress(),
                 WETH,
+                normalized(10),
                 normalized(9180),
-                await liquidator.getAddress(),
                 normalized(32.13),
                 normalized(91.8),
                 normalized(0),
@@ -231,7 +231,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account1.getAddress(),
                 normalized(9180),
-                await liquidator.getAddress(),
                 normalized(32.13),
                 normalized(32.13),
                 normalized(0),
@@ -241,7 +240,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account1.getAddress(),
                 normalized(9180),
-                await liquidator.getAddress(),
                 normalized(91.8),
                 normalized(91.8)
             );
@@ -320,8 +318,8 @@ describe("Liquidation", () => {
             .withArgs(
                 await account2.getAddress(),
                 WETH,
+                normalized(10),
                 normalized(9100),
-                await liquidator.getAddress(),
                 normalized(31.85),
                 normalized(68.15),
                 normalized(0),
@@ -331,7 +329,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account2.getAddress(),
                 normalized(9100),
-                await liquidator.getAddress(),
                 normalized(31.85),
                 normalized(31.85),
                 normalized(0),
@@ -341,7 +338,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account2.getAddress(),
                 normalized(9100),
-                await liquidator.getAddress(),
                 normalized(68.15),
                 normalized(68.15)
             );
@@ -422,8 +418,8 @@ describe("Liquidation", () => {
             .withArgs(
                 await account3.getAddress(),
                 WETH,
+                normalized(10),
                 normalized(9010),
-                await liquidator.getAddress(),
                 normalized(31.535),
                 normalized(0),
                 normalized(0),
@@ -433,7 +429,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account3.getAddress(),
                 normalized(9010),
-                await liquidator.getAddress(),
                 normalized(31.535),
                 normalized(10),
                 normalized(21.535),
@@ -516,8 +511,8 @@ describe("Liquidation", () => {
             .withArgs(
                 await account4.getAddress(),
                 WETH,
+                normalized(10),
                 normalized(9000),
-                await liquidator.getAddress(),
                 normalized(31.5),
                 normalized(0),
                 normalized(200),
@@ -534,7 +529,6 @@ describe("Liquidation", () => {
             .withArgs(
                 await account4.getAddress(),
                 normalized(9000),
-                await liquidator.getAddress(),
                 normalized(31.5),
                 normalized(0),
                 normalized(0),

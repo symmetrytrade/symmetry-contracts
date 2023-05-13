@@ -215,7 +215,7 @@ describe("Market", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(10),
-                "1507245535714285712845", // avg price
+                "1505739795918367345500", // avg price
                 "15057397959183673455", // trading fee
                 "0"
             );
@@ -305,7 +305,7 @@ describe("Market", () => {
                 await account1.getAddress(),
                 WBTC,
                 normalized(-0.5),
-                "19929034394156457648360", // avg price
+                "19948983377533991640000", // avg price
                 "9974491688766995820", // trading fee
                 "0"
             );
@@ -368,7 +368,7 @@ describe("Market", () => {
                 await account1.getAddress(),
                 WBTC,
                 normalized(0.5),
-                "15015000000000000000000", // avg price
+                "15000000000000000000000", // avg price
                 "7500000000000000000", // trading fee
                 "0"
             );

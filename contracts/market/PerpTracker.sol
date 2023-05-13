@@ -62,6 +62,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         if (!marketTokensListed[_token]) {
             marketTokensListed[_token] = true;
             marketTokensList.push(_token);
+            emit NewMarket(_token);
         }
         if (feeInfos[_token].updateTime == 0) feeInfos[_token].updateTime = int(block.timestamp);
     }
@@ -73,6 +74,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         delete marketTokensListed[token];
         marketTokensList[_tokenIndex] = marketTokensList[len - 1];
         marketTokensList.pop();
+        emit RemoveMarket(token);
     }
 
     /*=== view functions === */
@@ -152,6 +154,8 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         position.accFinancingFee = position.size > 0
             ? feeInfos[_token].accLongFinancingFee
             : feeInfos[_token].accShortFinancingFee;
+
+        emit PositionUpdated(_account, _token, position.size, _avgPrice);
     }
 
     function _updateLpPosition(address _token, int _longSizeDelta, int _shortSizeDelta, int _avgPrice) internal {
@@ -544,13 +548,6 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             int(block.timestamp)
         );
 
-        emit FeeInfoUpdated(
-            _token,
-            nextAccFundingFee,
-            nextFundingRate,
-            nextAccLongFinancingFee,
-            nextAccShortFinancingFee,
-            block.timestamp
-        );
+        emit FeeInfoUpdated(_token, nextFundingRate, nextAccLongFinancingFee, nextAccShortFinancingFee);
     }
 }

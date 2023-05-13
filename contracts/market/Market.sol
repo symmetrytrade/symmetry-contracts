@@ -432,7 +432,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             );
         }
 
-        emit Traded(_account, _token, _sizeDelta, execPrice, tradingFee, couponUsed);
+        emit Traded(_account, _token, _sizeDelta, _price, tradingFee, couponUsed);
         return execPrice;
     }
 

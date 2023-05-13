@@ -258,7 +258,7 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(50),
-                normalized(1000.95),
+                normalized(1000),
                 normalized(47.5),
                 normalized(0)
             );
@@ -332,7 +332,7 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(50),
-                normalized(1000.95),
+                normalized(1000),
                 normalized(47.5),
                 normalized(0)
             );
@@ -479,7 +479,7 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(-1),
-                normalized(999.1),
+                normalized(1000),
                 normalized(0.95),
                 normalized(0.05)
             );
@@ -510,8 +510,8 @@ describe("Coupon", () => {
             .withArgs(
                 await account1.getAddress(),
                 WETH,
+                normalized(100),
                 normalized(91800),
-                await account2.getAddress(),
                 normalized(321.3),
                 normalized(826.2),
                 normalized(0),
@@ -521,7 +521,6 @@ describe("Coupon", () => {
             .withArgs(
                 await account1.getAddress(),
                 normalized(91800),
-                await account2.getAddress(),
                 normalized(321.3),
                 normalized(321.3),
                 normalized(0),
@@ -531,7 +530,6 @@ describe("Coupon", () => {
             .withArgs(
                 await account1.getAddress(),
                 normalized(91800),
-                await account2.getAddress(),
                 normalized(826.2),
                 normalized(826.2)
             )

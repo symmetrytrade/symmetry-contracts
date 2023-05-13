@@ -6,34 +6,35 @@ interface ITradingFeeCoupon {
 
     struct Mintable {
         address to;
-        uint256 value;
-        uint256 expire;
+        uint value;
+        uint expire;
     }
 
     /*=== event ===*/
 
-    event PreMint(uint256 id, address receiver, uint256 value, uint256 expire);
-    event Minted(uint256 id, address receiver, uint256 value);
-    event Redeem(uint256 id, address account, uint256 value);
-    event Spent(address account, uint256 amount);
+    event PreMint(uint id, address receiver, uint value, uint expire);
+    event PreMintComsumed(uint id);
+    event Minted(uint id, address receiver, uint value);
+    event Redeem(uint id, address account, uint value);
+    event Spent(address account, uint amount);
 
     /*=== function ===*/
 
-    function couponValues(uint256) external view returns (uint256);
+    function couponValues(uint) external view returns (uint);
 
-    function mint(uint256 _preMintId) external;
+    function mint(uint _preMintId) external;
 
-    function mintAndRedeem(uint256 _preMintId) external;
+    function mintAndRedeem(uint _preMintId) external;
 
-    function mintCoupon(address _to, uint256 _value) external;
+    function mintCoupon(address _to, uint _value) external;
 
-    function mintables(uint256) external view returns (address to, uint256 value, uint256 expire);
+    function mintables(uint) external view returns (address to, uint value, uint expire);
 
-    function preMint(address _to, uint256 _value, uint256 _expire) external returns (uint256 id);
+    function preMint(address _to, uint _value, uint _expire) external returns (uint id);
 
-    function redeemCoupon(uint256 _id) external;
+    function redeemCoupon(uint _id) external;
 
-    function spend(address _account, uint256 _amount) external;
+    function spend(address _account, uint _amount) external;
 
-    function unspents(address) external view returns (uint256);
+    function unspents(address) external view returns (uint);
 }

@@ -49,31 +49,33 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
     event MarginDeposit(address account, uint amount, bytes32 referral);
     event MarginWithdraw(address account, uint amount);
     event OrderStatusChanged(uint orderId, OrderStatus status);
+    event NewOrder(
+        uint orderId,
+        address account,
+        address token,
+        int size,
+        int acceptablePrice,
+        uint keeperFee,
+        uint expiracy
+    );
     // liquidationFee in USD, out amount in base token
     event LiquidationFee(
         address account,
         int notionalLiquidated,
-        address liquidator,
         int liquidationFee,
         uint accountOut,
         uint insuranceOut,
         uint lpOut
     );
     // liquidationPenalty in USD, penaltyAmount in base token
-    event LiquidationPenalty(
-        address account,
-        int notionalLiquidated,
-        address liquidator,
-        int liquidationPenalty,
-        uint penaltyAmount
-    );
+    event LiquidationPenalty(address account, int notionalLiquidated, int liquidationPenalty, uint penaltyAmount);
     // deficitLoss in usd, out amount in base token
     event DeficitLoss(address account, int deficitLoss, uint insuranceOut, uint lpOut);
     event Liquidated(
         address account,
         address token,
+        int sizeLiquidated,
         int notionalLiquidated,
-        address liquidator,
         int liquidationFee,
         int liquidationPenalty,
         int deficitLoss,
@@ -168,7 +170,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
             status: OrderStatus.Pending
         });
         orders[orderCnt++] = order;
-        emit OrderStatusChanged(orderCnt - 1, OrderStatus.Pending);
+        emit NewOrder(orderCnt - 1, msg.sender, _token, _size, _acceptablePrice, _keeperFee, _expiracy);
         // TODO: simulate the order and revert it if needed?
     }
 
@@ -280,20 +282,11 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         } else {
             (insuranceOut, lpOut) = market_.deductFeeFromInsurance(liquidationFee.toUint256(), _liquidator);
         }
-        emit LiquidationFee(
-            _account,
-            _notionalLiquidated,
-            _liquidator,
-            liquidationFee,
-            accountOut,
-            insuranceOut,
-            lpOut
-        );
+        emit LiquidationFee(_account, _notionalLiquidated, liquidationFee, accountOut, insuranceOut, lpOut);
     }
 
     function _payLiquidationPenalty(
         address _account,
-        address _liquidator,
         int _margin,
         int _notionalLiquidated
     ) internal returns (int liquidationPenalty) {
@@ -302,7 +295,7 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         IMarket market_ = IMarket(market);
         liquidationPenalty = IFeeTracker(market_.feeTracker()).liquidationPenalty(_notionalLiquidated).min(_margin);
         uint penaltyAmount = market_.deductPenaltyToInsurance(_account, liquidationPenalty.toUint256());
-        emit LiquidationPenalty(_account, _notionalLiquidated, _liquidator, liquidationPenalty, penaltyAmount);
+        emit LiquidationPenalty(_account, _notionalLiquidated, liquidationPenalty, penaltyAmount);
     }
 
     function _preMintCoupon(address _account, int _margin, int _notionalLiquidated) internal returns (uint preMintId) {
@@ -359,7 +352,6 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         // deduct liquidation penalty to insurance account
         int liquidationPenalty = _payLiquidationPenalty(
             _account,
-            msg.sender,
             (currentMargin - liquidationFee).max(0),
             notionalLiquidated
         );
@@ -372,8 +364,8 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         emit Liquidated(
             _account,
             _token,
+            -size,
             notionalLiquidated,
-            msg.sender,
             liquidationFee,
             liquidationPenalty,
             deficitLoss,
