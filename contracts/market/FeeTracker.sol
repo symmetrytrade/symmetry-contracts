@@ -151,7 +151,7 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
 
             // calculate fill price
             // calculate execution price and fee
-            (int execPrice, , ) = _discountedTradingFee(_account, tradeAmount, fillPrice);
+            (int execPrice, , ) = _discountedTradingFee(_account, tradeAmount, fillPrice, false);
             // pnl = (oracle_price - exec_price) * volume
             // fee = |pnl| = -pnl
             fee += (execPrice - oraclePrice).multiplyDecimal(tradeAmount).toUint256();
@@ -161,7 +161,8 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
     function _discountedTradingFee(
         address _account,
         int _sizeDelta,
-        int _price
+        int _price,
+        bool _useCoupon
     ) internal returns (int execPrice, uint fee, uint couponUsed) {
         ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
 
@@ -180,9 +181,14 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
             execPrice = _price.multiplyDecimal(_UNIT - k);
         }
         fee = _price.multiplyDecimal(_sizeDelta.abs()).multiplyDecimal(k).toUint256();
-        // use coupons
-        couponUsed = coupon_.unspents(_account).min(fee);
-        coupon_.spend(_account, couponUsed);
+        if (_useCoupon) {
+            // use coupons
+            couponUsed = IMarketSettings(settings).getIntVals(MAX_COUPON_DEDUCTION_RATIO).toUint256().multiplyDecimal(
+                fee
+            );
+            couponUsed = coupon_.unspents(_account).min(couponUsed);
+            coupon_.spend(_account, couponUsed);
+        }
         // apply couponUsed to execPrice
         // (p_oracle - p_exec_new) * size = (p_oracle - p_exec_old) * size + coupon_used
         // p_exec_new = p_exec_old - coupon_used / size
@@ -192,9 +198,10 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
     function discountedTradingFee(
         address _account,
         int _sizeDelta,
-        int _price
+        int _price,
+        bool _useCoupon
     ) external onlyMarket returns (int, uint, uint) {
-        return _discountedTradingFee(_account, _sizeDelta, _price);
+        return _discountedTradingFee(_account, _sizeDelta, _price, _useCoupon);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {

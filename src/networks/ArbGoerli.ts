@@ -44,6 +44,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         maxFundingVelocity: normalized(0.0533), // 5.33% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day
         perpTradingFee: normalized(0.001), // 0.1%
+        maxCouponDeductionRatio: normalized(0.2), // 20%
         tokenOILimitRatio: normalized(1.1), // 110%
         veSYMFeeIncentiveRatio: normalized(0.1), // 10%
         oneDrawRequirement: normalized(1000),
