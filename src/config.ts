@@ -32,6 +32,7 @@ interface MarketGeneralConfig {
     maxFundingVelocity: string;
     maxFinancingFeeRate: string;
     perpTradingFee: string;
+    maxCouponDeductionRatio: string;
     tokenOILimitRatio: string;
     veSYMFeeIncentiveRatio: string;
     oneDrawRequirement: string;
@@ -100,6 +101,7 @@ const DefaultConfig: NetworkConfigs = {
         maxFundingVelocity: normalized(300), // 30000% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day
         perpTradingFee: normalized(0.001), // 0.1%
+        maxCouponDeductionRatio: normalized(1), // 100%
         tokenOILimitRatio: normalized(0.7),
         veSYMFeeIncentiveRatio: normalized(0), // 0%
         oneDrawRequirement: normalized(1000),

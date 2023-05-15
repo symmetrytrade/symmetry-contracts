@@ -406,9 +406,10 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         (int execPrice, uint tradingFee, uint couponUsed) = IFeeTracker(feeTracker).discountedTradingFee(
             _account,
             _sizeDelta,
-            _price
+            _price,
+            true
         );
-        _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee);
+        _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee - couponUsed);
 
         // funding fee
         perpTracker_.settleFunding(_account, _token);

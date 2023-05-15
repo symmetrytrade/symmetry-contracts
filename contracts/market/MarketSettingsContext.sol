@@ -23,6 +23,7 @@ contract MarketSettingsContext {
     // fee
     bytes32 internal constant PERP_TRADING_FEE = "perpTradingFee";
     bytes32 internal constant LIQUIDITY_REDEEM_FEE = "liquidityRedeemFee";
+    bytes32 internal constant MAX_COUPON_DEDUCTION_RATIO = "maxCouponDeductionRatio";
     // funding
     bytes32 internal constant MAX_FUNDING_VELOCITY = "maxFundingVelocity";
     // open interest
