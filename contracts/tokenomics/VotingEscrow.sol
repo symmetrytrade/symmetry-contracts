@@ -22,6 +22,9 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
     bytes32 public constant WHITELIST_ROLE = keccak256("WHITELIST_ROLE");
     bytes32 public constant VESTING_ROLE = keccak256("VESTING_ROLE");
 
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
     /*=== states === */
     address public baseToken;
     uint public maxTime;
