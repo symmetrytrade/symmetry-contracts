@@ -46,7 +46,14 @@ interface IPerpTracker {
         int nextAccLongFinancingFee,
         int nextAccShortFinancingFee
     );
-    event PositionUpdated(address indexed account, address indexed token, int size, int avgPrice);
+    event PositionUpdated(
+        address indexed account,
+        address indexed token,
+        int size,
+        int avgPrice,
+        int accFunding,
+        int accFinancingFee
+    );
 
     /*=== function ===*/
 
