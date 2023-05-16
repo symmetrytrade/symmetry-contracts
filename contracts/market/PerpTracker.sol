@@ -155,7 +155,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             ? feeInfos[_token].accLongFinancingFee
             : feeInfos[_token].accShortFinancingFee;
 
-        emit PositionUpdated(_account, _token, position.size, _avgPrice);
+        emit PositionUpdated(_account, _token, position.size, _avgPrice, position.accFunding, position.accFinancingFee);
     }
 
     function _updateLpPosition(address _token, int _longSizeDelta, int _shortSizeDelta, int _avgPrice) internal {
