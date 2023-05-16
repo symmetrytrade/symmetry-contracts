@@ -20,6 +20,9 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
     using SafeCast for int;
     using SafeCast for uint;
 
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
     // states
     address public market;
     address public lpToken;

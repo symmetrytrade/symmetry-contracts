@@ -9,6 +9,10 @@ import "../interfaces/IMarketSettings.sol";
  * @dev Contract module which holds the setting params for all markets.
  */
 contract MarketSettings is IMarketSettings, Ownable, Initializable {
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
+    // states
     mapping(bytes32 => int) private intVals;
 
     function initialize() external onlyInitializeOnce {

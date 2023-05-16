@@ -21,6 +21,10 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
 
     uint public constant PRICE_PRECISION = 18;
 
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
+    //states
     // chainlink price feed aggregators
     mapping(address => address) public aggregators;
     // chainlink L2 Sequencer Uptime Feeds

@@ -27,6 +27,9 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     using SafeCast for uint;
     using SafeCast for int;
 
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
     // states
     address public baseToken; // liquidity token
     address public priceOracle; // oracle
