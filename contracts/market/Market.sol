@@ -414,27 +414,13 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         );
         _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee - couponUsed);
 
-        // funding fee
-        perpTracker_.settleFunding(_account, _token);
-        liquidityBalance += usdToToken(baseToken, perpTracker_.computeLpFunding(_token), false);
-        // financing fee
-        {
-            int financingFee = perpTracker_.computeFinancingFee(_account, _token);
-            if (financingFee > 0) {
-                uint tokenAmount = usdToToken(baseToken, financingFee, false).toUint256();
-                perpTracker_.removeMargin(_account, tokenAmount);
-                liquidityBalance += int(tokenAmount);
-            }
-        }
         // trade
-        {
-            (int oldSize, int newSize) = perpTracker_.settleTradeForUser(_account, _token, _sizeDelta, execPrice);
-            liquidityBalance += usdToToken(
-                baseToken,
-                perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice, oldSize, newSize),
-                false
-            );
-        }
+        (, int oldSize, int newSize) = perpTracker_.settleTradeForUser(_account, _token, _sizeDelta, execPrice);
+        liquidityBalance += usdToToken(
+            baseToken,
+            perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice, oldSize, newSize),
+            false
+        );
 
         emit Traded(_account, _token, _sizeDelta, _price, tradingFee, couponUsed);
         return execPrice;

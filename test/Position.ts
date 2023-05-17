@@ -361,7 +361,7 @@ describe("Position", () => {
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         let feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000014749804873036800000");
+        expect(tokenInfo.lpNetValue).to.deep.eq("1000015749782977950800000");
         expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(850000));
         expect(tokenInfo.skew).to.deep.eq(normalized(50000));
         expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
@@ -373,10 +373,10 @@ describe("Position", () => {
 
         tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000014879865511676150000");
+        expect(tokenInfo.lpNetValue).to.deep.eq("1000015879843599230400000");
         expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(850000));
         expect(tokenInfo.skew).to.deep.eq(normalized(50000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq("202536053630000");
+        expect(feeInfo.accLongFinancingFee).to.deep.eq("202535359240000");
         expect(feeInfo.accShortFinancingFee).to.deep.eq("49998905245700000");
     });
     it("hard limit", async () => {

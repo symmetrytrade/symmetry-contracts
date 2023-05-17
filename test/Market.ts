@@ -380,7 +380,7 @@ describe("Market", () => {
         const userMargin = await perpTracker_.userMargin(
             await account1.getAddress()
         );
-        expect(userMargin).to.deep.eq("4007152717046570940490");
+        expect(userMargin).to.deep.eq("4007152717046570940489");
         const position = await perpTracker_.getPosition(
             await account1.getAddress(),
             WBTC
@@ -391,7 +391,7 @@ describe("Market", () => {
         const status = await market_.accountMarginStatus(
             await account1.getAddress()
         );
-        expect(status.currentMargin).to.deep.eq("3854110991512202358230");
+        expect(status.currentMargin).to.deep.eq("3854110991512202358229");
         expect(status.positionNotional).to.deep.eq(normalized(15000));
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
         expect(lpPosition.longSize).to.deep.eq(0);
@@ -399,7 +399,7 @@ describe("Market", () => {
         expect(lpPosition.avgPrice).to.deep.eq("15015000000000000000000");
         expect(lpPosition.accFunding).to.deep.eq("-15068745178605000");
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq("977615889008487797641769");
+        expect(globalStatus.lpNetValue).to.deep.eq("977615889008487797641770");
         expect(globalStatus.netOpenInterest).to.deep.eq(
             "15000000000000000000000"
         );
