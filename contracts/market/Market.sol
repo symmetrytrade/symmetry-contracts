@@ -412,7 +412,6 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             _price,
             true
         );
-        _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee - couponUsed);
 
         // trade
         (, int oldSize, int newSize) = perpTracker_.settleTradeForUser(_account, _token, _sizeDelta, execPrice);
@@ -421,6 +420,9 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice, oldSize, newSize),
             false
         );
+
+        // log
+        _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee - couponUsed);
 
         emit Traded(_account, _token, _sizeDelta, _price, tradingFee, couponUsed);
         return execPrice;
