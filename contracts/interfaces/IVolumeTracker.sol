@@ -11,7 +11,9 @@ interface IVolumeTracker {
 
     /*=== function ===*/
 
-    function claimWeeklyTradingFeeCoupon(uint _t) external;
+    function claimLuckyCoupon() external;
+
+    function claimWeeklyTradingFeeCoupon(uint _t) external returns (uint);
 
     function coupon() external view returns (address);
 
