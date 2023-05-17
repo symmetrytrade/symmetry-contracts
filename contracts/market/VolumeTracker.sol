@@ -33,7 +33,6 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     mapping(address => mapping(uint => uint)) public userDailyVolume;
 
     mapping(address => mapping(uint => bool)) public weeklyCouponClaimed;
-    mapping(address => mapping(uint => bool)) public dailyCouponClaimed;
 
     mapping(uint => uint) public luckyCandidates;
     mapping(uint => uint) public winningNumber;
@@ -117,7 +116,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         return 0;
     }
 
-    function claimWeeklyTradingFeeCoupon(uint _t) external {
+    function claimWeeklyTradingFeeCoupon(uint _t) external returns (uint value) {
         _t = _startOfWeek(_t);
         require(_t < _startOfWeek(block.timestamp), "VolumeTracker: invalid date");
 
@@ -127,7 +126,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         uint volume = userWeeklyVolume[msg.sender][_t];
         uint rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            uint value = (IMarketSettings(settings)
+            value = (IMarketSettings(settings)
                 .getIntVals(PERP_TRADING_FEE)
                 .toUint256()
                 .multiplyDecimal(volume)
@@ -136,19 +135,18 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
             if (value > 0 && value >= minValue) {
                 ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
             }
+        } else {
+            revert("VolumeTracker: no chance");
         }
     }
 
     /*=== I'm feeling lucky ===*/
-    function claimLuckyCoupon(uint _t) external {
-        _t = _startOfDay(_t);
-        require(_t < _startOfDay(block.timestamp), "VolumeTracker: invalid date");
-
-        require(!dailyCouponClaimed[msg.sender][_t], "VolumeTracker: claimed already");
-        dailyCouponClaimed[msg.sender][_t] = true;
+    function claimLuckyCoupon() external {
+        uint _t = _startOfDay(block.timestamp) - 1 days;
 
         uint num = userLuckyNumber[msg.sender][_t];
         require(num > 0, "VolumeTracker: no chance");
+        userLuckyNumber[msg.sender][_t] = 0;
         if (num % 10 == winningNumber[_t]) {
             ITradingFeeCoupon(coupon).mintCoupon(
                 msg.sender,
