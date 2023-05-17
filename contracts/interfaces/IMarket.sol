@@ -13,6 +13,8 @@ interface IMarket {
         uint couponUsed
     );
 
+    event MarginTransferred(address indexed account, int delta);
+
     /*=== function ==*/
 
     function accountMarginStatus(
@@ -68,6 +70,8 @@ interface IMarket {
     function updateTokenInfo(address _token) external returns (int, int);
 
     function usdToToken(address _token, int _amount, bool _mustUsePyth) external view returns (int);
+
+    function userMargin(address) external view returns (int);
 
     function volumeTracker() external view returns (address);
 }
