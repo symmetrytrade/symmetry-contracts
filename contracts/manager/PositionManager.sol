@@ -13,10 +13,11 @@ import "../interfaces/ITradingFeeCoupon.sol";
 
 import "../market/MarketSettingsContext.sol";
 
+import "../utils/CommonContext.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 
-contract PositionManager is MarketSettingsContext, Ownable, Initializable {
+contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initializable {
     using SignedSafeDecimalMath for int;
     using SafeDecimalMath for uint;
     using SafeCast for int;
@@ -305,12 +306,12 @@ contract PositionManager is MarketSettingsContext, Ownable, Initializable {
         if (_margin <= 0) return 0;
 
         IMarket market_ = IMarket(market);
-        uint value = IMarketSettings(market_.settings())
+        uint value = ((IMarketSettings(market_.settings())
             .getIntVals(LIQUIDATION_COUPON_RATIO)
             .multiplyDecimal(_notionalLiquidated.abs())
-            .min(_margin)
-            .toUint256();
-        if (value > 0) {
+            .min(_margin) / _UNIT) * _UNIT).toUint256();
+        uint minValue = IMarketSettings(market_.settings()).getIntVals(MIN_COUPON_VALUE).toUint256();
+        if (value > 0 && value >= minValue) {
             market_.deductFeeToLiquidity(_account, value);
             return ITradingFeeCoupon(coupon).preMint(_account, value, block.timestamp + 1 weeks);
         }

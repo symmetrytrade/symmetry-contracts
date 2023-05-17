@@ -410,14 +410,14 @@ describe("Coupon", () => {
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
     });
-    it("redeem coupon", async () => {
+    it("apply coupon", async () => {
         expect(await coupon_.ownerOf(0)).to.deep.eq(
             await account1.getAddress()
         );
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(
             0
         );
-        await (await coupon_.connect(account1).redeemCoupon(0)).wait();
+        await (await coupon_.connect(account1).applyCoupon(0)).wait();
         await expect(coupon_.ownerOf(0)).to.be.revertedWith(
             "ERC721: invalid token ID"
         );
@@ -537,15 +537,15 @@ describe("Coupon", () => {
             .withArgs(
                 1,
                 await account1.getAddress(),
-                normalized(91.8),
+                normalized(91),
                 evmTime + WEEK
             );
-        await (await coupon_.connect(account1).mintAndRedeem(1)).wait();
+        await (await coupon_.connect(account1).mintAndApply(1)).wait();
         await expect(coupon_.ownerOf(1)).to.be.revertedWith(
             "ERC721: invalid token ID"
         );
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(
-            normalized(91.8)
+            normalized(91)
         );
         expect(await coupon_.tokenCount()).to.deep.eq(2);
     });

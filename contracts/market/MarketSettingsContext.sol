@@ -40,6 +40,8 @@ contract MarketSettingsContext {
     // I'm feeling lucky
     bytes32 internal constant ONE_DRAW_REQUIREMENT = "oneDrawRequirement";
     bytes32 internal constant ONE_DRAW_REWARD = "oneDrawReward";
+    // coupon
+    bytes32 internal constant MIN_COUPON_VALUE = "minCouponValue";
 
     /*=== setting keys per market ===*/
     bytes32 internal constant PROPORTION_RATIO = "proportionRatio";
