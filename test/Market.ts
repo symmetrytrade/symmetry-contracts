@@ -219,7 +219,7 @@ describe("Market", () => {
                 "15057397959183673455", // trading fee
                 "0"
             );
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account1.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(1500));
@@ -309,7 +309,7 @@ describe("Market", () => {
                 "9974491688766995820", // trading fee
                 "0"
             );
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account1.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(1500));
@@ -377,7 +377,7 @@ describe("Market", () => {
         const fs = await perpTracker_.nextAccFunding(WBTC, normalized(15000));
         expect(fs[0]).to.deep.eq("-2479884920822164"); // next funding rate
         expect(fs[1]).to.deep.eq("-15068745178605000"); // acc funding
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account1.getAddress()
         );
         expect(userMargin).to.deep.eq("4007152717046570940489");

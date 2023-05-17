@@ -38,7 +38,6 @@ interface IPerpTracker {
 
     event NewMarket(address token);
     event RemoveMarket(address token);
-    event MarginTransferred(address indexed account, int delta);
     event TokenInfoUpdated(address indexed token, int lpNetValue, int netOpenInterest, int skew);
     event FeeInfoUpdated(
         address indexed token,
@@ -56,8 +55,6 @@ interface IPerpTracker {
     );
 
     /*=== function ===*/
-
-    function addMargin(address _account, uint _amount) external;
 
     function computePerpFillPrice(
         address _token,
@@ -134,8 +131,6 @@ interface IPerpTracker {
 
     function nextAccFunding(address _token, int _price) external view returns (int, int);
 
-    function removeMargin(address _account, uint _amount) external;
-
     function removeToken(uint _tokenIndex) external;
 
     function settings() external view returns (address);
@@ -158,6 +153,4 @@ interface IPerpTracker {
     function updateFee(address _token, int _price) external;
 
     function updateTokenInfo(address _token, TokenInfo memory _tokenInfo) external;
-
-    function userMargin(address) external view returns (int);
 }

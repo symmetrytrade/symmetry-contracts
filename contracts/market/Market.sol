@@ -44,6 +44,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     // insurance, collection of liquidation penalty
     uint public insuranceBalance;
 
+    mapping(address => int) public userMargin; // margin(include realized pnl) of user
+
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
         _;
@@ -149,6 +151,14 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         }
     }
 
+    /*=== margin ===*/
+
+    function _modifyMargin(address _account, int _delta) internal {
+        userMargin[_account] += _delta;
+
+        emit MarginTransferred(_account, _delta);
+    }
+
     /*=== insurance ===*/
 
     function _deductInsuranceAndLp(uint amount) internal returns (uint insuranceOut, uint lpOut) {
@@ -182,21 +192,21 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         address _account,
         int _loss
     ) external onlyOperator returns (uint insuranceOut, uint lpOut) {
-        uint amount = usdToToken(baseToken, _loss, false).toUint256();
-        IPerpTracker(perpTracker).addMargin(_account, amount);
-        return _deductInsuranceAndLp(amount);
+        int amount = usdToToken(baseToken, _loss, false);
+        _modifyMargin(_account, amount);
+        return _deductInsuranceAndLp(amount.toUint256());
     }
 
     /*=== margin ===*/
 
     function transferMarginIn(address _account, uint _amount) external onlyOperator {
         IERC20(baseToken).safeTransferFrom(_account, address(this), _amount);
-        IPerpTracker(perpTracker).addMargin(_account, _amount);
+        _modifyMargin(_account, _amount.toInt256());
     }
 
     function transferMarginOut(address _account, uint _amount) external onlyOperator {
         IERC20(baseToken).safeTransfer(_account, _amount);
-        IPerpTracker(perpTracker).removeMargin(_account, _amount);
+        _modifyMargin(_account, -(_amount.toInt256()));
     }
 
     /**
@@ -211,7 +221,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     ) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
         IERC20(baseToken).safeTransfer(_receiver, amount);
-        IPerpTracker(perpTracker).removeMargin(_account, amount);
+        _modifyMargin(_account, -(int(amount)));
     }
 
     /**
@@ -220,7 +230,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
      */
     function deductPenaltyToInsurance(address _account, uint _fee) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
-        IPerpTracker(perpTracker).removeMargin(_account, amount);
+        _modifyMargin(_account, -(int(amount)));
         insuranceBalance += amount;
     }
 
@@ -230,7 +240,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
      */
     function deductFeeToLiquidity(address _account, uint _fee) external onlyOperator returns (uint amount) {
         amount = usdToToken(baseToken, _fee.toInt256(), false).toUint256();
-        IPerpTracker(perpTracker).removeMargin(_account, amount);
+        _modifyMargin(_account, -(int(amount)));
         liquidityBalance += int(amount);
     }
 
@@ -290,7 +300,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             }
             // update mtm
         }
-        currentMargin = tokenToUsd(baseToken, perpTracker_.userMargin(_account), false) + pnl;
+        currentMargin = tokenToUsd(baseToken, userMargin[_account], false) + pnl;
     }
 
     /*=== fees ===*/
@@ -414,7 +424,13 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         );
 
         // trade
-        (, int oldSize, int newSize) = perpTracker_.settleTradeForUser(_account, _token, _sizeDelta, execPrice);
+        (int marginDelta, int oldSize, int newSize) = perpTracker_.settleTradeForUser(
+            _account,
+            _token,
+            _sizeDelta,
+            execPrice
+        );
+        _modifyMargin(_account, usdToToken(baseToken, marginDelta, false));
         liquidityBalance += usdToToken(
             baseToken,
             perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice, oldSize, newSize),

@@ -31,7 +31,6 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     mapping(address => LpPosition) public lpPositions; // lp global positions
     mapping(address => mapping(address => Position)) private userPositions; // positions of single user, user => token => position mapping
-    mapping(address => int) public userMargin; // margin(include realized pnl) of user
 
     mapping(address => FeeInfo) private feeInfos;
     mapping(address => TokenInfo) private tokenInfos;
@@ -120,35 +119,6 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     }
 
     /*=== update functions ===*/
-
-    function _addMargin(address _account, uint _amount) internal {
-        userMargin[_account] += _amount.toInt256();
-
-        emit MarginTransferred(_account, _amount.toInt256());
-    }
-
-    function addMargin(address _account, uint _amount) external onlyMarket {
-        _addMargin(_account, _amount);
-    }
-
-    function _removeMargin(address _account, uint _amount) internal {
-        userMargin[_account] -= _amount.toInt256();
-
-        emit MarginTransferred(_account, -(_amount.toInt256()));
-    }
-
-    function removeMargin(address _account, uint _amount) external onlyMarket {
-        _removeMargin(_account, _amount);
-    }
-
-    function _modifyMarginByUsd(address _account, int _amount) internal {
-        uint tokenAmount = IMarket(market).usdToToken(IMarket(market).baseToken(), _amount.abs(), false).toUint256();
-        if (_amount > 0) {
-            _addMargin(_account, tokenAmount);
-        } else if (_amount < 0) {
-            _removeMargin(_account, tokenAmount);
-        }
-    }
 
     function _updatePosition(address _account, address _token, int _sizeDelta, int _avgPrice) internal {
         Position storage position = userPositions[_account][_token];
@@ -355,7 +325,6 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         (int nextPrice, int pnl) = computeTrade(position.size, position.avgPrice, _sizeDelta, _execPrice);
         marginDelta += pnl;
 
-        _modifyMarginByUsd(_account, marginDelta);
         _updatePosition(_account, _token, _sizeDelta, nextPrice);
 
         oldSize = position.size;

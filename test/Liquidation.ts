@@ -247,7 +247,7 @@ describe("Liquidation", () => {
             await account1.getAddress()
         );
         expect(status.currentMargin).to.deep.eq(normalized(56.07));
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account1.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(56.07));
@@ -345,7 +345,7 @@ describe("Liquidation", () => {
             await account2.getAddress()
         );
         expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account2.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(0));
@@ -438,7 +438,7 @@ describe("Liquidation", () => {
             await account3.getAddress()
         );
         expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account3.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(0));
@@ -538,7 +538,7 @@ describe("Liquidation", () => {
             await account4.getAddress()
         );
         expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await perpTracker_.userMargin(
+        const userMargin = await market_.userMargin(
             await account4.getAddress()
         );
         expect(userMargin).to.deep.eq(normalized(0));
