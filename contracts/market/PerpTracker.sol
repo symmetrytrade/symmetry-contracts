@@ -274,7 +274,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
     }
 
-    function computeFinancingFee(address _account, address _token) external view returns (int) {
+    function _computeFinancingFee(address _account, address _token) internal view returns (int) {
         int size = userPositions[_account][_token].size;
         int lastAccFinancingFee = userPositions[_account][_token].accFinancingFee;
         return
@@ -283,6 +283,18 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
                     ? feeInfos[_token].accLongFinancingFee - lastAccFinancingFee
                     : feeInfos[_token].accShortFinancingFee - lastAccFinancingFee
             );
+    }
+
+    function _computeLpFinancingFee(address _token) internal view returns (int financingFee) {
+        LpPosition storage position = lpPositions[_token];
+
+        financingFee = (feeInfos[_token].accLongFinancingFee - position.accLongFinancingFee).multiplyDecimal(
+            position.shortSize.abs()
+        );
+        financingFee += (feeInfos[_token].accShortFinancingFee - position.accShortFinancingFee).multiplyDecimal(
+            position.longSize
+        );
+        financingFee = -financingFee;
     }
 
     function computeTrade(
@@ -310,42 +322,44 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         }
     }
 
-    function settleFunding(address _account, address _token) external onlyMarket {
-        int fundingFee = -(feeInfos[_token].accFunding - userPositions[_account][_token].accFunding).multiplyDecimal(
-            userPositions[_account][_token].size
-        );
-        if (fundingFee != 0) {
-            _modifyMarginByUsd(_account, fundingFee);
-        }
+    function _computeFunding(address _account, address _token) internal view returns (int) {
+        return
+            (feeInfos[_token].accFunding - userPositions[_account][_token].accFunding).multiplyDecimal(
+                userPositions[_account][_token].size
+            );
     }
 
-    function computeLpFunding(address _token) external view onlyMarket returns (int) {
+    function _computeLpFunding(address _token) internal view returns (int) {
         return
-            -(feeInfos[_token].accFunding - lpPositions[_token].accFunding).multiplyDecimal(
+            (feeInfos[_token].accFunding - lpPositions[_token].accFunding).multiplyDecimal(
                 lpPositions[_token].longSize + lpPositions[_token].shortSize
             );
     }
 
     /**
      * @notice settle trade for user, update position info
-     * @return old position size, new position size
+     * @return marginDelta margin delta
+     * @return oldSize old position size
+     * @return newSize new position size
      */
     function settleTradeForUser(
         address _account,
         address _token,
         int _sizeDelta,
         int _execPrice
-    ) external onlyMarket returns (int, int) {
+    ) external onlyMarket returns (int marginDelta, int oldSize, int newSize) {
+        marginDelta = -(_computeFunding(_account, _token) + _computeFinancingFee(_account, _token));
         // user position
         Position memory position = userPositions[_account][_token];
 
         (int nextPrice, int pnl) = computeTrade(position.size, position.avgPrice, _sizeDelta, _execPrice);
-        if (pnl != 0) {
-            _modifyMarginByUsd(_account, pnl);
-        }
+        marginDelta += pnl;
+
+        _modifyMarginByUsd(_account, marginDelta);
         _updatePosition(_account, _token, _sizeDelta, nextPrice);
 
-        return (position.size, position.size + _sizeDelta);
+        oldSize = position.size;
+        newSize = oldSize + _sizeDelta;
     }
 
     /**
@@ -362,7 +376,8 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         int _execPrice,
         int _oldSize,
         int _newSize
-    ) external onlyMarket returns (int) {
+    ) external onlyMarket returns (int lpDelta) {
+        lpDelta = -(_computeLpFunding(_token) + _computeLpFinancingFee(_token));
         // user position
         LpPosition memory position = lpPositions[_token];
 
@@ -372,6 +387,8 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             _sizeDelta,
             _execPrice
         );
+        lpDelta += pnl;
+
         int longSizeDelta = 0;
         int shortSizeDelta = 0;
         if (_oldSize > 0) {
@@ -384,8 +401,9 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         } else {
             longSizeDelta -= _newSize;
         }
+
         _updateLpPosition(_token, longSizeDelta, shortSizeDelta, nextPrice);
-        return pnl;
+        return lpDelta;
     }
 
     /*=== funding & financing fees ===*/

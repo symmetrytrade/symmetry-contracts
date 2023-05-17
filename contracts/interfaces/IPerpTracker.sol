@@ -59,10 +59,6 @@ interface IPerpTracker {
 
     function addMargin(address _account, uint _amount) external;
 
-    function computeFinancingFee(address _account, address _token) external view returns (int);
-
-    function computeLpFunding(address _token) external view returns (int);
-
     function computePerpFillPrice(
         address _token,
         int _size,
@@ -144,8 +140,6 @@ interface IPerpTracker {
 
     function settings() external view returns (address);
 
-    function settleFunding(address _account, address _token) external;
-
     function settleTradeForLp(
         address _token,
         int _sizeDelta,
@@ -159,7 +153,7 @@ interface IPerpTracker {
         address _token,
         int _sizeDelta,
         int _execPrice
-    ) external returns (int, int);
+    ) external returns (int, int, int);
 
     function updateFee(address _token, int _price) external;
 
