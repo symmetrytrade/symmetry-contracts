@@ -49,6 +49,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         veSYMFeeIncentiveRatio: normalized(0.1), // 10%
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
+        minCouponValue: normalized(1),
     },
     marketConfig: {
         WBTC: {

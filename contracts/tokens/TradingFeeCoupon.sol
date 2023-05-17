@@ -28,7 +28,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC721, AccessControlEnumerable) returns (bool) {
-        return super.supportsInterface(interfaceId);
+        return ERC721.supportsInterface(interfaceId) || AccessControlEnumerable.supportsInterface(interfaceId);
     }
 
     function preMint(address _to, uint _value, uint _expire) external returns (uint id) {
@@ -43,9 +43,9 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         _mintFromPreMint(_preMintId);
     }
 
-    function mintAndRedeem(uint _preMintId) external {
+    function mintAndApply(uint _preMintId) external {
         uint id = _mintFromPreMint(_preMintId);
-        _redeemCoupon(mintables[_preMintId].to, id);
+        _applyCoupon(mintables[_preMintId].to, id);
     }
 
     function _mintFromPreMint(uint _preMintId) internal returns (uint id) {
@@ -65,8 +65,8 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         _mintCoupon(_to, _value);
     }
 
-    function redeemCoupon(uint _id) external {
-        _redeemCoupon(msg.sender, _id);
+    function applyCoupon(uint _id) external {
+        _applyCoupon(msg.sender, _id);
     }
 
     function _mintCoupon(address _to, uint _value) internal returns (uint id) {
@@ -78,14 +78,14 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         emit Minted(id, _to, _value);
     }
 
-    function _redeemCoupon(address _account, uint _id) internal {
+    function _applyCoupon(address _account, uint _id) internal {
         require(_account != address(0), "TradingFeeCoupont: zero address");
         require(_ownerOf(_id) == _account, "TradingFeeCoupon: not owner");
 
         unspents[_account] += couponValues[_id];
         _burn(_id);
 
-        emit Redeem(_id, _account, couponValues[_id]);
+        emit Applied(_id, _account, couponValues[_id]);
     }
 
     function spend(address _account, uint _amount) external {

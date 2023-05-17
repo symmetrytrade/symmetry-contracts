@@ -127,12 +127,15 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         uint volume = userWeeklyVolume[msg.sender][_t];
         uint rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            uint value = IMarketSettings(settings)
+            uint value = (IMarketSettings(settings)
                 .getIntVals(PERP_TRADING_FEE)
                 .toUint256()
                 .multiplyDecimal(volume)
-                .multiplyDecimal(rebateRatio);
-            ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
+                .multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) * _UNSIGNED_UNIT;
+            uint minValue = IMarketSettings(settings).getIntVals(MIN_COUPON_VALUE).toUint256();
+            if (value > 0 && value >= minValue) {
+                ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
+            }
         }
     }
 

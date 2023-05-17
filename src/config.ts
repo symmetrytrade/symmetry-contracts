@@ -37,6 +37,7 @@ interface MarketGeneralConfig {
     veSYMFeeIncentiveRatio: string;
     oneDrawRequirement: string;
     oneDrawReward: string;
+    minCouponValue: string;
 }
 
 // to be loaded in MarketSetting contract by market key
@@ -106,6 +107,7 @@ const DefaultConfig: NetworkConfigs = {
         veSYMFeeIncentiveRatio: normalized(0), // 0%
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
+        minCouponValue: normalized(1), // 1 usd
     },
     marketConfig: {
         WBTC: {
