@@ -96,7 +96,9 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
                 uint num = luckyCandidates[t] + 1;
                 luckyCandidates[t] = num;
                 userLuckyNumber[_account][t] = num;
-                winningNumber[t] = uint(keccak256(abi.encodePacked(block.difficulty, t))) % 10;
+                winningNumber[t] =
+                    uint(keccak256(abi.encodePacked(block.difficulty, blockhash(block.number - 1), t))) %
+                    10;
             }
             t += 1 days;
         }
@@ -126,11 +128,13 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         uint volume = userWeeklyVolume[msg.sender][_t];
         uint rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            value = (IMarketSettings(settings)
-                .getIntVals(PERP_TRADING_FEE)
-                .toUint256()
-                .multiplyDecimal(volume)
-                .multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) * _UNSIGNED_UNIT;
+            value =
+                (IMarketSettings(settings)
+                    .getIntVals(PERP_TRADING_FEE)
+                    .toUint256()
+                    .multiplyDecimal(volume)
+                    .multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) *
+                _UNSIGNED_UNIT;
             uint minValue = IMarketSettings(settings).getIntVals(MIN_COUPON_VALUE).toUint256();
             if (value > 0 && value >= minValue) {
                 ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
