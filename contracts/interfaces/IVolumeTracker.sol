@@ -9,6 +9,11 @@ interface IVolumeTracker {
         uint rebateRatio;
     }
 
+    /*=== events ===*/
+
+    event WeeklyVolumeUpdated(address account, uint ts, uint volume);
+    event WeeklyCouponClaimed(address account, uint ts);
+
     /*=== function ===*/
 
     function claimLuckyCoupon() external;
