@@ -105,7 +105,11 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     }
 
     function _addWeeklyVolume(address _account, uint _volume) internal {
-        userWeeklyVolume[_account][_startOfWeek(block.timestamp)] += _volume;
+        uint t = _startOfWeek(block.timestamp);
+        uint vol = userWeeklyVolume[_account][t] + _volume;
+        userWeeklyVolume[_account][_startOfWeek(block.timestamp)] = vol;
+
+        emit WeeklyVolumeUpdated(_account, t, vol);
     }
 
     /*=== weekly trading fee coupon ===*/
@@ -139,6 +143,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
             if (value > 0 && value >= minValue) {
                 ITradingFeeCoupon(coupon).mintCoupon(msg.sender, value);
             }
+            emit WeeklyCouponClaimed(msg.sender, _t);
         } else {
             revert("VolumeTracker: no chance");
         }
