@@ -11,19 +11,13 @@ describe("MarketSettings", () => {
     before(async () => {
         await deployments.fixture();
         const account1 = (await hre.ethers.getSigners())[1];
-        marketSettings_ = await getProxyContract(
-            hre,
-            CONTRACTS.MarketSettings,
-            account1
-        );
+        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, account1);
         config = getConfig(hre.network.name);
     });
 
     it("getUintVal", async () => {
         // set general config
-        for (const [term, rawValue] of Object.entries(
-            config.marketGeneralConfig
-        )) {
+        for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
             const key = hre.ethers.utils.formatBytes32String(term);
             const value = await marketSettings_.getIntVals(key);
             expect(value).to.deep.eq(rawValue);

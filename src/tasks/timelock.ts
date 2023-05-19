@@ -27,19 +27,10 @@ task("timelock:queue", "queue timelock transaction")
     .addParam("methodname", "method name", undefined, types.string, false)
     .addVariadicPositionalParam("arguments")
     .setAction(async (taskArgs, hre) => {
-        const contractInterface = (
-            await hre.ethers.getContractFactory(taskArgs.contractname)
-        ).interface;
-        const signature = contractInterface
-            .getFunction(taskArgs.methodname)
-            .format();
-        const data =
-            "0x" +
-            contractInterface
-                .encodeFunctionData(taskArgs.methodname, taskArgs.arguments)
-                .substring(10);
-        const timelock = (await hre.ethers.getContractFactory("Timelock"))
-            .interface;
+        const contractInterface = (await hre.ethers.getContractFactory(taskArgs.contractname)).interface;
+        const signature = contractInterface.getFunction(taskArgs.methodname).format();
+        const data = "0x" + contractInterface.encodeFunctionData(taskArgs.methodname, taskArgs.arguments).substring(10);
+        const timelock = (await hre.ethers.getContractFactory("Timelock")).interface;
         /*console.log(`Timelock address:`);
         console.log((await hre.ethers.getContract("Timelock")).address);*/
         console.log(`Timelock queueTransaction payload:`);
@@ -62,19 +53,10 @@ task("timelock:execute", "queue timelock transaction")
     .addParam("methodname", "method name", undefined, types.string, false)
     .addVariadicPositionalParam("arguments")
     .setAction(async (taskArgs, hre) => {
-        const contractInterface = (
-            await hre.ethers.getContractFactory(taskArgs.contractname)
-        ).interface;
-        const signature = contractInterface
-            .getFunction(taskArgs.methodname)
-            .format();
-        const data =
-            "0x" +
-            contractInterface
-                .encodeFunctionData(taskArgs.methodname, taskArgs.arguments)
-                .substring(10);
-        const timelock = (await hre.ethers.getContractFactory("Timelock"))
-            .interface;
+        const contractInterface = (await hre.ethers.getContractFactory(taskArgs.contractname)).interface;
+        const signature = contractInterface.getFunction(taskArgs.methodname).format();
+        const data = "0x" + contractInterface.encodeFunctionData(taskArgs.methodname, taskArgs.arguments).substring(10);
+        const timelock = (await hre.ethers.getContractFactory("Timelock")).interface;
         /*console.log(`Timelock address:`);
         console.log((await hre.ethers.getContract("Timelock")).address);*/
         console.log(`Timelock executeTransaction payload:`);

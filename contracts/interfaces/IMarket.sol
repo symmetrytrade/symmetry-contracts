@@ -14,6 +14,11 @@ interface IMarket {
     );
 
     event MarginTransferred(address indexed account, int delta);
+    event SetPerpTracker(address perpTracker);
+    event SetFeeTracker(address feeTracker);
+    event SetVolumeTracker(address volumeTracker);
+    event SetCoupon(address coupon);
+    event SetOperator(address operator, bool isOperator);
 
     /*=== function ==*/
 
@@ -23,9 +28,9 @@ interface IMarket {
 
     function baseToken() external view returns (address);
 
-    function computePerpFillPrice(address _token, int _size) external view returns (int);
+    function computeTrade(address _account, address _token, int _size) external view returns (int, uint, uint);
 
-    function computePerpLiquidatePrice(address _account, address _token) external view returns (int, int, int);
+    function computeLiquidation(address _account, address _token) external view returns (int, int, int, uint, uint);
 
     function coverDeficitLoss(address _account, int _loss) external returns (uint insuranceOut, uint lpOut);
 
@@ -43,17 +48,28 @@ interface IMarket {
 
     function insuranceBalance() external view returns (uint);
 
+    function freezeMarginUsd(address _account, int _value) external;
+
+    function unfreezeMargin(address _account, int _value, address _to) external;
+
     function perpTracker() external view returns (address);
 
     function priceOracle() external view returns (address);
 
-    function redeemTradingFee(address _account, int _lp, int _redeemValue) external returns (uint fee);
+    function redeemTradingFee(int _lp, int _redeemValue) external returns (uint fee);
 
     function settings() external view returns (address);
 
     function tokenToUsd(address _token, int _amount, bool _mustUsePyth) external view returns (int);
 
-    function trade(address _account, address _token, int _sizeDelta, int _price) external returns (int);
+    function trade(
+        address _account,
+        address _token,
+        int _sizeDelta,
+        int _execPrice,
+        uint _fee,
+        uint _couponUsed
+    ) external;
 
     function transferLiquidityIn(address _account, uint _amount) external;
 

@@ -17,12 +17,7 @@ interface IFeeTracker {
 
     function coupon() external view returns (address);
 
-    function discountedTradingFee(
-        address _account,
-        int _sizeDelta,
-        int _price,
-        bool _useCoupon
-    ) external returns (int, uint, uint);
+    function getDiscountedPrice(address _account, int _sizeDelta, int _price) external view returns (int, uint, uint);
 
     function distributeIncentives(uint _fee) external;
 
@@ -34,9 +29,9 @@ interface IFeeTracker {
 
     function perpTracker() external view returns (address);
 
-    function redeemTradingFee(address _account, int lp, int redeemValue) external returns (uint fee);
-
     function settings() external view returns (address);
+
+    function tradingFeeDiscount(address _account) external view returns (uint discount);
 
     function tradingFeeIncentives(uint) external view returns (uint);
 

@@ -53,6 +53,7 @@ interface OtherConfig {
     tradingFeeTiers: TradingFeeTier[];
     tradingFeeRebateTiers: TradingFeeRebateTier[];
     symRate: Rate[];
+    luckyNumberAnnouncer?: string;
 }
 
 export interface NetworkConfigs {
@@ -97,7 +98,7 @@ const DefaultConfig: NetworkConfigs = {
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
         minOrderDelay: 60, // 1 minute
         minKeeperFee: normalized(1), // 1 usd
-        minMargin: normalized(50), // 20 usd
+        minMargin: normalized(50), // 50 usd
         maxSlippage: normalized(0.5),
         maxFundingVelocity: normalized(300), // 30000% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day

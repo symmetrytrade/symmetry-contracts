@@ -11,15 +11,9 @@ task("oracle:price", "get price")
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
-        const oracle = await getProxyContract(
-            hre,
-            CONTRACTS.PriceOracle,
-            deployer
-        );
+        const oracle = await getProxyContract(hre, CONTRACTS.PriceOracle, deployer);
 
-        const price = new BigNumber(
-            (await oracle.getPrice(taskArgs.token, taskArgs.pyth)).toString()
-        )
+        const price = new BigNumber((await oracle.getPrice(taskArgs.token, taskArgs.pyth)).toString())
             .dividedBy(1e18)
             .dp(2)
             .toString(10);

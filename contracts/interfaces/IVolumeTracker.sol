@@ -9,6 +9,13 @@ interface IVolumeTracker {
         uint rebateRatio;
     }
 
+    enum RevertReason {
+        EMPTY,
+        DRAWED,
+        NOT_ISSUED,
+        HASH_UNAVAILABLE
+    }
+
     /*=== events ===*/
 
     event WeeklyVolumeUpdated(address account, uint ts, uint volume);
@@ -21,6 +28,10 @@ interface IVolumeTracker {
     function claimWeeklyTradingFeeCoupon(uint _t) external returns (uint);
 
     function coupon() external view returns (address);
+
+    function drawLuckyNumber() external;
+
+    function drawLuckyNumberByAnnouncer(bytes32 h1, bytes32 h2, bytes32 h3) external;
 
     function logTrade(address _account, uint _volume) external;
 

@@ -20,5 +20,5 @@ interface IPriceOracle {
 
     function settings() external view returns (address);
 
-    function updatePythPrice(address _sender, bytes[] calldata _priceUpdateData) external payable;
+    function updatePythPrice(bytes[] calldata _priceUpdateData) external payable;
 }

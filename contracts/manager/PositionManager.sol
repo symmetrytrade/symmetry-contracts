@@ -31,36 +31,51 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     address public coupon;
 
     enum OrderStatus {
+        None,
         Pending,
         Executed,
+        Failed,
         Cancelled
     }
 
     struct Order {
+        uint id;
         address account;
+        uint index;
+        uint submitTime;
+        OrderStatus status;
+        OrderData data;
+    }
+
+    struct OrderData {
         address token;
         int size;
         int acceptablePrice;
-        uint keeperFee;
+        int keeperFee;
         uint expiracy;
-        uint submitTime;
-        OrderStatus status;
+        bool reduceOnly;
     }
 
-    mapping(uint => Order) private orders;
+    mapping(address => uint[]) private userPendingOrders;
+    // account => token => sign => size
+    mapping(address => mapping(address => mapping(int => int))) public reduceOnlyOrderSize;
+    mapping(address => int) public pendingOrderNotional;
+    mapping(uint => Order) public orders;
     uint public orderCnt;
 
     event MarginDeposit(address account, uint amount, bytes32 referral);
     event MarginWithdraw(address account, uint amount);
     event OrderStatusChanged(uint orderId, OrderStatus status);
+    event OrderExpiracyChanged(uint orderId, uint expiracy);
     event NewOrder(
         uint orderId,
         address account,
         address token,
         int size,
         int acceptablePrice,
-        uint keeperFee,
-        uint expiracy
+        int keeperFee,
+        uint expiracy,
+        bool reduceOnly
     );
     // liquidationFee in USD, out amount in base token
     event LiquidationFee(
@@ -95,20 +110,18 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
         _transferOwnership(msg.sender);
     }
 
-    /*=== owner functions ===*/
-
-    function setMarket(address _market) external onlyOwner {
-        market = _market;
-    }
-
-    function setCoupon(address _coupon) external onlyOwner {
-        coupon = _coupon;
-    }
-
     /*=== view ===*/
 
-    function getOrder(uint _id) external view returns (Order memory) {
-        return orders[_id];
+    function getUserOrders(address _account, uint _offset) external view returns (Order[] memory result) {
+        uint256 n = _offset + 100 < userPendingOrders[_account].length
+            ? _offset + 100
+            : userPendingOrders[_account].length;
+        if (n > _offset) {
+            result = new Order[](n - _offset);
+            for (uint256 i = _offset; i < n; ++i) {
+                result[i - _offset] = orders[userPendingOrders[_account][i]];
+            }
+        }
     }
 
     /*=== margin ===*/
@@ -122,9 +135,12 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     function withdrawMargin(uint _amount) external {
         IMarket market_ = IMarket(market);
         market_.transferMarginOut(msg.sender, _amount);
-        (, int currentMargin, int positionNotional) = IMarket(market).accountMarginStatus(msg.sender);
-        require(!_leverageRatioExceeded(currentMargin, positionNotional), "PositionManager: leverage ratio too large");
-        if (positionNotional > 0) {
+        // check leverage ratio
+        (, int currentMargin, int notional) = IMarket(market).accountMarginStatus(msg.sender);
+        notional += pendingOrderNotional[msg.sender];
+        require(!_leverageRatioExceeded(currentMargin, notional), "PositionManager: leverage ratio too large");
+        // check minimum margin
+        if (notional > 0) {
             int minMargin = IMarketSettings(IMarket(market).settings()).getIntVals(MIN_MARGIN);
             require(minMargin < currentMargin, "PositionManager: margin too low");
         }
@@ -136,59 +152,168 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
         return maintenanceMargin > currentMargin;
     }
 
-    function _leverageRatioExceeded(int currentMargin, int positionNotional) internal view returns (bool) {
+    function _leverageRatioExceeded(int _margin, int _notional) internal view returns (bool) {
         int maxLeverageRatio = IMarketSettings(IMarket(market).settings()).getIntVals(MAX_LEVERAGE_RATIO);
-        return positionNotional / maxLeverageRatio > currentMargin;
-    }
-
-    function leverageRatioExceeded(address _account) public view returns (bool) {
-        (, int currentMargin, int positionNotional) = IMarket(market).accountMarginStatus(_account);
-        return _leverageRatioExceeded(currentMargin, positionNotional);
+        return _notional / maxLeverageRatio > _margin;
     }
 
     /*=== position ===*/
 
-    /// @notice submit an order to the contract.
-    /// @param _token token to long/short
-    /// @param _size position size, negative for short, positive for long (in 18 decimals)
-    /// @param _acceptablePrice the worst trade price
-    /// @param _expiracy order expiracy
-    function submitOrder(address _token, int _size, int _acceptablePrice, uint _keeperFee, uint _expiracy) external {
-        require(_size != 0, "PositionManager: zero size");
-        IMarket market_ = IMarket(market);
-        require(IPerpTracker(market_.perpTracker()).marketTokensListed(_token), "PositionManager: unlisted token");
-        require(_expiracy > block.timestamp, "PositionManager: invalid expiracy");
+    function _validateOrder(address _account, OrderData memory _orderData) internal {
+        (, int currentMargin, int notional) = IMarket(market).accountMarginStatus(_account);
+        if (_orderData.reduceOnly) {
+            // check holding position
+            int positionSize = IPerpTracker(IMarket(market).perpTracker()).getPositionSize(_account, _orderData.token);
+            int reduceOnlySize = reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()];
+            reduceOnlySize += _orderData.size;
+            require(
+                positionSize.sign() != reduceOnlySize.sign() && positionSize.abs() >= reduceOnlySize.abs(),
+                "PositionManager: invalid reduce only order"
+            );
+            // update reduce only order size
+            reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()] = reduceOnlySize;
+        } else {
+            // check available margin
+            int orderNotional = pendingOrderNotional[_account];
+            orderNotional += _orderData.size.abs().multiplyDecimal(_orderData.acceptablePrice);
+            notional += orderNotional;
+            // update pending order notional
+            pendingOrderNotional[_account] = orderNotional;
+        }
         require(
-            IMarketSettings(market_.settings()).getIntVals(MIN_KEEPER_FEE).toUint256() <= _keeperFee,
-            "PositionManager: keeper fee too low"
+            !_leverageRatioExceeded(currentMargin - _orderData.keeperFee, notional),
+            "PositionManager: leverage ratio too large"
         );
-        // put order
-        Order memory order = Order({
-            account: msg.sender,
-            token: _token,
-            size: _size,
-            acceptablePrice: _acceptablePrice,
-            keeperFee: _keeperFee,
-            expiracy: _expiracy,
-            submitTime: block.timestamp,
-            status: OrderStatus.Pending
-        });
-        orders[orderCnt++] = order;
-        emit NewOrder(orderCnt - 1, msg.sender, _token, _size, _acceptablePrice, _keeperFee, _expiracy);
-        // TODO: simulate the order and revert it if needed?
     }
 
-    function _validateOrderLiveness(Order memory order) internal view {
-        require(order.status == OrderStatus.Pending, "PositionManager: order is not pending");
-        require(order.expiracy > block.timestamp, "PositionManager: order expired");
+    /**
+     * @notice submit an order to the contract.
+     */
+    function submitOrder(OrderData memory _orderData) external {
+        require(_orderData.size != 0, "PositionManager: zero size");
+        IMarket market_ = IMarket(market);
+        require(
+            IPerpTracker(market_.perpTracker()).marketTokensListed(_orderData.token),
+            "PositionManager: unlisted token"
+        );
+        require(_orderData.expiracy > block.timestamp, "PositionManager: invalid expiracy");
+        require(
+            IMarketSettings(market_.settings()).getIntVals(MIN_KEEPER_FEE) <= _orderData.keeperFee,
+            "PositionManager: keeper fee too low"
+        );
+        _validateOrder(msg.sender, _orderData);
+        // deduct keeper fee
+        market_.freezeMarginUsd(msg.sender, _orderData.keeperFee);
+        // put order
+        uint idx = userPendingOrders[msg.sender].length;
+        Order memory order = Order({
+            id: orderCnt,
+            account: msg.sender,
+            index: idx,
+            submitTime: block.timestamp,
+            status: OrderStatus.Pending,
+            data: _orderData
+        });
+        userPendingOrders[msg.sender].push(orderCnt);
+        orders[orderCnt++] = order;
+        emit NewOrder(
+            orderCnt - 1,
+            msg.sender,
+            _orderData.token,
+            _orderData.size,
+            _orderData.acceptablePrice,
+            _orderData.keeperFee,
+            _orderData.expiracy,
+            _orderData.reduceOnly
+        );
+    }
+
+    function submitCancelOrder(uint _id) external {
+        require(_id < orderCnt, "PositionManger: invalid order id");
+        Order storage order = orders[_id];
+        require(order.account == msg.sender, "PositionManager: forbid");
+        require(order.status == OrderStatus.Pending, "PositionManager: not pending");
+        uint expiracy = block.timestamp +
+            IMarketSettings(IMarket(market).settings()).getIntVals(MIN_ORDER_DELAY).toUint256();
+        if (expiracy < order.data.expiracy) {
+            order.data.expiracy = expiracy;
+            emit OrderExpiracyChanged(_id, expiracy);
+        } else if (order.data.expiracy < block.timestamp) {
+            _cancelOrder(_id);
+        }
+    }
+
+    function _removeOrder(uint _id) internal {
+        Order storage order = orders[_id];
+        address account = order.account;
+        if (order.data.reduceOnly) {
+            // update reduce only order size
+            int reduceOnlySize = reduceOnlyOrderSize[account][order.data.token][order.data.size.sign()];
+            reduceOnlySize -= order.data.size;
+            reduceOnlyOrderSize[account][order.data.token][order.data.size.sign()] = reduceOnlySize;
+        } else {
+            // update pending order notional
+            int orderNotional = pendingOrderNotional[account];
+            orderNotional -= order.data.size.abs().multiplyDecimal(order.data.acceptablePrice);
+            pendingOrderNotional[account] = orderNotional;
+        }
+        // remove from user pending orders list
+        uint idx = orders[_id].index;
+        uint n = userPendingOrders[account].length - 1;
+        if (n != idx) {
+            uint lastId = userPendingOrders[account][n];
+            orders[lastId].index = idx;
+            userPendingOrders[account][idx] = userPendingOrders[account][n];
+        }
+        userPendingOrders[account].pop();
+    }
+
+    function _cancelOrder(uint _id) internal {
+        Order storage order = orders[_id];
+        // send keeper fee
+        IMarket(market).unfreezeMargin(order.account, order.data.keeperFee, msg.sender);
+        // remove order
+        _removeOrder(_id);
+        // set status
+        order.status = OrderStatus.Cancelled;
+        emit OrderStatusChanged(_id, OrderStatus.Cancelled);
     }
 
     function cancelOrder(uint _id) external {
-        Order memory order = orders[_id];
-        require(order.account == msg.sender, "PositionManager: forbid");
-        _validateOrderLiveness(order);
-        orders[_id].status = OrderStatus.Cancelled;
-        emit OrderStatusChanged(_id, OrderStatus.Cancelled);
+        require(_id < orderCnt, "PositionManger: invalid order id");
+        Order storage order = orders[_id];
+        require(order.status == OrderStatus.Pending, "PositionManager: not pending");
+        require(order.data.expiracy < block.timestamp, "PositionManager: not expired");
+        _cancelOrder(_id);
+    }
+
+    function _canExecute(Order memory _order, int _fee) internal view returns (bool) {
+        IMarket market_ = IMarket(market);
+        (int mtm, int currentMargin, int notional) = market_.accountMarginStatus(_order.account);
+        // check liquidation
+        if (mtm > currentMargin) {
+            return false;
+        }
+        // post trade check
+        IPerpTracker.Position memory oldPosition = IPerpTracker(market_.perpTracker()).getPosition(
+            _order.account,
+            _order.data.token
+        );
+        if (_order.data.reduceOnly) {
+            if (oldPosition.size.sign() == _order.data.size.sign() || oldPosition.size.abs() < _order.data.size.abs()) {
+                return false;
+            }
+        } else {
+            // calculate notional after trade
+            int price = IPriceOracle(market_.priceOracle()).getPrice(_order.data.token, false);
+            int sizeDiff = (oldPosition.size + _order.data.size).abs() - oldPosition.size.abs();
+            notional += sizeDiff.multiplyDecimal(price);
+            // check leverage ratio
+            if (_leverageRatioExceeded(currentMargin - _fee, notional)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /// @notice execute an submitted execution order, this function is payable for paying the oracle update fee
@@ -196,7 +321,9 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     /// @param _priceUpdateData price update data for pyth oracle
     function executeOrder(uint _id, bytes[] calldata _priceUpdateData) external payable {
         Order memory order = orders[_id];
-        _validateOrderLiveness(order);
+        require(_id < orderCnt, "PositionManger: invalid order id");
+        require(order.status == OrderStatus.Pending, "PositionManager: not pending");
+        require(order.data.expiracy >= block.timestamp, "PositionManager: expired");
 
         IMarket market_ = IMarket(market);
         IPerpTracker perpTracker_ = IPerpTracker(market_.perpTracker());
@@ -206,43 +333,47 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
                 block.timestamp,
             "PositionManager: delay"
         );
-        int prevSize = perpTracker_.getPositionSize(order.account, order.token);
+        int prevSize = perpTracker_.getPositionSize(order.account, order.data.token);
+        int nextSize = prevSize + order.data.size;
+        // send keeper fee, remove order
+        market_.unfreezeMargin(order.account, order.data.keeperFee, msg.sender);
+        _removeOrder(_id);
         // update oracle price
-        IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(msg.sender, _priceUpdateData);
+        IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(_priceUpdateData);
         // update fees
-        market_.updateFee(order.token);
+        market_.updateFee(order.data.token);
         {
             // calculate fill price
-            int fillPrice = market_.computePerpFillPrice(order.token, order.size);
-            // deduct keeper fee
-            if (msg.sender != order.account) {
-                market_.deductFeeFromAccount(order.account, order.keeperFee, msg.sender);
-            }
+            (int execPrice, uint fee, uint couponUsed) = market_.computeTrade(
+                order.account,
+                order.data.token,
+                order.data.size
+            );
+            // check price
             require(
-                (fillPrice <= order.acceptablePrice && order.size > 0) ||
-                    (fillPrice >= order.acceptablePrice && order.size < 0),
+                (execPrice <= order.data.acceptablePrice && order.data.size > 0) ||
+                    (execPrice >= order.data.acceptablePrice && order.data.size < 0),
                 "PositionManager: unacceptable execution price"
             );
+            // check execution
+            if (!_canExecute(order, int(fee - couponUsed))) {
+                orders[_id].status = OrderStatus.Failed;
+                emit OrderStatusChanged(_id, OrderStatus.Failed);
+                return;
+            }
             // do trade
-            market_.trade(order.account, order.token, order.size, fillPrice);
+            market_.trade(order.account, order.data.token, order.data.size, execPrice, fee, couponUsed);
         }
-        // ensure leverage ratio is lower than max laverage ratio, or is position decrement
-        require(
-            (prevSize < 0 && order.size > 0 && prevSize + order.size <= 0) ||
-                (prevSize > 0 && order.size < 0 && prevSize + order.size >= 0) ||
-                !leverageRatioExceeded(order.account),
-            "PositionManager: leverage ratio too large"
-        );
         // update token market info
         {
-            (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(order.token);
-            (int longSize, int shortSize) = perpTracker_.getNetPositionSize(order.token);
+            (int lpNetValue, int netOpenInterest) = market_.updateTokenInfo(order.data.token);
+            (int longSize, int shortSize) = perpTracker_.getNetPositionSize(order.data.token);
             shortSize = shortSize.abs();
             // check single token limit
-            int lpLimit = perpTracker_.lpLimitForToken(lpNetValue, order.token);
+            int lpLimit = perpTracker_.lpLimitForToken(lpNetValue, order.data.token);
             require(
-                (order.size < 0 && (lpLimit >= shortSize || shortSize <= longSize)) ||
-                    (order.size > 0 && (lpLimit >= longSize || longSize <= shortSize)),
+                (order.data.size < 0 && (lpLimit >= shortSize || shortSize <= longSize)) ||
+                    (order.data.size > 0 && (lpLimit >= longSize || longSize <= shortSize)),
                 "PositionManager: position size exceeds limit"
             );
             // ensure the order won't make the net open interest larger, if the net open interest exceeds the hardlimit already
@@ -251,10 +382,10 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
                 // 2. the order decreases the old position entirely and open a new position of counterparty side,
                 //    the counterparty side become the overweight side
                 if (
-                    (prevSize <= 0 && order.size < 0 && shortSize > longSize) ||
-                    (prevSize >= 0 && order.size > 0 && longSize > shortSize) ||
-                    (prevSize < 0 && prevSize + order.size > 0 && longSize > shortSize) ||
-                    (prevSize > 0 && prevSize + order.size < 0 && shortSize > longSize)
+                    (prevSize <= 0 && order.data.size < 0 && shortSize > longSize) ||
+                    (prevSize >= 0 && order.data.size > 0 && longSize > shortSize) ||
+                    (prevSize < 0 && nextSize > 0 && longSize > shortSize) ||
+                    (prevSize > 0 && nextSize < 0 && shortSize > longSize)
                 ) {
                     revert("PositionManager: open interest exceed hardlimit");
                 }
@@ -332,22 +463,29 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     function liquidatePosition(address _account, address _token, bytes[] calldata _priceUpdateData) external payable {
         IMarket market_ = IMarket(market);
         // update oracle price
-        IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(msg.sender, _priceUpdateData);
+        if (_priceUpdateData.length > 0) {
+            IPriceOracle(market_.priceOracle()).updatePythPrice{value: msg.value}(_priceUpdateData);
+        }
         // update fees
         market_.updateFee(_token);
         // validate liquidation
         require(isLiquidatable(_account), "PositionManager: account is not liquidatable");
         // compute liquidation price
-        (int liquidationPrice, int size, int notionalLiquidated) = market_.computePerpLiquidatePrice(_account, _token);
-        // close position
-        market_.trade(_account, _token, size, liquidationPrice);
-        // update global info
-        market_.updateTokenInfo(_token);
+        int size;
+        int notionalLiquidated;
+        {
+            int execPrice;
+            uint fee;
+            uint couponUsed;
+            (size, notionalLiquidated, execPrice, fee, couponUsed) = market_.computeLiquidation(_account, _token);
+            // close position
+            market_.trade(_account, _token, size, execPrice, fee, couponUsed);
+        }
         // post trade margin
-        (, int currentMargin, ) = market_.accountMarginStatus(_account);
+        (, int currentMargin, int positionNotional) = market_.accountMarginStatus(_account);
         // fill the exceeding loss from insurance account
         int deficitLoss;
-        if (currentMargin < 0) {
+        if (currentMargin < 0 && positionNotional == 0) {
             deficitLoss = -currentMargin;
             _coverDeficitLoss(_account, deficitLoss);
         }
@@ -365,6 +503,9 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
             (currentMargin - liquidationFee - liquidationPenalty).max(0),
             notionalLiquidated
         );
+        // update global info
+        market_.updateTokenInfo(_token);
+
         emit Liquidated(
             _account,
             _token,

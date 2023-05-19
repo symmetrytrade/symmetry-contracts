@@ -32,6 +32,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
 
     // states
     address public baseToken; // liquidity token
+    address public coupon; // trading fee coupon
     address public priceOracle; // oracle
     address public perpTracker; // perpetual position tracker
     address public feeTracker; // fee tracker
@@ -45,6 +46,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     uint public insuranceBalance;
 
     mapping(address => int) public userMargin; // margin(include realized pnl) of user
+    mapping(address => int) public freezedMargin; // freezed user margin in USD, e.g. for keeper fee
 
     modifier onlyOperator() {
         require(isOperator[msg.sender], "Market: sender is not operator");
@@ -64,26 +66,32 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
 
     function setPerpTracker(address _perpTracker) external onlyOwner {
         perpTracker = _perpTracker;
+
+        emit SetPerpTracker(_perpTracker);
     }
 
     function setFeeTracker(address _feeTracker) external onlyOwner {
         feeTracker = _feeTracker;
+
+        emit SetFeeTracker(_feeTracker);
     }
 
     function setVolumeTracker(address _volumeTracker) external onlyOwner {
         volumeTracker = _volumeTracker;
+
+        emit SetVolumeTracker(_volumeTracker);
     }
 
     function setOperator(address _operator, bool _status) external onlyOwner {
         isOperator[_operator] = _status;
+
+        emit SetOperator(_operator, _status);
     }
 
-    function setOracle(address _priceOracle) external onlyOwner {
-        priceOracle = _priceOracle;
-    }
+    function setCoupon(address _coupon) external onlyOwner {
+        coupon = _coupon;
 
-    function setSetting(address _settings) external onlyOwner {
-        settings = _settings;
+        emit SetCoupon(_coupon);
     }
 
     /*=== liquidity ===*/
@@ -117,28 +125,25 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         lpNetValue = tokenToUsd(baseToken, liquidityBalance, false);
 
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
-        uint len = perpTracker_.marketTokensLength();
-        for (uint i = 0; i < len; ++i) {
-            address token = perpTracker_.marketTokensList(i);
-            if (!perpTracker_.marketTokensListed(token)) continue;
-
-            IPerpTracker.LpPosition memory position = perpTracker_.getLpPosition(token);
+        address[] memory tokens = perpTracker_.getMarketTokens();
+        for (uint i = 0; i < tokens.length; ++i) {
+            IPerpTracker.LpPosition memory position = perpTracker_.getLpPosition(tokens[i]);
             if (position.longSize == 0 && position.shortSize == 0) continue;
             int size = position.longSize + position.shortSize;
-            int price = IPriceOracle(priceOracle).getPrice(token, false);
+            int price = IPriceOracle(priceOracle).getPrice(tokens[i], false);
             // open interest, note here position is lp position(counter party of user)
             netOpenInterest += position.shortSize.abs().max(position.longSize).multiplyDecimal(price);
             // pnl
             lpNetValue += (price - position.avgPrice).multiplyDecimal(size);
             // funding fee
             {
-                (, int nextAccFunding) = perpTracker_.nextAccFunding(token, price);
+                (, int nextAccFunding) = perpTracker_.nextAccFunding(tokens[i], price);
                 lpNetValue -= size.multiplyDecimal(nextAccFunding - position.accFunding);
             }
             // financing fee
             {
-                (int nextAccLongFinancingFee, int nextAccShortFinancingFee) = perpTracker_.nextAccFinancingFee(
-                    token,
+                (, , int nextAccLongFinancingFee, int nextAccShortFinancingFee) = perpTracker_.nextAccFinancingFee(
+                    tokens[i],
                     price
                 );
                 lpNetValue += (nextAccLongFinancingFee - position.accLongFinancingFee).multiplyDecimal(
@@ -149,14 +154,6 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
                 );
             }
         }
-    }
-
-    /*=== margin ===*/
-
-    function _modifyMargin(address _account, int _delta) internal {
-        userMargin[_account] += _delta;
-
-        emit MarginTransferred(_account, _delta);
     }
 
     /*=== insurance ===*/
@@ -209,6 +206,27 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         _modifyMargin(_account, -(_amount.toInt256()));
     }
 
+    function freezeMarginUsd(address _account, int _value) external onlyOperator {
+        freezedMargin[_account] += _value;
+    }
+
+    function unfreezeMargin(address _account, int _value, address _to) external onlyOperator {
+        require(freezedMargin[_account] >= _value, "Market: insufficient freezed margin");
+        freezedMargin[_account] -= _value;
+        if (_account != _to) {
+            uint amount = usdToToken(baseToken, _value, false).toUint256();
+            // transfer out from margin
+            IERC20(baseToken).safeTransfer(_to, amount);
+            _modifyMargin(_account, -(amount.toInt256()));
+        }
+    }
+
+    function _modifyMargin(address _account, int _delta) internal {
+        userMargin[_account] += _delta;
+
+        emit MarginTransferred(_account, _delta);
+    }
+
     /**
      * @param _account account to pay the fee
      * @param _fee fee to pay in usd
@@ -254,7 +272,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     ) external view returns (int mtm, int currentMargin, int positionNotional) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
         IPriceOracle oracle_ = IPriceOracle(priceOracle);
-        uint len = perpTracker_.marketTokensLength();
+        address[] memory tokens = perpTracker_.getMarketTokens();
         int pnl = 0;
         int mtmRatio;
         int feeRatio;
@@ -265,14 +283,13 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             feeRatio = settings_.getIntVals(LIQUIDATION_FEE_RATIO);
             minFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
         }
-        for (uint i = 0; i < len; ++i) {
-            address token = perpTracker_.marketTokensList(i);
-            if (!perpTracker_.marketTokensListed(token)) continue;
+        for (uint i = 0; i < tokens.length; ++i) {
+            if (!perpTracker_.marketTokensListed(tokens[i])) continue;
 
-            IPerpTracker.Position memory position = perpTracker_.getPosition(_account, token);
+            IPerpTracker.Position memory position = perpTracker_.getPosition(_account, tokens[i]);
             if (position.size == 0) continue;
 
-            int price = oracle_.getPrice(token, false);
+            int price = oracle_.getPrice(tokens[i], false);
             // update notional value & mtm
             {
                 int notional = position.size.abs().multiplyDecimal(price);
@@ -283,13 +300,13 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             pnl += position.size.multiplyDecimal(price - position.avgPrice);
             {
                 // update pnl by funding fee
-                (, int nextAccFunding) = perpTracker_.nextAccFunding(token, price);
+                (, int nextAccFunding) = perpTracker_.nextAccFunding(tokens[i], price);
                 pnl -= position.size.multiplyDecimal(nextAccFunding - position.accFunding);
             }
             // update pnl by financing fee
             {
-                (int nextAccLongFinancingFee, int nextAccShortFinancingFee) = perpTracker_.nextAccFinancingFee(
-                    token,
+                (, , int nextAccLongFinancingFee, int nextAccShortFinancingFee) = perpTracker_.nextAccFinancingFee(
+                    tokens[i],
                     price
                 );
                 pnl -= position.size.abs().multiplyDecimal(
@@ -300,7 +317,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
             }
             // update mtm
         }
-        currentMargin = tokenToUsd(baseToken, userMargin[_account], false) + pnl;
+        currentMargin = -freezedMargin[_account];
+        currentMargin += tokenToUsd(baseToken, userMargin[_account], false) + pnl;
     }
 
     /*=== fees ===*/
@@ -309,14 +327,12 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
      * @dev make sure the oracle price is updated before calling this function
      */
     function _updateFee(address _token) internal {
-        int price = IPriceOracle(priceOracle).getPrice(_token, true);
+        int price = IPriceOracle(priceOracle).getPrice(_token, false);
         IPerpTracker(perpTracker).updateFee(_token, price);
     }
 
     /**
      * @notice update funding rate, funding fee, only operator role
-     * @dev ensure the oracle price is updated before calling this function
-     *      update the global market data by updateTokenInfo after current position modification / liquidation
      * @param _token token address
      */
     function updateFee(address _token) external onlyOperator {
@@ -354,13 +370,41 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
      */
     function updateInfoWithPrice(address _token, bytes[] calldata _priceUpdateData) external payable {
         // update oracle price
-        IPriceOracle(priceOracle).updatePythPrice{value: msg.value}(msg.sender, _priceUpdateData);
+        if (_priceUpdateData.length > 0) {
+            IPriceOracle(priceOracle).updatePythPrice{value: msg.value}(_priceUpdateData);
+        }
         _updateFee(_token);
         _updateTokenInfo(_token);
     }
 
-    function redeemTradingFee(address _account, int _lp, int _redeemValue) external onlyOperator returns (uint fee) {
-        fee = IFeeTracker(feeTracker).redeemTradingFee(_account, _lp, _redeemValue);
+    function redeemTradingFee(int _lp, int _redeemValue) external view onlyOperator returns (uint fee) {
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
+        IPriceOracle priceOracle_ = IPriceOracle(priceOracle);
+        IMarketSettings settings_ = IMarketSettings(settings);
+
+        address[] memory tokens = perpTracker_.getMarketTokens();
+
+        int lambda = settings_.getIntVals(MAX_SLIPPAGE);
+        for (uint i = 0; i < tokens.length; ++i) {
+            int oraclePrice = priceOracle_.getPrice(tokens[i], false);
+
+            int skew = perpTracker_.currentSkew(tokens[i]);
+            if (skew != 0) {
+                int tradeAmount = (skew * _redeemValue) / _lp;
+                int kLP = settings_.getIntValsByMarket(perpTracker_.marketKey(tokens[i]), PROPORTION_RATIO);
+                kLP = (kLP * (_lp - _redeemValue)) / oraclePrice;
+                int fillPrice = perpTracker_.computePerpFillPriceRaw(
+                    skew - tradeAmount,
+                    tradeAmount,
+                    oraclePrice,
+                    kLP,
+                    lambda
+                );
+                // pnl = (oracle_price - fill_price) * volume
+                // fee = |pnl| = -pnl
+                fee += (fillPrice - oraclePrice).multiplyDecimal(tradeAmount).toUint256();
+            }
+        }
     }
 
     /*=== liquidation ===*/
@@ -368,35 +412,42 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
      * @notice compute the fill price of liquidation
      * @param _account account to liquidate
      * @param _token token to liquidate
-     * @return liquidation price, liquidation notional
      */
-    function computePerpLiquidatePrice(address _account, address _token) external view returns (int, int, int) {
+    function computeLiquidation(
+        address _account,
+        address _token
+    ) external view returns (int size, int positionNotional, int execPrice, uint fee, uint couponUsed) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
-        int oraclePrice = IPriceOracle(priceOracle).getPrice(_token, true);
-        int size = -perpTracker_.getPositionSize(_account, _token);
+        int oraclePrice = IPriceOracle(priceOracle).getPrice(_token, false);
+        size = -perpTracker_.getPositionSize(_account, _token);
+        positionNotional = size.multiplyDecimal(oraclePrice).abs();
         (int lpNetValue, ) = globalStatus();
-        return (
-            IPerpTracker(perpTracker).computePerpFillPrice(_token, size, oraclePrice, lpNetValue),
-            size,
-            size.multiplyDecimal(oraclePrice).abs()
-        );
+        int fillPrice = IPerpTracker(perpTracker).computePerpFillPrice(_token, size, oraclePrice, lpNetValue);
+        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, size, fillPrice);
     }
 
     /*=== trade ===*/
 
-    /// @notice compute the fill price of a trade
-    /// @param _token token to trade
-    /// @param _size trade size, positive for long, negative for short
-    /// @return the fill price
-    function computePerpFillPrice(address _token, int _size) external view returns (int) {
+    /**
+     * @notice compute the fill price of a trade
+     * @param _account account to trade
+     * @param _token token to trade
+     * @param _size trade size, positive for long, negative for short
+     */
+    function computeTrade(
+        address _account,
+        address _token,
+        int _size
+    ) external view returns (int execPrice, uint fee, uint couponUsed) {
         int oraclePrice = IPriceOracle(priceOracle).getPrice(_token, true);
         (int lpNetValue, ) = globalStatus();
-        return IPerpTracker(perpTracker).computePerpFillPrice(_token, _size, oraclePrice, lpNetValue);
+        int fillPrice = IPerpTracker(perpTracker).computePerpFillPrice(_token, _size, oraclePrice, lpNetValue);
+        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice);
     }
 
     function _logTrade(address _account, uint _volume, uint _fee) internal {
         // veSYM incentives
-        uint amountToDistribute = tokenToUsd(baseToken, int(_fee), false)
+        uint amountToDistribute = usdToToken(baseToken, int(_fee), false)
             .multiplyDecimal(IMarketSettings(settings).getIntVals(VESYM_FEE_INCENTIVE_RATIO))
             .toUint256();
         _transferLiquidityOut(feeTracker, amountToDistribute);
@@ -405,43 +456,48 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         VolumeTracker(volumeTracker).logTrade(_account, _volume);
     }
 
-    /// @notice update a position with a new trade. Will settle p&l if it is a position decrement.
-    /// @dev make sure the funding & financing fee is updated before calling this function.
-    /// @param _account user address
-    /// @param _token token to trade
-    /// @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
-    /// @param _price new trade price
-    function trade(address _account, address _token, int _sizeDelta, int _price) external onlyOperator returns (int) {
+    /**
+     * @notice notice update a position with a new trade. Will settle p&l if it is a position decrement.
+     * @dev make sure the funding & financing fee is updated before calling this function.
+     * @param _account user address
+     * @param _token token to trade
+     * @param _sizeDelta non-zero new trade size, negative for short, positive for long (18 decimals)
+     * @param _execPrice execution price
+     * @param _fee trading fee
+     * @param _couponUsed trading coupon used
+     */
+    function trade(
+        address _account,
+        address _token,
+        int _sizeDelta,
+        int _execPrice,
+        uint _fee,
+        uint _couponUsed
+    ) external onlyOperator {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
 
         require(perpTracker_.latestUpdated(_token) == block.timestamp, "Market: fee is not updated");
 
-        (int execPrice, uint tradingFee, uint couponUsed) = IFeeTracker(feeTracker).discountedTradingFee(
-            _account,
-            _sizeDelta,
-            _price,
-            true
-        );
-
+        // spend coupon
+        ITradingFeeCoupon(coupon).spend(_account, _couponUsed);
         // trade
         (int marginDelta, int oldSize, int newSize) = perpTracker_.settleTradeForUser(
             _account,
             _token,
             _sizeDelta,
-            execPrice
+            _execPrice
         );
         _modifyMargin(_account, usdToToken(baseToken, marginDelta, false));
         liquidityBalance += usdToToken(
             baseToken,
-            perpTracker_.settleTradeForLp(_token, -_sizeDelta, execPrice, oldSize, newSize),
+            perpTracker_.settleTradeForLp(_token, -_sizeDelta, _execPrice, oldSize, newSize),
             false
         );
 
         // log
-        _logTrade(_account, _sizeDelta.multiplyDecimal(_price).abs().toUint256(), tradingFee - couponUsed);
+        _logTrade(_account, _sizeDelta.multiplyDecimal(_execPrice).abs().toUint256(), _fee - _couponUsed);
 
-        emit Traded(_account, _token, _sizeDelta, _price, tradingFee, couponUsed);
-        return execPrice;
+        emit Traded(_account, _token, _sizeDelta, _execPrice, _fee, _couponUsed);
     }
 
     /*=== pricing ===*/

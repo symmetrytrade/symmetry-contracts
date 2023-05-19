@@ -8,25 +8,19 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../interfaces/IVotingEscrow.sol";
 import "../interfaces/ISYM.sol";
 import "../interfaces/ISYMRate.sol";
+import "../interfaces/ILiquidityGauge.sol";
 
 import "./VotingEscrowCallback.sol";
 
 import "../utils/Initializable.sol";
 
-contract LiquidityGauge is Initializable, VotingEscrowCallback {
+contract LiquidityGauge is ILiquidityGauge, Initializable, VotingEscrowCallback {
     using SafeERC20 for IERC20;
 
     // reserved storage slots for base contract upgrade in future
     uint256[50] private __gap;
 
     // states
-    // user info
-    struct UserInfo {
-        uint amount; // Amount of tokens the user staked.
-        uint workingPower; // boosted user share.
-        uint rewardPerShare; // Accumulated reward per share.
-    }
-
     // global info
     address public lpToken;
     uint public lastRewardTime; // Last timestamp that SYM distribution occurs.
@@ -35,7 +29,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
     uint public accRewardPerShare; // Accumulated reward per working power.
 
     // states
-    address public symToken;
+    address public token;
     address public votingEscrow;
     address public symRate;
     // user_working_power = min(
@@ -47,22 +41,18 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
     // Info of each user that stakes LP tokens.
     mapping(address => UserInfo) public userInfo;
 
-    event Deposit(address indexed user, uint amount);
-    event Withdraw(address indexed user, uint amount);
-    event UpdateWorkingPower(address indexed user, uint workingPower);
-
     function initialize(
         address _votingEscrow,
         address _lpToken,
         address _symRate,
-        address _symToken,
+        address _token,
         uint _startTime
     ) external onlyInitializeOnce {
         lpToken = _lpToken;
         symRate = _symRate;
-        symToken = _symToken;
+        token = _token;
         votingEscrow = _votingEscrow;
-        lastRewardTime = _startTime;
+        lastRewardTime = block.timestamp > _startTime ? block.timestamp : _startTime;
 
         k = 33;
     }
@@ -94,7 +84,7 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         user.rewardPerShare = accRewardPerShare;
         // distribute SYM reward and vest
         if (reward > 0) {
-            ISYM(symToken).mint(votingEscrow, reward);
+            ISYM(token).mint(votingEscrow, reward);
             IVotingEscrow(votingEscrow).vest(_user, reward);
         }
     }
@@ -113,17 +103,28 @@ contract LiquidityGauge is Initializable, VotingEscrowCallback {
         emit UpdateWorkingPower(_user, newWorkingPower);
     }
 
-    function deposit(uint _amount) external returns (uint reward) {
+    function _depositFor(address _account, uint _amount) internal returns (uint reward) {
         _update();
-        reward = _updateUser(msg.sender);
-        UserInfo storage user = userInfo[msg.sender];
+        reward = _updateUser(_account);
+        UserInfo storage user = userInfo[_account];
         if (_amount > 0) {
-            IERC20(lpToken).safeTransferFrom(address(msg.sender), address(this), _amount);
             user.amount += _amount;
             totalStaked += _amount;
         }
-        _checkpoint(msg.sender);
-        emit Deposit(msg.sender, _amount);
+        _checkpoint(_account);
+        emit Deposit(_account, _amount);
+    }
+
+    function deposit(uint _amount) external returns (uint) {
+        if (_amount > 0) {
+            IERC20(lpToken).safeTransferFrom(address(msg.sender), address(this), _amount);
+        }
+        return _depositFor(msg.sender, _amount);
+    }
+
+    function depositAfterMint(address _account, uint _amount) external returns (uint reward) {
+        require(msg.sender == lpToken, "LiquidityGauge: forbid");
+        return _depositFor(_account, _amount);
     }
 
     function withdraw(uint _amount) external returns (uint reward) {

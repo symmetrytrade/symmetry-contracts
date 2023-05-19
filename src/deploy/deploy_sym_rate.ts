@@ -16,10 +16,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    const symRate_ = await hre.ethers.getContract(
-        CONTRACTS.SYMRate.name,
-        deployer
-    );
+    const symRate_ = await hre.ethers.getContract(CONTRACTS.SYMRate.name, deployer);
 
     const rates = [];
     for (const rate of config.otherConfig.symRate) {

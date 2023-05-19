@@ -42,6 +42,9 @@ interface IPerpTracker {
     event FeeInfoUpdated(
         address indexed token,
         int nextFundingRate,
+        int nextLongFinancingRate,
+        int nextShortFinancingRate,
+        int nextAccFundingFee,
         int nextAccLongFinancingFee,
         int nextAccShortFinancingFee
     );
@@ -84,6 +87,8 @@ interface IPerpTracker {
 
     function getLpPosition(address _token) external view returns (LpPosition memory);
 
+    function getMarketTokens() external view returns (address[] memory);
+
     function getNetPositionSize(address _token) external view returns (int, int);
 
     function getPosition(address _account, address _token) external view returns (Position memory);
@@ -124,10 +129,7 @@ interface IPerpTracker {
 
     function marketTokensListed(address) external view returns (bool);
 
-    function nextAccFinancingFee(
-        address _token,
-        int _price
-    ) external view returns (int nextAccLongFinancingFee, int nextAccShortFinancingFee);
+    function nextAccFinancingFee(address _token, int _price) external view returns (int, int, int, int);
 
     function nextAccFunding(address _token, int _price) external view returns (int, int);
 

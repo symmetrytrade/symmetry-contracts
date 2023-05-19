@@ -14,29 +14,14 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    const relayer_ = await hre.ethers.getContract(
-        CONTRACTS.VotingEscrowCallbackRelayer.name,
-        deployer
-    );
-    const liquidityGauge_ = await getProxyContract(
-        hre,
-        CONTRACTS.LiquidityGauge,
-        deployer
-    );
+    const relayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
+    const liquidityGauge_ = await getProxyContract(hre, CONTRACTS.LiquidityGauge, deployer);
     await (await relayer_.addCallbackHandle(liquidityGauge_.address)).wait();
 
-    const votingEscrow_ = await getProxyContract(
-        hre,
-        CONTRACTS.VotingEscrow,
-        deployer
-    );
+    const votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, deployer);
     await (await votingEscrow_.setCallbackRelayer(relayer_.address)).wait();
 };
 
 deploy.tags = [CONTRACTS.VotingEscrowCallbackRelayer.name, "prod"];
-deploy.dependencies = [
-    CONTRACTS.VotingEscrow.name,
-    CONTRACTS.LiquidityGauge.name,
-    "mock",
-];
+deploy.dependencies = [CONTRACTS.VotingEscrow.name, CONTRACTS.LiquidityGauge.name, "mock"];
 export default deploy;

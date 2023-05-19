@@ -9,11 +9,7 @@ task("codesize", "show codesize of the contracts")
         const ans = [];
         for (const contract of contracts) {
             const artifact = await hre.artifacts.readArtifact(contract);
-            if (
-                taskArgs.contractname &&
-                taskArgs.contractname !== artifact.contractName
-            )
-                continue;
+            if (taskArgs.contractname && taskArgs.contractname !== artifact.contractName) continue;
             ans.push([
                 artifact.contractName,
                 Math.max(0, (artifact.deployedBytecode.length - 2) / 2),

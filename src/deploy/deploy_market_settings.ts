@@ -1,12 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    CONTRACTS,
-    deployInBeaconProxy,
-    getProxyContract,
-    perpConfigKey,
-    mustGetKey,
-} from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getProxyContract, perpConfigKey, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -15,11 +9,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.MarketSettings);
 
-    const settings_ = await getProxyContract(
-        hre,
-        CONTRACTS.MarketSettings,
-        deployer
-    );
+    const settings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.MarketSettings.name}..`);

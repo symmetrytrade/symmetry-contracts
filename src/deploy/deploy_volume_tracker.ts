@@ -1,11 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    CONTRACTS,
-    MINTER_ROLE,
-    deployInBeaconProxy,
-    getProxyContract,
-} from "../utils/utils";
+import { CONTRACTS, MINTER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -15,27 +10,22 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.VolumeTracker);
 
-    const volumeTracker_ = await getProxyContract(
-        hre,
-        CONTRACTS.VolumeTracker,
-        deployer
-    );
+    const volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.VolumeTracker.name}..`);
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    const coupon_ = await hre.ethers.getContract(
-        CONTRACTS.TradingFeeCoupon.name,
-        deployer
-    );
+    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
     if (!(await volumeTracker_.initialized())) {
-        await (
-            await volumeTracker_.initialize(market_.address, coupon_.address)
-        ).wait();
+        await (await volumeTracker_.initialize(market_.address, coupon_.address)).wait();
     }
 
     // set volumeTracker for market
     await (await market_.setVolumeTracker(volumeTracker_.address)).wait();
+
+    // set lucky number announcer
+    const announcer = config.otherConfig.luckyNumberAnnouncer ? config.otherConfig.luckyNumberAnnouncer : deployer;
+    await (await volumeTracker_.setLuckyNumberAnnouncer(announcer)).wait();
 
     // set tiers
     const tiers = [];
@@ -49,9 +39,5 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 deploy.tags = [CONTRACTS.VolumeTracker.name, "prod"];
-deploy.dependencies = [
-    CONTRACTS.Market.name,
-    CONTRACTS.MarketSettings.name,
-    CONTRACTS.TradingFeeCoupon.name,
-];
+deploy.dependencies = [CONTRACTS.Market.name, CONTRACTS.MarketSettings.name, CONTRACTS.TradingFeeCoupon.name];
 export default deploy;
