@@ -13,7 +13,7 @@ interface ITradingFeeCoupon {
     /*=== event ===*/
 
     event PreMint(uint id, address receiver, uint value, uint expire);
-    event PreMintComsumed(uint id);
+    event PreMintConsumed(uint id);
     event Minted(uint id, address receiver, uint value);
     event Applied(uint id, address account, uint value);
     event Spent(address account, uint amount);

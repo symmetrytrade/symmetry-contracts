@@ -12,8 +12,7 @@ export const SPENDER_ROLE = ethers.utils.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.utils.id("VESTING_ROLE");
 export const PERP_DOMAIN = ethers.utils.formatBytes32String("perpDomain");
 export const UNIT = "1000000000000000000";
-export const MAX_UINT256 =
-    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
 export function normalized(x: number) {
@@ -27,10 +26,7 @@ export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
 }
 
 export function perpMarketKey(market: string) {
-    return ethers.utils.solidityKeccak256(
-        ["address", "bytes32"],
-        [market, PERP_DOMAIN]
-    );
+    return ethers.utils.solidityKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
 }
 
 export function perpConfigKey(market: string, key: string) {
@@ -99,10 +95,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     Pyth: { name: "Pyth", contract: "PythMock" },
 };
 
-async function deployInBeaconProxy(
-    hre: HardhatRuntimeEnvironment,
-    contract: ContractMeta
-) {
+async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: ContractMeta) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;

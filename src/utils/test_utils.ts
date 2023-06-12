@@ -33,23 +33,11 @@ export function printValues(name: string, e: object) {
 }
 
 export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
-    return (
-        await hre.ethers.provider.getBlock(
-            await hre.ethers.provider.getBlockNumber()
-        )
-    ).timestamp;
+    return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber())).timestamp;
 }
 
-export function pythDataEncode(
-    id: string,
-    price: string,
-    expo: number,
-    publishTime: number
-) {
-    return abiCoder.encode(
-        ["bytes32", "int64", "int32", "uint256"],
-        [id, price, expo, publishTime]
-    );
+export function pythDataEncode(id: string, price: string, expo: number, publishTime: number) {
+    return abiCoder.encode(["bytes32", "int64", "int32", "uint256"], [id, price, expo, publishTime]);
 }
 
 export const chainlinkAggregators = [
@@ -97,24 +85,14 @@ export async function updateChainlinkPrice(
     const aggregator_ = await hre.ethers.getContract(name, sender);
     const decimals = await aggregator_.decimals();
     const updateTime = await helpers.time.latest();
-    await (
-        await aggregator_.feed(
-            new BigNumber(price).times(10 ** decimals).toString(10),
-            updateTime
-        )
-    ).wait();
+    await (await aggregator_.feed(new BigNumber(price).times(10 ** decimals).toString(10), updateTime)).wait();
 }
 
-export async function getPythUpdateData(
-    hre: HardhatRuntimeEnvironment,
-    pythPrices: { [key: string]: number }
-) {
+export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPrices: { [key: string]: number }) {
     const updateData = [];
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
-        const price = new BigNumber(value)
-            .multipliedBy(10 ** -info.expo)
-            .toString(10);
+        const price = new BigNumber(value).multipliedBy(10 ** -info.expo).toString(10);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         updateData.push(data);
@@ -137,27 +115,17 @@ export async function setupPrices(
         await updateChainlinkPrice(hre, key, value, sender);
     }
     const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name, sender);
-    const priceOracle_ = await getProxyContract(
-        hre,
-        CONTRACTS.PriceOracle,
-        sender
-    );
+    const priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, sender);
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
-        const price = new BigNumber(value)
-            .multipliedBy(10 ** -info.expo)
-            .toString(10);
+        const price = new BigNumber(value).multipliedBy(10 ** -info.expo).toString(10);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         const fee = await pyth_.getUpdateFee([data]);
         await (
-            await priceOracle_.updatePythPrice(
-                await sender.getAddress(),
-                [data],
-                {
-                    value: fee,
-                }
-            )
+            await priceOracle_.updatePythPrice([data], {
+                value: fee,
+            })
         ).wait();
     }
 }

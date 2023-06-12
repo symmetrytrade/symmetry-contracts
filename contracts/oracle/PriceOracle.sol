@@ -116,14 +116,10 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
         return (price.publishTime, normalizedPrice);
     }
 
-    /// @notice update pyth price, refund remaining fee to sender
-    /// @param _sender sender address
+    /// @notice update pyth price
     /// @param _priceUpdateData update data for pyth oracle
-    function updatePythPrice(address _sender, bytes[] calldata _priceUpdateData) external payable {
+    function updatePythPrice(bytes[] calldata _priceUpdateData) external payable {
         if (_priceUpdateData.length == 0) {
-            if (msg.value > 0) {
-                payable(_sender).transfer(msg.value);
-            }
             return;
         }
         IPyth pythOracle_ = IPyth(pythOracle);

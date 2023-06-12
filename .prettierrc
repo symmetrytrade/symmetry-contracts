@@ -11,6 +11,12 @@
                 "singleQuote": false,
                 "bracketSpacing": false
             }
+        },
+        {
+            "files": "*.ts",
+            "options": {
+                "printWidth": 120
+            }
         }
     ]
 }

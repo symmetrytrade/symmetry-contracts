@@ -64,13 +64,15 @@ interface IVotingEscrow {
 
     function checkpoint() external;
 
-    function claimVested() external;
+    function claimVested(address _account) external returns (uint);
 
     function createLock(uint _value, uint _unlockTime, uint _lockDuration, bool _autoExtend) external;
 
     function decimals() external view returns (uint8);
 
     function getLastStakedPoint(address _addr) external view returns (StakedPoint memory point);
+
+    function getVested(address _addr) external view returns (uint);
 
     function globalEpoch() external view returns (uint);
 

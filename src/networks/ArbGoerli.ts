@@ -25,7 +25,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
     },
     gracePeriodTime: 0,
     marketGeneralConfig: {
-        pythMaxAge: 180, // 3 minutes
+        pythMaxAge: 30, // 60 seconds
         maxPriceDivergence: normalized(1.02), // 2%
         maintenanceMarginRatio: normalized(0.02), // 2%
         maxLeverageRatio: 25, // 25x
@@ -39,7 +39,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
         minOrderDelay: 60, // 1 minute
         minKeeperFee: normalized(1), // 1 usd
-        minMargin: normalized(20), // 20 usd
+        minMargin: normalized(50), // 50 usd
         maxSlippage: normalized(0.05), // 5%
         maxFundingVelocity: normalized(0.0533), // 5.33% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day
@@ -78,5 +78,6 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
             { startTime: 0, rate: normalized(1) },
             { startTime: 3000000000, rate: normalized(0) },
         ],
+        luckyNumberAnnouncer: "0x47ED834153Ab43289Dae7C822EA25e2CE1A8F263",
     },
 };

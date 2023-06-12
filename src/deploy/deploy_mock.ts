@@ -20,16 +20,8 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             args: [token.name, token.symbol, 18],
             log: true,
         });
-        const faucetToken = await hre.ethers.getContract(
-            CONTRACTS[token.symbol].name,
-            deployer
-        );
-        await (
-            await faucetToken.mint(
-                deployer,
-                hre.ethers.BigNumber.from("10000000000000000000000000000")
-            )
-        ).wait();
+        const faucetToken = await hre.ethers.getContract(CONTRACTS[token.symbol].name, deployer);
+        await (await faucetToken.mint(deployer, hre.ethers.BigNumber.from("10000000000000000000000000000"))).wait();
     }
     // deploy chainlink aggregators
     for (const aggregator of chainlinkAggregators) {

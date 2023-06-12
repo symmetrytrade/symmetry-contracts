@@ -48,42 +48,31 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
     }
 
     /*=== initialize ===*/
-    function initialize(address _market, address _perpTracker, address _coupon) external onlyInitializeOnce {
+    function initialize(
+        address _market,
+        address _perpTracker,
+        address _coupon,
+        address _votingEscrow
+    ) external onlyInitializeOnce {
         market = _market;
         perpTracker = _perpTracker;
         coupon = _coupon;
         settings = IMarket(_market).settings();
+        votingEscrow = _votingEscrow;
 
         _transferOwnership(msg.sender);
     }
 
     /*=== owner functions ===*/
 
-    function setMarket(address _market) external onlyOwner {
-        market = _market;
-    }
-
-    function setPerpTracker(address _perpTracker) external onlyOwner {
-        perpTracker = _perpTracker;
-    }
-
-    function setSetting(address _settings) external onlyOwner {
-        settings = _settings;
-    }
-
-    function setVotingEscrow(address _votingEscrow) external onlyOwner {
-        votingEscrow = _votingEscrow;
-    }
-
-    function setCoupon(address _coupon) external onlyOwner {
-        coupon = _coupon;
-    }
-
     function setTradingFeeTiers(Tier[] memory _tiers) external onlyOwner {
         delete tradingFeeTiers;
 
         uint len = _tiers.length;
         for (uint i = 0; i < len; ++i) {
+            if (i > 0) {
+                require(_tiers[i - 1].portion > _tiers[i].portion, "FeeTracker: tier not decreasing");
+            }
             tradingFeeTiers.push(_tiers[i]);
         }
     }
@@ -100,111 +89,48 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
         return 0;
     }
 
-    function _tradingFeeDiscount(address _account) internal view returns (uint discount) {
+    function tradingFeeDiscount(address _account) public view returns (uint discount) {
         uint portion = _vePortionOf(_account);
         uint len = tradingFeeTiers.length;
         for (uint i = 0; i < len; ++i) {
             if (portion >= tradingFeeTiers[i].portion) {
                 discount = tradingFeeTiers[i].discount;
-                return discount;
+                break;
             }
         }
     }
 
     /*=== perp trading fee ===*/
 
-    function _redeemTradeFillPrice(
-        address _token,
-        int _oraclePrice,
-        int _lp,
-        int _redeemValue,
-        int _lambda
-    ) internal view returns (int fillPrice, int tradeAmount) {
-        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
-        IMarketSettings settings_ = IMarketSettings(settings);
-
-        int skew = perpTracker_.currentSkew(_token);
-        if (skew == 0) return (0, 0);
-        tradeAmount = skew.multiplyDecimal(_redeemValue).divideDecimal(_lp);
-        int kLP = settings_.getIntValsByMarket(perpTracker_.marketKey(_token), PROPORTION_RATIO);
-        kLP = kLP.multiplyDecimal(_lp - _redeemValue).divideDecimal(_oraclePrice);
-        fillPrice = perpTracker_.computePerpFillPriceRaw(skew - tradeAmount, tradeAmount, _oraclePrice, kLP, _lambda);
-    }
-
-    /**
-     * @notice Compute the trading fee of a liquidity redemption. During lp redemption, the exiting lp will trade the position
-     * it holds to the lp left in pool.
-     * @param _lp lp net value in usd
-     * @param _redeemValue lp to redeem in usd
-     */
-    function redeemTradingFee(address _account, int _lp, int _redeemValue) external onlyMarket returns (uint fee) {
-        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
-
-        uint len = perpTracker_.marketTokensLength();
-
-        int lambda = IMarketSettings(settings).getIntVals(MAX_SLIPPAGE);
-        for (uint i = 0; i < len; ++i) {
-            address token = perpTracker_.marketTokensList(i);
-            if (!perpTracker_.marketTokensListed(token)) continue;
-
-            int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(token, false);
-
-            (int fillPrice, int tradeAmount) = _redeemTradeFillPrice(token, oraclePrice, _lp, _redeemValue, lambda);
-            if (tradeAmount == 0) continue;
-
-            // calculate fill price
-            // calculate execution price and fee
-            (int execPrice, , ) = _discountedTradingFee(_account, tradeAmount, fillPrice, false);
-            // pnl = (oracle_price - exec_price) * volume
-            // fee = |pnl| = -pnl
-            fee += (execPrice - oraclePrice).multiplyDecimal(tradeAmount).toUint256();
-        }
-    }
-
-    function _discountedTradingFee(
+    function getDiscountedPrice(
         address _account,
         int _sizeDelta,
-        int _price,
-        bool _useCoupon
-    ) internal returns (int execPrice, uint fee, uint couponUsed) {
-        ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
-
+        int _price
+    ) external view returns (int execPrice, uint fee, uint couponUsed) {
         // deduct trading fee in the price
-        // (p_{oracle}-p_{exec})*size=(p_{oracle}-p_{fill})*size-p_{fill}*|size|*k%
-        // p_{avg}=p_{fill} * (1 + k%) for size > 0
-        // p_{avg}=p_{fill} * (1 - k%) for size < 0
+        // (p_{oracle}-p_{exec})*size=(p_{oracle}-p_{fill})*size-p_{fill}*|size|*k
+        // p_{avg}=p_{fill} * (1 + k) for size > 0
+        // p_{avg}=p_{fill} * (1 - k) for size < 0
         // where k is trading fee ratio
         int k = IMarketSettings(settings).getIntVals(PERP_TRADING_FEE);
         // apply fee discount
-        k = k.multiplyDecimal(_UNIT - _tradingFeeDiscount(_account).toInt256());
-        require(k < _UNIT, "Market: trading fee ratio > 1");
+        k = k.multiplyDecimal(_UNIT - tradingFeeDiscount(_account).toInt256());
+        require(k < _UNIT, "FeeTracker: trading fee ratio > 1");
         if (_sizeDelta > 0) {
             execPrice = _price.multiplyDecimal(_UNIT + k);
         } else {
             execPrice = _price.multiplyDecimal(_UNIT - k);
         }
         fee = _price.multiplyDecimal(_sizeDelta.abs()).multiplyDecimal(k).toUint256();
-        if (_useCoupon) {
-            // use coupons
-            couponUsed = IMarketSettings(settings).getIntVals(MAX_COUPON_DEDUCTION_RATIO).toUint256().multiplyDecimal(
-                fee
-            );
-            couponUsed = coupon_.unspents(_account).min(couponUsed);
-            coupon_.spend(_account, couponUsed);
-        }
+        // use coupons
+        ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
+
+        couponUsed = IMarketSettings(settings).getIntVals(MAX_COUPON_DEDUCTION_RATIO).toUint256().multiplyDecimal(fee);
+        couponUsed = coupon_.unspents(_account).min(couponUsed);
         // apply couponUsed to execPrice
         // (p_oracle - p_exec_new) * size = (p_oracle - p_exec_old) * size + coupon_used
         // p_exec_new = p_exec_old - coupon_used / size
         execPrice -= couponUsed.toInt256().divideDecimal(_sizeDelta);
-    }
-
-    function discountedTradingFee(
-        address _account,
-        int _sizeDelta,
-        int _price,
-        bool _useCoupon
-    ) external onlyMarket returns (int, uint, uint) {
-        return _discountedTradingFee(_account, _sizeDelta, _price, _useCoupon);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {

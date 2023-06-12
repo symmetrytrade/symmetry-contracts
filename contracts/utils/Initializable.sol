@@ -6,7 +6,7 @@ contract Initializable {
 
     modifier onlyInitializeOnce() {
         require(!initialized, "Initializable: already initialized");
-        _;
         initialized = true;
+        _;
     }
 }

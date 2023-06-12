@@ -1,10 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    CONTRACTS,
-    deployInBeaconProxy,
-    getProxyContract,
-} from "../utils/utils";
+import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -21,23 +17,24 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const baseToken = config.addresses?.USDC
         ? config.addresses.USDC
         : (await hre.ethers.getContract(CONTRACTS.USDC.name)).address;
-    const priceOracle = (
-        await hre.ethers.getContract(CONTRACTS.PriceOracle.name)
-    ).address;
-    const marketSettings = (
-        await hre.ethers.getContract(CONTRACTS.MarketSettings.name)
-    ).address;
+    const priceOracle = (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).address;
+    const marketSettings = (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).address;
     if (!(await market_.initialized())) {
-        await (
-            await market_.initialize(baseToken, priceOracle, marketSettings)
-        ).wait();
+        await (await market_.initialize(baseToken, priceOracle, marketSettings)).wait();
     }
+    // set coupon
+    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
+    await (await market_.setCoupon(coupon_.address)).wait();
+
+    // add spender role of coupon
+    await (await coupon_.grantRole(SPENDER_ROLE, market_.address)).wait();
 };
 
 deploy.tags = [CONTRACTS.Market.name, "prod"];
 deploy.dependencies = [
     CONTRACTS.PriceOracle.name,
     CONTRACTS.MarketSettings.name,
+    CONTRACTS.TradingFeeCoupon.name,
     "mock",
 ];
 export default deploy;

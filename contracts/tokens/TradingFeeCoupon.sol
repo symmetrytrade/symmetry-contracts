@@ -55,7 +55,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         require(mintable.expire > block.timestamp, "TradingFeeCoupon: expired");
         mintables[_preMintId].expire = 0;
 
-        emit PreMintComsumed(_preMintId);
+        emit PreMintConsumed(_preMintId);
         return _mintCoupon(mintable.to, mintable.value);
     }
 
@@ -72,7 +72,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
     function _mintCoupon(address _to, uint _value) internal returns (uint id) {
         id = tokenCount;
         couponValues[id] = _value;
-        _safeMint(_to, id);
+        _mint(_to, id);
         ++tokenCount;
 
         emit Minted(id, _to, _value);

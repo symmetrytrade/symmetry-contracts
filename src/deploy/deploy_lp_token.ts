@@ -10,7 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deploy(CONTRACTS.LPToken.name, {
         from: deployer,
         contract: CONTRACTS.LPToken.contract,
-        args: ["SYM LP Token", "SYMLP"],
+        args: ["SYM LP Token", "symLP"],
         log: true,
     });
 };

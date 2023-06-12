@@ -1,11 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    CONTRACTS,
-    deployInBeaconProxy,
-    getProxyContract,
-    mustGetKey,
-} from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getProxyContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -15,11 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.PerpTracker);
 
-    const perpTracker_ = await getProxyContract(
-        hre,
-        CONTRACTS.PerpTracker,
-        deployer
-    );
+    const perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.PerpTracker.name}..`);

@@ -34,8 +34,10 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
 
     mapping(address => mapping(uint => bool)) public weeklyCouponClaimed;
 
+    address public luckyNumberAnnouncer;
     mapping(uint => uint) public luckyCandidates;
-    mapping(uint => uint) public winningNumber;
+    mapping(uint => uint) public luckyNumberIssuedAt;
+    mapping(uint => uint) public luckyNumber;
     mapping(address => mapping(uint => uint)) public userLuckyNumber;
 
     Tier[] public rebateTiers; // trading fee rebate tiers
@@ -56,16 +58,8 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
 
     /*=== owner ===*/
 
-    function setMarket(address _market) external onlyOwner {
-        market = _market;
-    }
-
-    function setSetting(address _settings) external onlyOwner {
-        settings = _settings;
-    }
-
-    function setCoupon(address _coupon) external onlyOwner {
-        coupon = _coupon;
+    function setLuckyNumberAnnouncer(address _announcer) external onlyOwner {
+        luckyNumberAnnouncer = _announcer;
     }
 
     function setRebateTiers(Tier[] memory _tiers) external onlyOwner {
@@ -73,6 +67,9 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
 
         uint len = _tiers.length;
         for (uint i = 0; i < len; ++i) {
+            if (i > 0) {
+                require(_tiers[i - 1].requirement > _tiers[i].requirement, "VolumeTracker: tier not decreasing");
+            }
             rebateTiers.push(_tiers[i]);
         }
     }
@@ -96,9 +93,6 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
                 uint num = luckyCandidates[t] + 1;
                 luckyCandidates[t] = num;
                 userLuckyNumber[_account][t] = num;
-                winningNumber[t] =
-                    uint(keccak256(abi.encodePacked(block.difficulty, blockhash(block.number - 1), t))) %
-                    10;
             }
             t += 1 days;
         }
@@ -107,7 +101,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     function _addWeeklyVolume(address _account, uint _volume) internal {
         uint t = _startOfWeek(block.timestamp);
         uint vol = userWeeklyVolume[_account][t] + _volume;
-        userWeeklyVolume[_account][_startOfWeek(block.timestamp)] = vol;
+        userWeeklyVolume[_account][t] = vol;
 
         emit WeeklyVolumeUpdated(_account, t, vol);
     }
@@ -150,13 +144,70 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     }
 
     /*=== I'm feeling lucky ===*/
+    function issueLuckyNumber() external {
+        uint _t = _startOfDay(block.timestamp) - 1 days;
+        require(luckyNumberIssuedAt[_t] == 0, "VolumeTracker: issued");
+        luckyNumberIssuedAt[_t] = block.number;
+    }
+
+    function _drawLuckyNumber(uint _t) internal returns (bool, RevertReason) {
+        if (luckyNumber[_t] != 0) {
+            return (false, RevertReason.DRAWED);
+        }
+        uint issuedAt = luckyNumberIssuedAt[_t];
+        if (issuedAt == 0) {
+            return (false, RevertReason.NOT_ISSUED);
+        }
+        bytes32 h1 = blockhash(issuedAt + 1);
+        bytes32 h2 = blockhash(issuedAt + 2);
+        bytes32 h3 = blockhash(issuedAt + 3);
+        if (h1 == 0x0 || h2 == 0x0 || h3 == 0x0) {
+            return (false, RevertReason.HASH_UNAVAILABLE);
+        }
+        luckyNumber[_t] = (uint(keccak256(abi.encodePacked(h1, h2, h3))) % 10) + 1;
+        return (true, RevertReason.EMPTY);
+    }
+
+    function _drawRevertReason(RevertReason reason) internal pure returns (string memory) {
+        if (reason == RevertReason.DRAWED) {
+            return "VolumeTracker: drawed";
+        } else if (reason == RevertReason.NOT_ISSUED) {
+            return "VolumeTracker: not issued";
+        } else {
+            return "VolumeTracker: hash unavailable";
+        }
+    }
+
+    function drawLuckyNumber() external {
+        uint _t = _startOfDay(block.timestamp) - 1 days;
+        (bool ok, RevertReason reason) = _drawLuckyNumber(_t);
+        if (!ok) {
+            revert(_drawRevertReason(reason));
+        }
+    }
+
+    function drawLuckyNumberByAnnouncer(bytes32 h1, bytes32 h2, bytes32 h3) external {
+        require(msg.sender == luckyNumberAnnouncer, "VolumeTracker: forbid");
+        uint _t = _startOfDay(block.timestamp) - 1 days;
+        (bool ok, RevertReason reason) = _drawLuckyNumber(_t);
+        if (!ok) {
+            if (reason != RevertReason.HASH_UNAVAILABLE) {
+                revert(_drawRevertReason(reason));
+            }
+            require(luckyNumberIssuedAt[_t] < block.number - 3, "VolumeTracker: too early");
+            luckyNumber[_t] = (uint(keccak256(abi.encodePacked(h1, h2, h3))) % 10) + 1;
+        }
+    }
+
     function claimLuckyCoupon() external {
         uint _t = _startOfDay(block.timestamp) - 1 days;
 
         uint num = userLuckyNumber[msg.sender][_t];
         require(num > 0, "VolumeTracker: no chance");
+        uint luckyNum = luckyNumber[_t];
+        require(luckyNum != 0, "VolumeTracker: not determined");
         userLuckyNumber[msg.sender][_t] = 0;
-        if (num % 10 == winningNumber[_t]) {
+        if ((num % 10) + 1 == luckyNum) {
             ITradingFeeCoupon(coupon).mintCoupon(
                 msg.sender,
                 uint(MarketSettings(settings).getIntVals(ONE_DRAW_REWARD))

@@ -1,17 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import {
-    CONTRACTS,
-    MAX_UINT256,
-    UNIT,
-    getProxyContract,
-    normalized,
-} from "../src/utils/utils";
-import {
-    DAY,
-    increaseNextBlockTimestamp,
-    setupPrices,
-} from "../src/utils/test_utils";
+import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized } from "../src/utils/utils";
+import { DAY, increaseNextBlockTimestamp, setupPrices } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
@@ -51,59 +41,27 @@ describe("Funding", () => {
         WETH = (await hre.ethers.getContract("WETH")).address;
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        perpTracker_ = await getProxyContract(
-            hre,
-            CONTRACTS.PerpTracker,
-            account1
-        );
-        marketSettings_ = await getProxyContract(
-            hre,
-            CONTRACTS.MarketSettings,
-            deployer
-        );
-        liquidityManager_ = await getProxyContract(
-            hre,
-            CONTRACTS.LiquidityManager,
-            account1
-        );
-        positionManager_ = await getProxyContract(
-            hre,
-            CONTRACTS.PositionManager,
-            account1
-        );
+        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
+        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
+        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
         config = getConfig(hre.network.name);
 
         await (
-            await USDC_.transfer(
-                await account1.getAddress(),
-                hre.ethers.BigNumber.from(100000000).mul(UNIT)
-            )
+            await USDC_.transfer(await account1.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
         ).wait();
         await (
-            await USDC_.transfer(
-                await account2.getAddress(),
-                hre.ethers.BigNumber.from(100000000).mul(UNIT)
-            )
+            await USDC_.transfer(await account2.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
         ).wait();
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
         const amount = hre.ethers.BigNumber.from(1000000).mul(UNIT); // 1M
-        const minUsd = hre.ethers.BigNumber.from(100000).mul(UNIT);
         const minLp = hre.ethers.BigNumber.from(100000).mul(UNIT);
-        await (
-            await liquidityManager_.addLiquidity(
-                amount,
-                minUsd,
-                minLp,
-                await account1.getAddress()
-            )
-        ).wait();
+        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
-        await (
-            await USDC_.connect(account2).approve(market_.address, MAX_UINT256)
-        ).wait();
+        await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
 
         await (
             await marketSettings_.setIntVals(
@@ -112,38 +70,17 @@ describe("Funding", () => {
             )
         ).wait();
         // set financing fee rate, trading fee to zero
-        await (
-            await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("maxFinancingFeeRate"),
-                0
-            )
-        ).wait();
-        await (
-            await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("perpTradingFee"),
-                0
-            )
-        ).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxFinancingFeeRate"), 0)).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("perpTradingFee"), 0)).wait();
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("maxPriceDivergence"),
-                normalized(2)
-            )
+            await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxPriceDivergence"), normalized(2))
         ).wait();
         await (
-            await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("pythMaxAge"),
-                normalized(10000)
-            )
+            await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("pythMaxAge"), normalized(10000))
         ).wait();
         // set slippage to zero
-        await (
-            await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("maxSlippage"),
-                0
-            )
-        ).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxSlippage"), 0)).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(
@@ -165,19 +102,18 @@ describe("Funding", () => {
 
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder(
+            await positionManager_.submitOrder([
                 WETH,
                 normalized(50),
                 normalized(1000),
                 normalized(1),
-                (await helpers.time.latest()) + 100
-            )
+                (await helpers.time.latest()) + 100,
+                false,
+            ])
         ).wait();
         const orderId = (await positionManager_.orderCnt()).sub(1);
 
-        await increaseNextBlockTimestamp(
-            config.marketGeneralConfig.minOrderDelay
-        ); // 60s
+        await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
@@ -190,14 +126,10 @@ describe("Funding", () => {
                 normalized(0)
             );
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(
-            normalized(0.01)
-        );
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(normalized(0.01));
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(
-            normalized(0.01)
-        );
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(normalized(0.01));
         const fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
         expect(fs[0]).to.deep.eq(normalized(0.01));
         expect(fs[1]).to.deep.eq(normalized(5));
@@ -207,13 +139,14 @@ describe("Funding", () => {
         await increaseNextBlockTimestamp(1);
         // open eth short, 100000 notional
         await (
-            await positionManager_.submitOrder(
+            await positionManager_.submitOrder([
                 WETH,
                 normalized(-100),
                 normalized(1000),
                 normalized(1),
-                evmTime + 2 * DAY
-            )
+                evmTime + 2 * DAY,
+                false,
+            ])
         ).wait();
         const orderId = (await positionManager_.orderCnt()).sub(1);
 
@@ -230,9 +163,7 @@ describe("Funding", () => {
                 normalized(0)
             );
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(
-            "-9990009990009990"
-        );
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq("-9990009990009990");
         let fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
         expect(fs[0]).to.deep.eq(normalized(0.02));
         expect(fs[1]).to.deep.eq(normalized(20));

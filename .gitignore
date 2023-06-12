@@ -14,3 +14,4 @@ coverage
 coverage.json
 typechain-types
 abis
+src/tasks/example.ts

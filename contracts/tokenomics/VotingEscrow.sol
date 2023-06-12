@@ -96,6 +96,20 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
         point.ts = block.timestamp;
     }
 
+    function getVested(address _addr) external view returns (uint) {
+        uint vestedEpoch = userVestEpoch[_addr];
+        uint claimEpoch = userClaimEpoch[_addr];
+        if (claimEpoch == 0) {
+            claimEpoch = 1;
+        }
+        int vested = 0;
+        for (uint i = claimEpoch; i <= vestedEpoch; ++i) {
+            vested += userVestHistory[_addr][i].amount;
+        }
+
+        return SafeCast.toUint256(vested);
+    }
+
     /*===  helper functions ===*/
 
     /* solhint-disable avoid-tx-origin */
@@ -310,11 +324,11 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
         emit Vested(_addr, _amount, block.timestamp);
     }
 
-    function claimVested() external {
-        _claimVested(msg.sender);
+    function claimVested(address _account) external returns (uint) {
+        return _claimVested(_account);
     }
 
-    function _claimVested(address _addr) internal {
+    function _claimVested(address _addr) internal returns (uint) {
         uint vestedEpoch = userVestEpoch[_addr];
         uint claimEpoch = userClaimEpoch[_addr];
 
@@ -337,6 +351,7 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
 
             emit Claimed(_addr, SafeCast.toUint256(toClaim), block.timestamp);
         }
+        return SafeCast.toUint256(toClaim);
     }
 
     /*=== stake ===*/
@@ -455,6 +470,8 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
     }
 
     function unstake(uint _value) external nonReentrant {
+        _assertNotContract();
+
         _claimVested(msg.sender);
 
         uint stakedValue = staked[msg.sender];
@@ -471,7 +488,7 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
         });
         _checkpointStaked(msg.sender, oldStaked, newStaked);
 
-        IERC20(baseToken).transfer(msg.sender, _value);
+        IERC20(baseToken).safeTransfer(msg.sender, _value);
 
         _tryCallback(msg.sender);
         emit Unstake(msg.sender, _value, block.timestamp);

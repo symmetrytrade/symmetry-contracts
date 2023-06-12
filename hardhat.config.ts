@@ -15,8 +15,7 @@ dotenv.config();
 const { NODE_URL, DEPLOYER_KEY, ETHERSCAN_API_KEY } = process.env;
 
 // 0x0739857bc8892cdeba5f6d51cf095f25549c7554
-const DEFAULT_DEPLOYER =
-    "21c1db3dc75c2398838b1588f35403fd025cd15fcd27a785ba2c2aa5ea8e8069";
+const DEFAULT_DEPLOYER = "21c1db3dc75c2398838b1588f35403fd025cd15fcd27a785ba2c2aa5ea8e8069";
 
 const userConfig: HttpNetworkUserConfig = {
     accounts: [DEPLOYER_KEY ? DEPLOYER_KEY : DEFAULT_DEPLOYER],
@@ -28,6 +27,7 @@ import "./src/tasks/upgrade";
 import "./src/tasks/timelock";
 import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
+import "./src/tasks/settings";
 
 const config: HardhatUserConfig = {
     paths: {

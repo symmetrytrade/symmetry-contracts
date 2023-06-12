@@ -51,14 +51,6 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     /*=== owner ===*/
 
-    function setMarket(address _market) external onlyOwner {
-        market = _market;
-    }
-
-    function setSetting(address _settings) external onlyOwner {
-        settings = _settings;
-    }
-
     /* === Token Management === */
 
     function setMarketToken(address _token) external onlyOwner {
@@ -118,18 +110,33 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         return uint(feeInfos[_token].updateTime);
     }
 
+    function getMarketTokens() external view returns (address[] memory) {
+        return marketTokensList;
+    }
+
     /*=== update functions ===*/
 
     function _updatePosition(address _account, address _token, int _sizeDelta, int _avgPrice) internal {
         Position storage position = userPositions[_account][_token];
         position.size += _sizeDelta;
-        position.avgPrice = _avgPrice;
-        position.accFunding = feeInfos[_token].accFunding;
-        position.accFinancingFee = position.size > 0
-            ? feeInfos[_token].accLongFinancingFee
-            : feeInfos[_token].accShortFinancingFee;
+        if (position.size == 0) {
+            delete userPositions[_account][_token];
+        } else {
+            position.avgPrice = _avgPrice;
+            position.accFunding = feeInfos[_token].accFunding;
+            position.accFinancingFee = position.size > 0
+                ? feeInfos[_token].accLongFinancingFee
+                : feeInfos[_token].accShortFinancingFee;
+        }
 
-        emit PositionUpdated(_account, _token, position.size, _avgPrice, position.accFunding, position.accFinancingFee);
+        emit PositionUpdated(
+            _account,
+            _token,
+            position.size,
+            position.avgPrice,
+            position.accFunding,
+            position.accFinancingFee
+        );
     }
 
     function _updateLpPosition(address _token, int _longSizeDelta, int _shortSizeDelta, int _avgPrice) internal {
@@ -182,12 +189,11 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         if (_skew.abs() >= _kLP) {
             priceCoefficient = (_UNIT + (_skew > 0 ? _lambda : -_lambda));
         } else if ((_skew + _size).abs() <= _kLP) {
-            priceCoefficient = (_UNIT + (_skew + _size / 2).divideDecimal(_kLP).multiplyDecimal(_lambda));
+            priceCoefficient = (_UNIT + ((_skew + _size / 2) * _lambda) / _kLP);
         } else {
             // |skew| < kLP, |skew + size| > kLP
             int kLPSigned = _skew + _size > 0 ? _kLP : -_kLP;
-            int numerator = (_UNIT + (_skew + kLPSigned).divideDecimal(2 * _kLP).multiplyDecimal(_lambda))
-                .multiplyDecimal(kLPSigned - _skew);
+            int numerator = (_UNIT + ((_skew + kLPSigned) * _lambda) / (2 * _kLP)).multiplyDecimal(kLPSigned - _skew);
             numerator += (_UNIT + (_skew + _size > 0 ? _lambda : -_lambda)).multiplyDecimal(_skew + _size - kLPSigned);
             priceCoefficient = numerator.divideDecimal(_size);
         }
@@ -214,7 +220,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             numerator += _computePriceCoefficient(0, _skew + _size, _kLP, _lambda).multiplyDecimal(
                 (_skew + _size).abs()
             );
-            avgPrice = numerator.divideDecimal(_size.abs()).multiplyDecimal(_oraclePrice);
+            avgPrice = (numerator * _oraclePrice) / _size.abs();
         }
     }
 
@@ -239,7 +245,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         int lambda = settings_.getIntVals(MAX_SLIPPAGE);
         int skew = currentSkew(_token);
         int kLP = settings_.getIntValsByMarket(marketKey(_token), PROPORTION_RATIO);
-        kLP = kLP.multiplyDecimal(_lpNetValue).divideDecimal(_oraclePrice);
+        kLP = (kLP * _lpNetValue) / _oraclePrice;
 
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
     }
@@ -276,7 +282,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         int nextSize = _size + _sizeDelta;
         if ((_sizeDelta > 0 && _size >= 0) || (_sizeDelta < 0 && _size <= 0)) {
             // increase position
-            nextPrice = ((_size * _avgPrice + _sizeDelta * _price) / nextSize).abs();
+            nextPrice = (_size * _avgPrice + _sizeDelta * _price) / nextSize;
         } else {
             // decrease position
             // here _size must be non-zero
@@ -454,7 +460,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     /**
      * @dev get current soft limit, if open interest > soft limit, financing fee will be charged
-     *      soft_limit = min(lp_net_value * threshold, max_soft_limit)
+     *      soft_limit = lp_net_value * soft limit threshold
      */
     function lpSoftLimit(int _lp) public view returns (int) {
         int threshold = IMarketSettings(settings).getIntVals(SOFT_LIMIT_THRESHOLD);
@@ -476,7 +482,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         int threshold = IMarketSettings(settings).getIntVals(TOKEN_OI_LIMIT_RATIO);
         int pr = IMarketSettings(settings).getIntValsByMarket(marketKey(_token), PROPORTION_RATIO);
         int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(_token, false);
-        return _lp.multiplyDecimal(threshold).multiplyDecimal(pr).divideDecimal(oraclePrice);
+        return (_lp.multiplyDecimal(threshold) * pr) / oraclePrice;
     }
 
     function _nextFinancingFeeRate(address _token) internal view returns (int) {
@@ -505,22 +511,30 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     function nextAccFinancingFee(
         address _token,
         int _price
-    ) public view returns (int nextAccLongFinancingFee, int nextAccShortFinancingFee) {
+    )
+        public
+        view
+        returns (
+            int nextLongFinancingRate,
+            int nextShortFinancingRate,
+            int nextAccLongFinancingFee,
+            int nextAccShortFinancingFee
+        )
+    {
         (nextAccLongFinancingFee, nextAccShortFinancingFee) = (
             feeInfos[_token].accLongFinancingFee,
             feeInfos[_token].accShortFinancingFee
         );
-        if (feeInfos[_token].updateTime >= int(block.timestamp)) {
-            return (nextAccLongFinancingFee, nextAccShortFinancingFee);
-        }
         int rate = _nextFinancingFeeRate(_token);
         if (rate > 0) {
             int timeElapsed = (int(block.timestamp) - feeInfos[_token].updateTime).max(0).divideDecimal(1 days);
             int feeDelta = rate.multiplyDecimal(timeElapsed).multiplyDecimal(_price);
             (int longSize, int shortSize) = (-lpPositions[_token].shortSize, -lpPositions[_token].longSize);
             if (longSize > -shortSize) {
+                nextLongFinancingRate = rate;
                 nextAccLongFinancingFee += feeDelta;
             } else {
+                nextShortFinancingRate = rate;
                 nextAccShortFinancingFee += feeDelta;
             }
         }
@@ -529,7 +543,12 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     function updateFee(address _token, int _price) external onlyMarket {
         // get latest funding rate and accumulate funding delta
         (int nextFundingRate, int nextAccFundingFee) = nextAccFunding(_token, _price);
-        (int nextAccLongFinancingFee, int nextAccShortFinancingFee) = nextAccFinancingFee(_token, _price);
+        (
+            int nextLongFinancingRate,
+            int nextShortFinancingRate,
+            int nextAccLongFinancingFee,
+            int nextAccShortFinancingFee
+        ) = nextAccFinancingFee(_token, _price);
 
         feeInfos[_token] = FeeInfo(
             nextAccFundingFee,
@@ -539,6 +558,14 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             int(block.timestamp)
         );
 
-        emit FeeInfoUpdated(_token, nextFundingRate, nextAccLongFinancingFee, nextAccShortFinancingFee);
+        emit FeeInfoUpdated(
+            _token,
+            nextFundingRate,
+            nextLongFinancingRate,
+            nextShortFinancingRate,
+            nextAccFundingFee,
+            nextAccLongFinancingFee,
+            nextAccShortFinancingFee
+        );
     }
 }
