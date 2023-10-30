@@ -28,6 +28,7 @@ import "./src/tasks/timelock";
 import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
 import "./src/tasks/settings";
+import "./src/tasks/collateral";
 
 const config: HardhatUserConfig = {
     paths: {
@@ -53,6 +54,7 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             allowUnlimitedContractSize: true,
+            allowBlocksWithSameTimestamp: true,
             blockGasLimit: 100000000,
             gas: 100000000,
         },
@@ -60,6 +62,10 @@ const config: HardhatUserConfig = {
             ...userConfig,
             //url: "https://endpoints.omniatech.io/v1/arbitrum/goerli/public",
             url: "https://goerli-rollup.arbitrum.io/rpc",
+        },
+        ScrollSepolia: {
+            ...userConfig,
+            url: "https://sepolia-rpc.scroll.io",
         },
     },
     namedAccounts: {

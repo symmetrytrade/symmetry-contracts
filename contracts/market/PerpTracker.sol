@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
@@ -16,6 +17,7 @@ import "../interfaces/IPriceOracle.sol";
 import "./MarketSettingsContext.sol";
 
 contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using SignedSafeDecimalMath for int;
     using SafeCast for uint;
     using SafeCast for int;
@@ -26,8 +28,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     // states
     address public market;
     address public settings;
-    address[] public marketTokensList; // market tokens
-    mapping(address => bool) public marketTokensListed;
+    EnumerableSet.AddressSet private marketTokens; // market tokens
 
     mapping(address => LpPosition) public lpPositions; // lp global positions
     mapping(address => mapping(address => Position)) private userPositions; // positions of single user, user => token => position mapping
@@ -53,23 +54,17 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     /* === Token Management === */
 
-    function setMarketToken(address _token) external onlyOwner {
-        if (!marketTokensListed[_token]) {
-            marketTokensListed[_token] = true;
-            marketTokensList.push(_token);
+    function addMarketToken(address _token) external onlyOwner {
+        if (marketTokens.add(_token)) {
             emit NewMarket(_token);
         }
         if (feeInfos[_token].updateTime == 0) feeInfos[_token].updateTime = int(block.timestamp);
     }
 
-    function removeToken(uint _tokenIndex) external onlyOwner {
-        uint len = marketTokensList.length;
-        require(len > _tokenIndex, "PerpTracker: token index out of bound");
-        address token = marketTokensList[_tokenIndex];
-        delete marketTokensListed[token];
-        marketTokensList[_tokenIndex] = marketTokensList[len - 1];
-        marketTokensList.pop();
-        emit RemoveMarket(token);
+    function removeMarketToken(address _token) external onlyOwner {
+        if (marketTokens.remove(_token)) {
+            emit RemoveMarket(_token);
+        }
     }
 
     /*=== view functions === */
@@ -95,7 +90,19 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     }
 
     function marketTokensLength() external view returns (uint) {
-        return marketTokensList.length;
+        return marketTokens.length();
+    }
+
+    function marketTokensList(uint _idx) external view returns (address) {
+        return marketTokens.at(_idx);
+    }
+
+    function marketTokensListed(address _token) external view returns (bool) {
+        return marketTokens.contains(_token);
+    }
+
+    function getMarketTokens() external view returns (address[] memory) {
+        return marketTokens.values();
     }
 
     function getPosition(address _account, address _token) external view returns (Position memory) {
@@ -110,8 +117,83 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         return uint(feeInfos[_token].updateTime);
     }
 
-    function getMarketTokens() external view returns (address[] memory) {
-        return marketTokensList;
+    function lpStatus() external view returns (int pnl, int netOpenInterest, int netSkew) {
+        IPriceOracle oracle_ = IPriceOracle(IMarket(market).priceOracle());
+        address[] memory tokens = marketTokens.values();
+        for (uint i = 0; i < tokens.length; ++i) {
+            LpPosition memory position = lpPositions[tokens[i]];
+            if (position.longSize == 0 && position.shortSize == 0) continue;
+            int size = position.longSize + position.shortSize;
+            int price = oracle_.getPrice(tokens[i]);
+            // open interest, note here position is lp position(counter party of user)
+            netOpenInterest += position.shortSize.abs().max(position.longSize).multiplyDecimal(price);
+            // skew
+            netSkew += (position.shortSize + position.longSize).abs().multiplyDecimal(price);
+            // pnl and fee that realized but not settled yet
+            pnl += position.unsettled;
+            // pnl
+            pnl += (price - position.avgPrice).multiplyDecimal(size);
+            // funding fee
+            {
+                (, int nextAccFundingFee) = nextAccFunding(tokens[i], price);
+                pnl -= size.multiplyDecimal(nextAccFundingFee - position.accFunding);
+            }
+            // financing fee
+            {
+                (, , int nextAccLongFinancingFee, int nextAccShortFinancingFee) = nextAccFinancingFee(tokens[i], price);
+                pnl += (nextAccLongFinancingFee - position.accLongFinancingFee).multiplyDecimal(
+                    position.shortSize.abs()
+                );
+                pnl += (nextAccShortFinancingFee - position.accShortFinancingFee).multiplyDecimal(position.longSize);
+            }
+        }
+    }
+
+    function accountStatus(address _account) external view returns (int mtm, int pnl, int positionNotional) {
+        IPriceOracle oracle_ = IPriceOracle(IMarket(market).priceOracle());
+        address[] memory tokens = marketTokens.values();
+        int mtmRatio;
+        int feeRatio;
+        int minFee;
+        {
+            IMarketSettings settings_ = IMarketSettings(settings);
+            mtmRatio = settings_.getIntVals(MAINTENANCE_MARGIN_RATIO);
+            feeRatio = settings_.getIntVals(LIQUIDATION_FEE_RATIO);
+            minFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
+            mtm = settings_.getIntVals(MIN_MAINTENANCE_MARGIN);
+        }
+        for (uint i = 0; i < tokens.length; ++i) {
+            Position memory position = userPositions[_account][tokens[i]];
+            if (position.size == 0) continue;
+
+            int price = oracle_.getPrice(tokens[i]);
+            // update notional value & mtm
+            {
+                int notional = position.size.abs().multiplyDecimal(price);
+                positionNotional += notional;
+                mtm += notional.multiplyDecimal(mtmRatio - feeRatio) + notional.multiplyDecimal(feeRatio).max(minFee);
+            }
+            // update pnl by price
+            pnl += position.size.multiplyDecimal(price - position.avgPrice);
+            {
+                // update pnl by funding fee
+                (, int nextAccFundingFee) = nextAccFunding(tokens[i], price);
+                pnl -= position.size.multiplyDecimal(nextAccFundingFee - position.accFunding);
+            }
+            // update pnl by financing fee
+            {
+                (, , int nextAccLongFinancingFee, int nextAccShortFinancingFee) = nextAccFinancingFee(tokens[i], price);
+                pnl -= position.size.abs().multiplyDecimal(
+                    position.size > 0
+                        ? nextAccLongFinancingFee - position.accFinancingFee
+                        : nextAccShortFinancingFee - position.accFinancingFee
+                );
+            }
+        }
+        // set maintenance margin to zero if there is no position
+        if (positionNotional == 0) {
+            mtm = 0;
+        }
     }
 
     /*=== update functions ===*/
@@ -139,7 +221,13 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         );
     }
 
-    function _updateLpPosition(address _token, int _longSizeDelta, int _shortSizeDelta, int _avgPrice) internal {
+    function _updateLpPosition(
+        address _token,
+        int _longSizeDelta,
+        int _shortSizeDelta,
+        int _avgPrice,
+        int _unsettled
+    ) internal {
         LpPosition storage position = lpPositions[_token];
         if (_longSizeDelta != 0) {
             position.longSize += _longSizeDelta;
@@ -151,6 +239,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         position.accFunding = feeInfos[_token].accFunding;
         position.accLongFinancingFee = feeInfos[_token].accLongFinancingFee;
         position.accShortFinancingFee = feeInfos[_token].accShortFinancingFee;
+        position.unsettled += _unsettled;
     }
 
     function updateTokenInfo(address _token, TokenInfo memory _tokenInfo) external onlyMarket {
@@ -160,7 +249,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     }
 
     /*=== perp ===*/
-    function marketKey(address _token) public pure returns (bytes32) {
+    function domainKey(address _token) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_token, PERP_DOMAIN));
     }
 
@@ -244,7 +333,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
         int lambda = settings_.getIntVals(MAX_SLIPPAGE);
         int skew = currentSkew(_token);
-        int kLP = settings_.getIntValsByMarket(marketKey(_token), PROPORTION_RATIO);
+        int kLP = settings_.getIntValsByDomain(domainKey(_token), PROPORTION_RATIO);
         kLP = (kLP * _lpNetValue) / _oraclePrice;
 
         return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
@@ -273,29 +362,14 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         financingFee = -financingFee;
     }
 
-    function computeTrade(
-        int _size,
-        int _avgPrice,
-        int _sizeDelta,
-        int _price
-    ) public pure returns (int nextPrice, int pnl) {
-        int nextSize = _size + _sizeDelta;
-        if ((_sizeDelta > 0 && _size >= 0) || (_sizeDelta < 0 && _size <= 0)) {
-            // increase position
-            nextPrice = (_size * _avgPrice + _sizeDelta * _price) / nextSize;
-        } else {
-            // decrease position
-            // here _size must be non-zero
-            if ((nextSize > 0 && _size > 0) || (nextSize < 0 && _size < 0)) {
-                // position direction is not changed
-                pnl = (-_sizeDelta).multiplyDecimal(_price - _avgPrice);
-                nextPrice = _avgPrice;
-            } else {
-                // position direction changed
-                pnl = _size.multiplyDecimal(_price - _avgPrice);
-                nextPrice = _price;
-            }
-        }
+    /**
+     * @dev compute pnl of a position settlement
+     *      pnl = position.size * (afterAvgPrice - prevAvgPrice) + sizeDelta * (afterAvgPrice - execPrice)
+     *      Here we always have afterAvgPrice == execPrice, so
+     *      pnl = position.size * (execPrice - prevAvgPrice)
+     */
+    function _computePnl(int _size, int _avgPrice, int _execPrice) internal pure returns (int pnl) {
+        pnl = _size.multiplyDecimal(_execPrice - _avgPrice);
     }
 
     function _computeFunding(address _account, address _token) internal view returns (int) {
@@ -328,10 +402,10 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         // user position
         Position memory position = userPositions[_account][_token];
 
-        (int nextPrice, int pnl) = computeTrade(position.size, position.avgPrice, _sizeDelta, _execPrice);
+        int pnl = _computePnl(position.size, position.avgPrice, _execPrice);
         marginDelta += pnl;
 
-        _updatePosition(_account, _token, _sizeDelta, nextPrice);
+        _updatePosition(_account, _token, _sizeDelta, _execPrice);
 
         oldSize = position.size;
         newSize = oldSize + _sizeDelta;
@@ -340,29 +414,24 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     /**
      * @notice settle trade for lp, update lp position info
      * @param _token token
-     * @param _sizeDelta trade volume
      * @param _execPrice execution price
      * @param _oldSize user old position size
      * @param _newSize user position size after trade
+     * @param _settled settled fee and pnl in the trade
      */
     function settleTradeForLp(
         address _token,
-        int _sizeDelta,
         int _execPrice,
         int _oldSize,
-        int _newSize
-    ) external onlyMarket returns (int lpDelta) {
-        lpDelta = -(_computeLpFunding(_token) + _computeLpFinancingFee(_token));
+        int _newSize,
+        int _settled
+    ) external onlyMarket {
+        int newRealized = -(_computeLpFunding(_token) + _computeLpFinancingFee(_token));
         // user position
         LpPosition memory position = lpPositions[_token];
 
-        (int nextPrice, int pnl) = computeTrade(
-            position.longSize + position.shortSize,
-            position.avgPrice,
-            _sizeDelta,
-            _execPrice
-        );
-        lpDelta += pnl;
+        int pnl = _computePnl(position.longSize + position.shortSize, position.avgPrice, _execPrice);
+        newRealized += pnl;
 
         int longSizeDelta = 0;
         int shortSizeDelta = 0;
@@ -376,9 +445,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         } else {
             longSizeDelta -= _newSize;
         }
-
-        _updateLpPosition(_token, longSizeDelta, shortSizeDelta, nextPrice);
-        return lpDelta;
+        _updateLpPosition(_token, longSizeDelta, shortSizeDelta, _execPrice, newRealized - _settled);
     }
 
     /*=== funding & financing fees ===*/
@@ -398,7 +465,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         int numerator = tokenInfos[_token].skew;
         if (numerator == 0) return 0;
         int lp = tokenInfos[_token].lpNetValue;
-        int denominator = settings_.getIntValsByMarket(marketKey(_token), PROPORTION_RATIO).multiplyDecimal(lp);
+        int denominator = settings_.getIntValsByDomain(domainKey(_token), PROPORTION_RATIO).multiplyDecimal(lp);
         // max velocity
         int maxVelocity = settings_.getIntVals(MAX_FUNDING_VELOCITY);
         if (denominator > 0) {
@@ -480,8 +547,8 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
      */
     function lpLimitForToken(int _lp, address _token) public view returns (int) {
         int threshold = IMarketSettings(settings).getIntVals(TOKEN_OI_LIMIT_RATIO);
-        int pr = IMarketSettings(settings).getIntValsByMarket(marketKey(_token), PROPORTION_RATIO);
-        int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(_token, false);
+        int pr = IMarketSettings(settings).getIntValsByDomain(domainKey(_token), PROPORTION_RATIO);
+        int oraclePrice = IPriceOracle(IMarket(market).priceOracle()).getPrice(_token);
         return (_lp.multiplyDecimal(threshold) * pr) / oraclePrice;
     }
 
@@ -496,7 +563,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
             int numerator = (oi - softLimit).multiplyDecimal(tokenInfos[_token].skew.abs());
             if (numerator == 0) return 0;
 
-            int denominator = settings_.getIntValsByMarket(marketKey(_token), PROPORTION_RATIO);
+            int denominator = settings_.getIntValsByDomain(domainKey(_token), PROPORTION_RATIO);
             denominator = denominator.multiplyDecimal(lp).multiplyDecimal(lpHardLimit(lp));
 
             int maxFeeRate = settings_.getIntVals(MAX_FINANCING_FEE_RATE);

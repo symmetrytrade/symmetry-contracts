@@ -27,7 +27,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
     address public market;
     address public lpToken;
 
-    event AddLiquidity(address account, uint amount, int lpNetValue, uint mintAmount);
+    event AddLiquidity(address account, uint amount, int lpNetValue, uint usdAmount, uint mintAmount);
 
     event RemoveLiquidity(
         address account,
@@ -57,15 +57,15 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         return _removeLiquidity(msg.sender, _amount, _minOut, _receiver);
     }
 
-    function getLpOut(uint _amount) public view returns (int lpNetValue, uint mintAmount) {
+    function getLpOut(uint _amount) public view returns (int lpNetValue, uint usdAmount, uint mintAmount) {
         IMarket market_ = IMarket(market);
 
-        uint usdAmount = market_.tokenToUsd(market_.baseToken(), _amount.toInt256(), false).toUint256();
+        usdAmount = market_.baseTokenToUsd(_amount.toInt256(), false).toUint256();
 
         uint lpSupply = LPToken(lpToken).totalSupply();
         mintAmount = usdAmount;
         if (lpSupply > 0) {
-            (lpNetValue, ) = market_.globalStatus();
+            (lpNetValue, , ) = market_.globalStatus();
             if (lpNetValue > 0) mintAmount = (lpSupply * usdAmount) / uint(lpNetValue);
         }
     }
@@ -77,7 +77,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         address _receiver,
         bool _stake
     ) internal returns (uint) {
-        (int lpNetValue, uint mintAmount) = getLpOut(_amount);
+        (int lpNetValue, uint usdAmount, uint mintAmount) = getLpOut(_amount);
 
         require(mintAmount >= _minLp, "LiquidityManager: insufficient lp amount");
         // transfer funds
@@ -88,14 +88,14 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
             LPToken(lpToken).mint(_receiver, mintAmount);
         }
 
-        emit AddLiquidity(_receiver, _amount, lpNetValue, mintAmount);
+        emit AddLiquidity(_receiver, _amount, lpNetValue, usdAmount, mintAmount);
         return mintAmount;
     }
 
     function _removeLiquidity(address _account, uint _amount, uint _minOut, address _receiver) internal returns (uint) {
         IMarket market_ = IMarket(market);
         // check lp token price and free lp value
-        (int lpNetValue, int netOpenInterest) = market_.globalStatus();
+        (int lpNetValue, int netOpenInterest, ) = market_.globalStatus();
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
         int redeemValue = (lpNetValue * _amount.toInt256()) / lpToken_.totalSupply().toInt256(); // must be non-negative
@@ -110,11 +110,11 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
             // TODO: where the fee goes?
         }
         require(redeemValue > redeemFee, "LiquidityManager: non-positive redeem value");
-        require(lpNetValue - netOpenInterest >= redeemValue - redeemFee, "LiquidityManager: insufficient free lp");
+        require(lpNetValue - netOpenInterest >= redeemValue, "LiquidityManager: insufficient free lp");
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
-        uint amountOut = market_.usdToToken(market_.baseToken(), redeemValue - redeemFee, false).toUint256();
+        uint amountOut = market_.usdToBaseToken(redeemValue - redeemFee, true).toUint256();
         require(amountOut >= _minOut, "LiquidityManager: insufficient amountOut");
         market_.transferLiquidityOut(_receiver, amountOut);
 

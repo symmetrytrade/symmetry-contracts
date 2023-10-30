@@ -18,6 +18,7 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
     using SafeCast for int;
     using SafeCast for uint;
     using SafeDecimalMath for uint;
+    using SignedSafeDecimalMath for int;
 
     uint public constant PRICE_PRECISION = 18;
 
@@ -83,17 +84,17 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
     /// @notice get latest price from chainlink
     /// @param _token token address
     /// @return round id, updatedAt, normalized price
-    function getLatestChainlinkPrice(address _token) public view returns (uint80, uint, uint) {
+    function getLatestChainlinkPrice(address _token) public view returns (uint80, uint, int) {
         _checkSequencer();
         AggregatorV2V3Interface aggregator = AggregatorV2V3Interface(aggregators[_token]);
         (uint80 roundID, int price, , uint updatedAt, ) = aggregator.latestRoundData();
         require(price > 0, "PriceOracle: invalid Chainlink price");
-        uint normalizedPrice = uint(price);
+        int normalizedPrice = price;
         uint8 decimals = aggregator.decimals();
         if (decimals > PRICE_PRECISION) {
-            normalizedPrice = normalizedPrice / (10 ** (decimals - PRICE_PRECISION));
+            normalizedPrice = normalizedPrice / (10 ** (decimals - PRICE_PRECISION)).toInt256();
         } else if (decimals < PRICE_PRECISION) {
-            normalizedPrice = normalizedPrice * (10 ** (PRICE_PRECISION - decimals));
+            normalizedPrice = normalizedPrice * (10 ** (PRICE_PRECISION - decimals)).toInt256();
         }
         return (roundID, updatedAt, normalizedPrice);
     }
@@ -101,7 +102,7 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
     /**
      * @dev get pyth price updated within a time range
      * @param _token token to query
-     * @return success, price publish time, normalized price
+     * @return price publish time, normalized price
      */
     function getPythPrice(address _token) public view returns (uint, int) {
         bytes32 assetId = assetIds[_token];
@@ -109,10 +110,11 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
         PythStructs.Price memory price = IPyth(pythOracle).getPriceUnsafe(assetId);
         require(price.price > 0, "PriceOracle: invalid Pyth price");
         int normalizedPrice = int(price.price);
-        if (price.expo < -int(PRICE_PRECISION))
+        if (price.expo < -int(PRICE_PRECISION)) {
             normalizedPrice = normalizedPrice / int(10 ** uint(-price.expo - int(PRICE_PRECISION)));
-        else if (price.expo > -int(PRICE_PRECISION))
+        } else if (price.expo > -int(PRICE_PRECISION)) {
             normalizedPrice = normalizedPrice * int(10 ** uint(int(PRICE_PRECISION) + price.expo));
+        }
         return (price.publishTime, normalizedPrice);
     }
 
@@ -130,28 +132,40 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
         pythOracle_.updatePriceFeeds{value: fee}(_priceUpdateData);
     }
 
-    /// @notice get token's normalized usd price
-    /// @param _token token address
-    /// @param _mustUsePyth use price from pyth or not
-    function getPrice(address _token, bool _mustUsePyth) public view returns (int) {
+    function _getPrice(address _token, bool _mustUsePyth) internal view returns (uint, int) {
         IMarketSettings settings_ = IMarketSettings(settings);
 
-        (, uint updatedAt, uint chainlinkPrice) = getLatestChainlinkPrice(_token);
+        (, uint updatedAt, int chainlinkPrice) = getLatestChainlinkPrice(_token);
         (uint publishTime, int pythPrice) = getPythPrice(_token);
         require(
             !_mustUsePyth || publishTime + settings_.getIntVals(PYTH_MAX_AGE).toUint256() > block.timestamp,
             "PriceOracle: pyth price too stale"
         );
         if (publishTime > updatedAt) {
-            uint divergence = chainlinkPrice > pythPrice.toUint256()
-                ? chainlinkPrice.divideDecimal(pythPrice.toUint256())
-                : pythPrice.toUint256().divideDecimal(chainlinkPrice);
+            int divergence = chainlinkPrice > pythPrice
+                ? chainlinkPrice.divideDecimal(pythPrice)
+                : pythPrice.divideDecimal(chainlinkPrice);
             require(
-                divergence < settings_.getIntVals(MAX_PRICE_DIVERGENCE).toUint256(),
+                divergence < settings_.getIntVals(MAX_PRICE_DIVERGENCE),
                 "PriceOracle: oracle price divergence too large"
             );
-            return pythPrice;
+            return (publishTime, pythPrice);
         }
-        return chainlinkPrice.toInt256();
+        return (updatedAt, chainlinkPrice);
+    }
+
+    /// @notice get token's normalized usd price
+    /// @param _token token address
+    function getOffchainPrice(address _token, uint _ts) public view returns (int) {
+        (uint publishTime, int price) = _getPrice(_token, true);
+        uint minDelay = IMarketSettings(settings).getIntVals(MIN_ORDER_DELAY).toUint256();
+        require(publishTime > _ts + minDelay, "PriceOracle: offchain price too stale");
+        return price;
+    }
+
+    /// @notice get token's normalized usd price
+    /// @param _token token address
+    function getPrice(address _token) public view returns (int price) {
+        (, price) = _getPrice(_token, false);
     }
 }

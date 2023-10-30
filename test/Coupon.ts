@@ -1,11 +1,12 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, MINTER_ROLE, UNIT, getProxyContract, normalized } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     DAY,
     WEEK,
     getPythUpdateData,
     increaseNextBlockTimestamp,
+    setPythAutoRefresh,
     setupPrices,
     startOfDay,
     startOfWeek,
@@ -37,6 +38,7 @@ describe("Coupon", () => {
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let marketSettings_: ethers.Contract;
+    let marginTracker_: ethers.Contract;
     let volumeTracker_: ethers.Contract;
     let votingEscrow_: ethers.Contract;
     let coupon_: ethers.Contract;
@@ -56,6 +58,7 @@ describe("Coupon", () => {
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
         marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
+        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, deployer);
         liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
         positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
         feeTracker_ = await getProxyContract(hre, CONTRACTS.FeeTracker, account1);
@@ -65,18 +68,14 @@ describe("Coupon", () => {
         sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
         config = getConfig(hre.network.name);
 
-        await (
-            await USDC_.transfer(await account1.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
-        ).wait();
-        await (
-            await USDC_.transfer(await account2.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
-        ).wait();
+        await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
+        await (await USDC_.transfer(await account2.getAddress(), usdcOf(100000000))).wait();
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
-        const amount = hre.ethers.BigNumber.from(1000000).mul(UNIT); // 1M
-        const minLp = hre.ethers.BigNumber.from(100000).mul(UNIT);
+        const amount = usdcOf(1000000); // 1M
+        const minLp = normalized(100000);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
@@ -113,6 +112,10 @@ describe("Coupon", () => {
                 normalized(0.001)
             )
         ).wait();
+        // set debt interest rate to 0%
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minInterestRate"), 0)).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxInterestRate"), 0)).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("vertexInterestRate"), 0)).wait();
         // allocate sym
         const maxTime = config.otherConfig.lockMaxTime;
         await (await sym_.grantRole(MINTER_ROLE, await deployer.getAddress())).wait();
@@ -124,16 +127,15 @@ describe("Coupon", () => {
         await (await votingEscrow_.connect(account2).createLock(normalized(998), 0, maxTime, true)).wait();
 
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + maxTime));
+
+        await setPythAutoRefresh(hre);
     });
 
     it("trade with tiered trading fee discount", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
         await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(10000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
+            await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.constants.HashZero)
         ).wait();
 
         // open eth long, 50000 notional
@@ -142,7 +144,7 @@ describe("Coupon", () => {
                 WETH,
                 normalized(50),
                 normalized(1001),
-                normalized(1),
+                usdcOf(1),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -159,7 +161,8 @@ describe("Coupon", () => {
                 normalized(50),
                 normalized(1000.95),
                 normalized(47.5),
-                normalized(0)
+                normalized(0),
+                orderId
             );
         let curDay = startOfDay(await helpers.time.latest());
         const curWeek = startOfWeek(await helpers.time.latest());
@@ -168,8 +171,8 @@ describe("Coupon", () => {
         expect(status.currentMargin).to.deep.eq(normalized(10000 - 47.5 - 1));
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 42.75));
-        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.deep.eq(normalized(4.75));
-        expect(await USDC_.balanceOf(feeTracker_.address)).to.deep.eq(normalized(4.75));
+        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.deep.eq(usdcOf(4.75));
+        expect(await marginTracker_.userCollaterals(feeTracker_.address, USDC_.address)).to.deep.eq(usdcOf(4.75));
         // check volume
         expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.deep.eq(
             normalized(50047.5)
@@ -193,7 +196,7 @@ describe("Coupon", () => {
                 WETH,
                 normalized(50),
                 normalized(1001),
-                normalized(1),
+                usdcOf(1),
                 (await helpers.time.latest()) + DAY + 100,
                 false,
             ])
@@ -210,7 +213,8 @@ describe("Coupon", () => {
                 normalized(50),
                 normalized(1000.95),
                 normalized(47.5),
-                normalized(0)
+                normalized(0),
+                orderId
             );
         // check volume
         curDay += DAY;
@@ -235,29 +239,28 @@ describe("Coupon", () => {
         expect(status.currentMargin).to.deep.eq(normalized(10000 - 95 - 2));
     });
     it("claim weekly trading coupon & veSYM incentive", async () => {
-        await expect(feeTracker_.claimIncentives([await helpers.time.latest()])).to.be.revertedWith(
-            "FeeTracker: invalid date"
-        );
-        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon(await helpers.time.latest())).to.be.revertedWith(
+        await increaseNextBlockTimestamp(WEEK);
+        const weekCursor = startOfWeek(await helpers.time.latest()) + WEEK;
+        await expect(feeTracker_.claimIncentives(await account1.getAddress()))
+            .to.emit(feeTracker_, "Claimed")
+            .withArgs(await account1.getAddress(), weekCursor, "18999");
+        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([await helpers.time.latest()])).to.be.revertedWith(
             "VolumeTracker: invalid date"
         );
 
-        await increaseNextBlockTimestamp(WEEK);
-        await expect(feeTracker_.claimIncentives([await helpers.time.latest()]))
-            .to.emit(USDC_, "Transfer")
-            .withArgs(feeTracker_.address, await account1.getAddress(), "18999999999543421");
-        expect(
-            await feeTracker_.claimed(await account1.getAddress(), startOfWeek((await helpers.time.latest()) - WEEK))
-        ).to.deep.eq(true);
+        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(0);
 
-        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon((await helpers.time.latest()) - WEEK))
+        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([(await helpers.time.latest()) - WEEK]))
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
     });
     it("apply coupon", async () => {
         expect(await coupon_.ownerOf(0)).to.deep.eq(await account1.getAddress());
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(0);
-        await (await coupon_.connect(account1).applyCoupon(0)).wait();
+
+        //console.log(await coupon_.tokenURI(0));
+
+        await (await coupon_.connect(account1).applyCoupons([0])).wait();
         await expect(coupon_.ownerOf(0)).to.be.revertedWith("ERC721: invalid token ID");
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(1));
     });
@@ -268,7 +271,7 @@ describe("Coupon", () => {
                 WETH,
                 normalized(1),
                 normalized(1010),
-                normalized(1),
+                usdcOf(1),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -285,7 +288,8 @@ describe("Coupon", () => {
                 normalized(1),
                 normalized(1000),
                 normalized(0.95),
-                normalized(0.95)
+                normalized(0.95),
+                orderId
             );
 
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(0.05));
@@ -296,7 +300,7 @@ describe("Coupon", () => {
                 WETH,
                 normalized(-1),
                 normalized(999),
-                normalized(1),
+                usdcOf(1),
                 (await helpers.time.latest()) + 100,
                 true,
             ])
@@ -313,7 +317,8 @@ describe("Coupon", () => {
                 normalized(-1),
                 normalized(999.1),
                 normalized(0.95),
-                normalized(0.05)
+                normalized(0.05),
+                orderId
             );
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(0);
     });
@@ -338,20 +343,12 @@ describe("Coupon", () => {
                 normalized(91800),
                 normalized(321.3),
                 normalized(826.2),
-                normalized(0),
                 1
             )
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(
-                await account1.getAddress(),
-                normalized(91800),
-                normalized(321.3),
-                normalized(321.3),
-                normalized(0),
-                normalized(0)
-            )
+            .withArgs(await account1.getAddress(), normalized(91800), normalized(321.3), usdcOf(321.3))
             .to.emit(positionManager_, "LiquidationPenalty")
-            .withArgs(await account1.getAddress(), normalized(91800), normalized(826.2), normalized(826.2))
+            .withArgs(await account1.getAddress(), normalized(91800), normalized(826.2), usdcOf(826.2))
             .to.emit(coupon_, "PreMint")
             .withArgs(1, await account1.getAddress(), normalized(91), evmTime + WEEK);
         await (await coupon_.connect(account1).mintAndApply(1)).wait();

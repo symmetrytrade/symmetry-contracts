@@ -12,9 +12,9 @@ task("upgrade", "upgrade contract")
         const { deployer } = await getNamedAccounts();
         const { deploy } = deployments;
         const beacon = await hre.ethers.getContract(`${taskArgs.name}Beacon`, deployer);
-        //const newImpl = await hre.ethers.getContractFactory(taskArgs.artifact);
 
         /*
+        const newImpl = await hre.ethers.getContractFactory(taskArgs.artifact);
         await hre.upgrades.validateUpgrade(beacon.address, newImpl, {
             unsafeAllow: ["constructor"],
         });
@@ -35,4 +35,15 @@ task("upgrade", "upgrade contract")
             console.log("data:");
             console.log(beacon.interface.encodeFunctionData("upgradeTo", [result.address]));
         }
+    });
+
+task("upgrade:validate", "validate upgrade")
+    .addParam("old", "name of the old contract", undefined, types.string, false)
+    .addParam("new", "name of the new contract", undefined, types.string, false)
+    .setAction(async (taskArgs, hre) => {
+        const oldImpl = await hre.ethers.getContractFactory(taskArgs.old);
+        const newImpl = await hre.ethers.getContractFactory(taskArgs.new);
+        await hre.upgrades.validateUpgrade(oldImpl, newImpl, {
+            unsafeAllow: ["constructor"],
+        });
     });

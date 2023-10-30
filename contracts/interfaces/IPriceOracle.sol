@@ -6,9 +6,11 @@ interface IPriceOracle {
 
     function assetIds(address) external view returns (bytes32);
 
-    function getLatestChainlinkPrice(address _token) external view returns (uint80, uint, uint);
+    function getLatestChainlinkPrice(address _token) external view returns (uint80, uint, int);
 
-    function getPrice(address _token, bool _mustUsePyth) external view returns (int);
+    function getOffchainPrice(address _token, uint _ts) external view returns (int);
+
+    function getPrice(address _token) external view returns (int price);
 
     function getPythPrice(address _token) external view returns (uint, int);
 

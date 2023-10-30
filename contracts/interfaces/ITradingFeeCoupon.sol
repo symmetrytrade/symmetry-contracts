@@ -32,7 +32,7 @@ interface ITradingFeeCoupon {
 
     function preMint(address _to, uint _value, uint _expire) external returns (uint id);
 
-    function applyCoupon(uint _id) external;
+    function applyCoupons(uint[] memory _ids) external;
 
     function spend(address _account, uint _amount) external;
 

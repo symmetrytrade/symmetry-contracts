@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, getProxyContract, perpMarketKey } from "../src/utils/utils";
+import { CONTRACTS, getProxyContract, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
 import { NetworkConfigs, getConfig } from "../src/config";
 
@@ -24,12 +24,12 @@ describe("MarketSettings", () => {
         }
     });
 
-    it("getIntValsByMarket", async () => {
+    it("getIntValsByDomain", async () => {
         for (const [market, conf] of Object.entries(config.marketConfig)) {
             const token = (await hre.ethers.getContract(market)).address;
             for (const [k, v] of Object.entries(conf)) {
-                const value = await marketSettings_.getIntValsByMarket(
-                    perpMarketKey(token),
+                const value = await marketSettings_.getIntValsByDomain(
+                    perpDomainKey(token),
                     hre.ethers.utils.formatBytes32String(k)
                 );
                 expect(value).to.deep.eq(v);

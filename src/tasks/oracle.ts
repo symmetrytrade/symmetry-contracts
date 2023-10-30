@@ -12,10 +12,17 @@ task("oracle:price", "get price")
         const { deployer } = await getNamedAccounts();
 
         const oracle = await getProxyContract(hre, CONTRACTS.PriceOracle, deployer);
-
-        const price = new BigNumber((await oracle.getPrice(taskArgs.token, taskArgs.pyth)).toString())
-            .dividedBy(1e18)
-            .dp(2)
-            .toString(10);
+        let price;
+        if (taskArgs.pyth) {
+            price = new BigNumber((await oracle.getOffchainPrice(taskArgs.token, 0)).toString())
+                .dividedBy(1e18)
+                .dp(2)
+                .toString(10);
+        } else {
+            price = new BigNumber((await oracle.getPrice(taskArgs.token)).toString())
+                .dividedBy(1e18)
+                .dp(2)
+                .toString(10);
+        }
         console.log(`price: ${price}`);
     });

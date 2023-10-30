@@ -11,12 +11,29 @@ export const MINTER_ROLE = ethers.utils.id("MINTER_ROLE");
 export const SPENDER_ROLE = ethers.utils.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.utils.id("VESTING_ROLE");
 export const PERP_DOMAIN = ethers.utils.formatBytes32String("perpDomain");
+export const MARGIN_DOMAIN = ethers.utils.formatBytes32String("marginDomain");
 export const UNIT = "1000000000000000000";
 export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
+export function mul_D(x: ethers.BigNumber, y: ethers.BigNumber) {
+    return x.mul(y).div(UNIT);
+}
+
+export function div_D(x: ethers.BigNumber, y: ethers.BigNumber) {
+    return x.mul(UNIT).div(y);
+}
+
+export function diff_D(x: ethers.BigNumber, y: ethers.BigNumber) {
+    return x > y ? x.sub(y) : y.sub(x);
+}
+
 export function normalized(x: number) {
     return new BigNumber(x).multipliedBy(UNIT).toString(10);
+}
+
+export function usdcOf(x: number) {
+    return new BigNumber(x).multipliedBy(1e6).toString(10);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,14 +42,25 @@ export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
     return obj[key];
 }
 
-export function perpMarketKey(market: string) {
+export function perpDomainKey(market: string) {
     return ethers.utils.solidityKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
+}
+
+export function marginDomainKey(token: string) {
+    return ethers.utils.solidityKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
 }
 
 export function perpConfigKey(market: string, key: string) {
     return ethers.utils.solidityKeccak256(
         ["bytes32", "bytes32"],
-        [perpMarketKey(market), ethers.utils.formatBytes32String(key)]
+        [perpDomainKey(market), ethers.utils.formatBytes32String(key)]
+    );
+}
+
+export function marginConfigKey(token: string, key: string) {
+    return ethers.utils.solidityKeccak256(
+        ["bytes32", "bytes32"],
+        [marginDomainKey(token), ethers.utils.formatBytes32String(key)]
     );
 }
 
@@ -59,6 +87,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     PerpTracker: { name: "PerpTracker", contract: "PerpTracker" },
     FeeTracker: { name: "FeeTracker", contract: "FeeTracker" },
     VolumeTracker: { name: "VolumeTracker", contract: "VolumeTracker" },
+    MarginTracker: { name: "MarginTracker", contract: "MarginTracker" },
     VotingEscrow: { name: "VotingEscrow", contract: "VotingEscrow" },
     SYM: { name: "SYM", contract: "SYM" },
     TradingFeeCoupon: {
@@ -72,6 +101,8 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     },
     SYMRate: { name: "SYMRate", contract: "SYMRate" },
     Timelock: { name: "Timelock", contract: "Timelock" },
+    NFTDescriptor: { name: "NFTDescriptor", contract: "NFTDescriptor" },
+    DebtInterestRateModel: { name: "DebtInterestRateModel", contract: "DebtInterestRateModel" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
     WETH: { name: "WETH", contract: "FaucetToken" },

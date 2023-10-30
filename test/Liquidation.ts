@@ -1,7 +1,12 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized } from "../src/utils/utils";
-import { getPythUpdateData, increaseNextBlockTimestamp, setupPrices } from "../src/utils/test_utils";
+import { CONTRACTS, MAX_UINT256, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import {
+    getPythUpdateData,
+    increaseNextBlockTimestamp,
+    setPythAutoRefresh,
+    setupPrices,
+} from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
@@ -32,6 +37,7 @@ describe("Liquidation", () => {
     let positionManager_: ethers.Contract;
     let liquidityManager_: ethers.Contract;
     let marketSettings_: ethers.Contract;
+    let marginTracker_: ethers.Contract;
     let WETH: string;
     let WBTC: string;
     let USDC_: ethers.Contract;
@@ -54,14 +60,12 @@ describe("Liquidation", () => {
         marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
         liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
         positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
+        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, account1);
         config = getConfig(hre.network.name);
 
         for (let i = 1; i <= 4; ++i) {
             await (
-                await USDC_.transfer(
-                    await (await hre.ethers.getSigners())[i].getAddress(),
-                    hre.ethers.BigNumber.from(100000000).mul(UNIT)
-                )
+                await USDC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), usdcOf(100000000))
             ).wait();
             await (
                 await USDC_.connect((await hre.ethers.getSigners())[i]).approve(market_.address, MAX_UINT256)
@@ -70,8 +74,8 @@ describe("Liquidation", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        const amount = hre.ethers.BigNumber.from(1000000).mul(UNIT); // 1M
-        const minLp = hre.ethers.BigNumber.from(100000).mul(UNIT);
+        const amount = usdcOf(1000000); // 1M
+        const minLp = normalized(100000);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         // set fee and slippage to zero for convenience
@@ -83,22 +87,22 @@ describe("Liquidation", () => {
         await (
             await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minKeeperFee"), normalized(0))
         ).wait();
+        // set debt interest rate to 0%
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minInterestRate"), 0)).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxInterestRate"), 0)).wait();
+        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("vertexInterestRate"), 0)).wait();
         await (
             await marketSettings_.setIntVals(
                 hre.ethers.utils.formatBytes32String("maxPriceDivergence"),
                 normalized(1000)
             )
         ).wait();
+        await setPythAutoRefresh(hre);
     });
 
     it("liquidate and pay fee & penalty", async () => {
         // deposit margins
-        await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
 
         // open eth long, 10000 notional
         await (
@@ -106,7 +110,7 @@ describe("Liquidation", () => {
                 WETH,
                 normalized(10),
                 normalized(1000),
-                normalized(0),
+                usdcOf(0),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -123,7 +127,7 @@ describe("Liquidation", () => {
                 WBTC,
                 normalized(0.01),
                 normalized(10000),
-                normalized(0),
+                usdcOf(0),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -151,42 +155,29 @@ describe("Liquidation", () => {
                 normalized(9180),
                 normalized(32.13),
                 normalized(91.8),
-                normalized(0),
                 0
             )
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(
-                await account1.getAddress(),
-                normalized(9180),
-                normalized(32.13),
-                normalized(32.13),
-                normalized(0),
-                normalized(0)
-            )
+            .withArgs(await account1.getAddress(), normalized(9180), normalized(32.13), usdcOf(32.13))
             .to.emit(positionManager_, "LiquidationPenalty")
-            .withArgs(await account1.getAddress(), normalized(9180), normalized(91.8), normalized(91.8));
+            .withArgs(await account1.getAddress(), normalized(9180), normalized(91.8), usdcOf(91.8));
         const status = await market_.accountMarginStatus(await account1.getAddress());
         expect(status.currentMargin).to.deep.eq(normalized(56.07));
-        const userMargin = await market_.userMargin(await account1.getAddress());
-        expect(userMargin).to.deep.eq(normalized(56.07));
+        const userCollaterals = await marginTracker_.userCollaterals(await account1.getAddress(), USDC_.address);
+        expect(userCollaterals).to.deep.eq(usdcOf(56.07));
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 820));
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(normalized(91.8));
-        const liquidatorBalance = await USDC_.balanceOf(await liquidator.getAddress());
-        expect(liquidatorBalance).to.deep.eq(normalized(32.13));
+        expect(insurance).to.deep.eq(usdcOf(91.8));
+        const liquidatorBalance = await marginTracker_.userCollaterals(await liquidator.getAddress(), USDC_.address);
+        expect(liquidatorBalance).to.deep.eq(usdcOf(32.13));
         expect(await positionManager_.isLiquidatable(await account1.getAddress())).to.eq(false);
     });
-    it("liquidate and pay fee, insufficient to pay penalty", async () => {
+    it("liquidate and pay fee, insufficient to pay all penalty", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -195,7 +186,7 @@ describe("Liquidation", () => {
                 WETH,
                 normalized(10),
                 normalized(1000),
-                normalized(0),
+                usdcOf(0),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -224,45 +215,34 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(9100),
                 normalized(31.85),
-                normalized(68.15),
-                normalized(0),
+                normalized(91),
                 0
             )
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(
-                await account2.getAddress(),
-                normalized(9100),
-                normalized(31.85),
-                normalized(31.85),
-                normalized(0),
-                normalized(0)
-            )
+            .withArgs(await account2.getAddress(), normalized(9100), normalized(31.85), usdcOf(31.85))
             .to.emit(positionManager_, "LiquidationPenalty")
-            .withArgs(await account2.getAddress(), normalized(9100), normalized(68.15), normalized(68.15));
+            .withArgs(await account2.getAddress(), normalized(9100), normalized(91), usdcOf(91))
+            .to.emit(marginTracker_, "DeficitLoss")
+            .withArgs(await account2.getAddress(), usdcOf(22.85), usdcOf(22.85), 0);
         const status = await market_.accountMarginStatus(await account2.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await market_.userMargin(await account2.getAddress());
-        expect(userMargin).to.deep.eq(normalized(0));
+        expect(status.currentMargin).to.deep.eq(0);
+        const userCollaterals = await marginTracker_.userCollaterals(await account2.getAddress(), USDC_.address);
+        expect(userCollaterals).to.deep.eq(0);
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(
             normalized(1001720) // 1000000 + 820 + 900
         );
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(normalized(159.95)); // 91.8 + 68.15
-        const liquidatorBalance = await USDC_.balanceOf(await liquidator.getAddress());
-        expect(liquidatorBalance).to.deep.eq(normalized(63.98)); // 32.13 + 31.85
+        expect(insurance).to.deep.eq(usdcOf(159.95)); // 91.8 + 91 - 22.85
+        const liquidatorBalance = await marginTracker_.userCollaterals(await liquidator.getAddress(), USDC_.address);
+        expect(liquidatorBalance).to.deep.eq(usdcOf(63.98)); // 32.13 + 31.85
         expect(await positionManager_.isLiquidatable(await account2.getAddress())).to.eq(false);
     });
     it("liquidate but insufficient to pay fee and penalty", async () => {
         positionManager_ = positionManager_.connect(account3);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -271,7 +251,7 @@ describe("Liquidation", () => {
                 WETH,
                 normalized(10),
                 normalized(1000),
-                normalized(0),
+                usdcOf(0),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -300,43 +280,34 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(9010),
                 normalized(31.535),
-                normalized(0),
-                normalized(0),
+                normalized(90.1),
                 0
             )
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(
-                await account3.getAddress(),
-                normalized(9010),
-                normalized(31.535),
-                normalized(10),
-                normalized(21.535),
-                normalized(0)
-            );
+            .withArgs(await account3.getAddress(), normalized(9010), normalized(31.535), usdcOf(31.535))
+            .to.emit(positionManager_, "LiquidationPenalty")
+            .withArgs(await account3.getAddress(), normalized(9010), normalized(90.1), usdcOf(90.1))
+            .to.emit(marginTracker_, "DeficitLoss")
+            .withArgs(await account3.getAddress(), usdcOf(111.635), usdcOf(111.635), 0);
         const status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await market_.userMargin(await account3.getAddress());
-        expect(userMargin).to.deep.eq(normalized(0));
+        expect(status.currentMargin).to.deep.eq(0);
+        const userCollaterals = await marginTracker_.userCollaterals(await account3.getAddress(), USDC_.address);
+        expect(userCollaterals).to.deep.eq(0);
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(
             normalized(1002710) // 1000000 + 820 + 900 + 990
         );
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(normalized(138.415)); // 91.8 + 68.15 - 21.535
-        const liquidatorBalance = await USDC_.balanceOf(await liquidator.getAddress());
-        expect(liquidatorBalance).to.deep.eq(normalized(95.515)); // 32.13 + 31.85 + 31.535
+        expect(insurance).to.deep.eq(usdcOf(138.415)); // 91.8 + 91 - 22.85 + 90.1 - 111.635
+        const liquidatorBalance = await marginTracker_.userCollaterals(await liquidator.getAddress(), USDC_.address);
+        expect(liquidatorBalance).to.deep.eq(usdcOf(95.515)); // 32.13 + 31.85 + 31.535
         expect(await positionManager_.isLiquidatable(await account3.getAddress())).to.eq(false);
     });
     it("liquidate and generate deficit loss", async () => {
         positionManager_ = positionManager_.connect(account4);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(1000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -345,7 +316,7 @@ describe("Liquidation", () => {
                 WETH,
                 normalized(10),
                 normalized(1000),
-                normalized(0),
+                usdcOf(0),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -374,34 +345,28 @@ describe("Liquidation", () => {
                 normalized(10),
                 normalized(9000),
                 normalized(31.5),
-                normalized(0),
-                normalized(200),
+                normalized(90),
                 0
             )
-            .to.emit(positionManager_, "DeficitLoss")
-            .withArgs(await account4.getAddress(), normalized(200), normalized(138.415), normalized(111.585))
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(
-                await account4.getAddress(),
-                normalized(9000),
-                normalized(31.5),
-                normalized(0),
-                normalized(0),
-                normalized(39.375)
-            );
+            .withArgs(await account4.getAddress(), normalized(9000), normalized(31.5), usdcOf(39.375))
+            .to.emit(positionManager_, "LiquidationPenalty")
+            .withArgs(await account4.getAddress(), normalized(9000), normalized(90), usdcOf(112.5))
+            .to.emit(marginTracker_, "DeficitLoss")
+            .withArgs(await account4.getAddress(), usdcOf(401.875), usdcOf(250.915), usdcOf(150.96));
         const status = await market_.accountMarginStatus(await account4.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(0));
-        const userMargin = await market_.userMargin(await account4.getAddress());
-        expect(userMargin).to.deep.eq(normalized(0));
+        expect(status.currentMargin).to.deep.eq(0);
+        const userCollaterals = await marginTracker_.userCollaterals(await account4.getAddress(), USDC_.address);
+        expect(userCollaterals).to.deep.eq(0);
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(
-            normalized(803047.232) // (1000000 + 820 + 900 + 990) * 0.8 + 1000 - 89.268 - 31.5
+            normalized(803047.232) // (1000000 + 820 + 900 + 990) * 0.8 + 1000 - 150.96 * 0.8
         );
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(normalized(0));
-        const liquidatorBalance = await USDC_.balanceOf(await liquidator.getAddress());
-        expect(liquidatorBalance).to.deep.eq(normalized(134.89)); // 32.13 + 31.85 + 31.535 + 31.5 / 0.8
+        expect(insurance).to.deep.eq(0);
+        const liquidatorBalance = await marginTracker_.userCollaterals(await liquidator.getAddress(), USDC_.address);
+        expect(liquidatorBalance).to.deep.eq(usdcOf(134.89)); // 32.13 + 31.85 + 31.535 + 31.5 / 0.8
         expect(await positionManager_.isLiquidatable(await account4.getAddress())).to.eq(false);
     });
 });

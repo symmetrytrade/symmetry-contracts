@@ -7,6 +7,8 @@
 !.yarn/versions
 .env
 .DS_Store
+.openzeppelin
+.idea
 build
 node_modules
 deployments

@@ -28,6 +28,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // add spender role of coupon
     await (await coupon_.grantRole(SPENDER_ROLE, market_.address)).wait();
+
+    // set treasury
+    await (await market_.setTreasury(config.otherConfig.treasuryAddr)).wait();
 };
 
 deploy.tags = [CONTRACTS.Market.name, "prod"];
