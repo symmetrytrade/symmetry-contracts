@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, getProxyContract, normalized, perpMarketKey } from "../src/utils/utils";
+import { CONTRACTS, getProxyContract, normalized, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
 
 describe("PerpTracker", () => {
@@ -88,8 +88,8 @@ describe("PerpTracker", () => {
     });
 
     it("market key", async () => {
-        const marketKey = await perpTracker_.marketKey(WETH);
-        expect(marketKey).to.be.eq(perpMarketKey(WETH));
+        const domainKey = await perpTracker_.domainKey(WETH);
+        expect(domainKey).to.be.eq(perpDomainKey(WETH));
     });
 
     it("listed tokens", async () => {
@@ -100,51 +100,9 @@ describe("PerpTracker", () => {
     });
 
     it("remove tokens", async () => {
-        await expect(perpTracker_.removeToken(2)).to.be.revertedWith("PerpTracker: token index out of bound");
-
-        await (await perpTracker_.removeToken(0)).wait();
+        await (await perpTracker_.removeMarketToken(WBTC)).wait();
         const tokenLength = await perpTracker_.marketTokensLength();
         expect(tokenLength).to.deep.eq(1);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH);
-    });
-
-    it("compute trade", async () => {
-        let ans;
-
-        // case 1: increase long position
-        ans = await perpTracker_.computeTrade(normalized(2), normalized(1000), normalized(6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(1750));
-
-        // case 2: increase short position
-        ans = await perpTracker_.computeTrade(normalized(-2), normalized(1000), normalized(-6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(1750));
-
-        // case 3: increase long position from zero
-        ans = await perpTracker_.computeTrade(normalized(0), normalized(1000), normalized(6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(2000));
-
-        // case 4: increase short position from zero
-        ans = await perpTracker_.computeTrade(normalized(0), normalized(1000), normalized(-6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(2000));
-
-        // case 5: decrease long position
-        ans = await perpTracker_.computeTrade(normalized(10), normalized(1000), normalized(-6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(1000));
-
-        // case 5: decrease long position
-        ans = await perpTracker_.computeTrade(normalized(10), normalized(1000), normalized(-6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(1000));
-
-        // case 6: decrease short position
-        ans = await perpTracker_.computeTrade(normalized(-10), normalized(1000), normalized(6), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(1000));
-
-        // case 7: decrease long position, flip the position direction
-        ans = await perpTracker_.computeTrade(normalized(10), normalized(1000), normalized(-20), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(2000));
-
-        // case 8: decrease short position, flip the position direction
-        ans = await perpTracker_.computeTrade(normalized(-10), normalized(1000), normalized(20), normalized(2000));
-        expect(ans.nextPrice).to.deep.eq(normalized(2000));
     });
 });

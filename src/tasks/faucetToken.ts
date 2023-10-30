@@ -1,7 +1,6 @@
 import "hardhat-deploy";
 import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
-import { CONTRACTS } from "../utils/utils";
 
 task("faucet:deploy", "deploy faucet token")
     .addParam("name", "token name", undefined, types.string, false)
@@ -12,9 +11,9 @@ task("faucet:deploy", "deploy faucet token")
         const { deployer } = await getNamedAccounts();
         const { deploy } = deployments;
 
-        await deploy(taskArgs.name, {
+        await deploy(taskArgs.symbol, {
             from: deployer,
-            contract: CONTRACTS[taskArgs.name].contract,
+            contract: "FaucetToken",
             args: [taskArgs.name, taskArgs.symbol, taskArgs.decimals],
             log: true,
         });

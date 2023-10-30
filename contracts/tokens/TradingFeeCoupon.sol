@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/ITradingFeeCoupon.sol";
+import "../interfaces/INFTDescriptor.sol";
 
 contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable {
     // constants
@@ -12,17 +13,23 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
     // states
-    string private tokenBaseURI;
     uint public tokenCount;
     mapping(uint => uint) public couponValues;
     mapping(address => uint) public unspents;
     Mintable[] public mintables;
+    mapping(uint => uint) public tokenSalt;
+    address public descriptor;
 
-    constructor(string memory _name, string memory _symbol, string memory _tokenBaseURI) ERC721(_name, _symbol) {
-        tokenBaseURI = _tokenBaseURI;
+    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
         mintables.push(Mintable(address(0), 0, 0));
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    function setDescriptor(address _descriptor) external {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "TradingFeeCoupon: forbid");
+
+        descriptor = _descriptor;
     }
 
     function supportsInterface(
@@ -65,15 +72,19 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         _mintCoupon(_to, _value);
     }
 
-    function applyCoupon(uint _id) external {
-        _applyCoupon(msg.sender, _id);
+    function applyCoupons(uint[] memory _ids) external {
+        uint len = _ids.length;
+        for (uint i = 0; i < len; ++i) {
+            _applyCoupon(msg.sender, _ids[i]);
+        }
     }
 
     function _mintCoupon(address _to, uint _value) internal returns (uint id) {
         id = tokenCount;
         couponValues[id] = _value;
+        tokenSalt[id] = uint(keccak256(abi.encodePacked(blockhash(block.number - 1), id, _value)));
         _mint(_to, id);
-        ++tokenCount;
+        tokenCount = id + 1;
 
         emit Minted(id, _to, _value);
     }
@@ -95,5 +106,18 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         unspents[_account] -= _amount;
 
         emit Spent(_account, _amount);
+    }
+
+    function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
+        _requireMinted(_tokenId);
+
+        return
+            INFTDescriptor(descriptor).constructTokenURI(
+                INFTDescriptor.TokenURIParams({
+                    tokenId: _tokenId,
+                    tokenSalt: tokenSalt[_tokenId],
+                    value: couponValues[_tokenId]
+                })
+            );
     }
 }

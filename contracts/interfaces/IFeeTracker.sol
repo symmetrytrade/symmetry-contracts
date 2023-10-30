@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./IVotingEscrow.sol";
+
 interface IFeeTracker {
     /*=== struct ===*/
 
@@ -9,11 +11,27 @@ interface IFeeTracker {
         uint discount; // discount percent
     }
 
+    struct LockedIterator {
+        uint maxEpoch;
+        uint nextEpoch;
+        IVotingEscrow.Point locked;
+        IVotingEscrow.Point newLocked;
+    }
+
+    struct StakedIterator {
+        uint maxEpoch;
+        uint nextEpoch;
+        IVotingEscrow.StakedPoint staked;
+        IVotingEscrow.StakedPoint newStaked;
+    }
+
+    /*=== events ===*/
+
+    event Claimed(address indexed account, uint weekCursor, uint amount);
+
     /*=== functions ===*/
 
-    function claimIncentives(uint[] calldata _ts) external;
-
-    function claimed(address, uint) external view returns (bool);
+    function claimIncentives(address _account) external returns (uint);
 
     function coupon() external view returns (address);
 

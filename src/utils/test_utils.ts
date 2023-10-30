@@ -9,6 +9,7 @@ const abiCoder = new hardhat.ethers.utils.AbiCoder();
 
 export const WEEK = 3600 * 24 * 7;
 export const DAY = 3600 * 24;
+export const HOUR = 3600;
 
 export function startOfDay(t: number) {
     return Math.floor(t / DAY) * DAY;
@@ -85,6 +86,7 @@ export async function updateChainlinkPrice(
     const aggregator_ = await hre.ethers.getContract(name, sender);
     const decimals = await aggregator_.decimals();
     const updateTime = await helpers.time.latest();
+    await increaseNextBlockTimestamp(1);
     await (await aggregator_.feed(new BigNumber(price).times(10 ** decimals).toString(10), updateTime)).wait();
 }
 
@@ -105,6 +107,11 @@ export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPric
     };
 }
 
+export async function setPythAutoRefresh(hre: HardhatRuntimeEnvironment) {
+    const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name);
+    await (await pyth_.setAutoRefresh(true)).wait();
+}
+
 export async function setupPrices(
     hre: HardhatRuntimeEnvironment,
     chainlinkPrices: { [key: string]: number },
@@ -122,6 +129,7 @@ export async function setupPrices(
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         const fee = await pyth_.getUpdateFee([data]);
+        await increaseNextBlockTimestamp(1);
         await (
             await priceOracle_.updatePythPrice([data], {
                 value: fee,

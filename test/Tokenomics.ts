@@ -1,7 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import { CONTRACTS, MINTER_ROLE, getProxyContract, normalized } from "../src/utils/utils";
-import { WEEK, increaseNextBlockTimestamp, startOfWeek } from "../src/utils/test_utils";
+import { WEEK, increaseNextBlockTimestamp, setPythAutoRefresh, startOfWeek } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
@@ -60,6 +60,8 @@ describe("tokenomics", () => {
         await (await sym_.connect(account1).approve(votingEscrow_.address, normalized(1000000))).wait();
 
         await (await sym_.connect(account2).approve(votingEscrow_.address, normalized(1000000))).wait();
+
+        await setPythAutoRefresh(hre);
     });
 
     it("deposit lp", async () => {
@@ -101,7 +103,7 @@ describe("tokenomics", () => {
         expect(vest.amount).to.deep.eq(0);
         expect(vest.ts).to.deep.eq(0);
         let totalSupply = new BigNumber(0);
-        let ts = startOfWeek(await helpers.time.latest());
+        let ts = startOfWeek(await helpers.time.latest()) + WEEK;
         for (let i = 1; i <= 12; ++i) {
             ts += WEEK;
             vest = await votingEscrow_.userVestHistory(await account1.getAddress(), i);
@@ -122,9 +124,9 @@ describe("tokenomics", () => {
         expect(await votingEscrow_.balanceOfAt(await account1.getAddress(), await helpers.time.latest())).to.deep.eq(
             totalSupply
         );
-        // three weeks later
-        await increaseNextBlockTimestamp(WEEK * 3); // 3 weeks
-        evmTime = (await helpers.time.latest()) + WEEK * 3;
+        // four weeks later, 3 week vested
+        await increaseNextBlockTimestamp(WEEK * 4); // 4 weeks
+        evmTime = (await helpers.time.latest()) + WEEK * 4;
         await expect(votingEscrow_.connect(account1).claimVested(await account1.getAddress()))
             .to.emit(votingEscrow_, "Claimed")
             .withArgs(await account1.getAddress(), normalized(330), evmTime);
@@ -143,43 +145,43 @@ describe("tokenomics", () => {
     it("callback handler", async () => {
         let handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(1);
-        await increaseNextBlockTimestamp(WEEK * 1); // 3 weeks since last tx to votingEscrow
+        await increaseNextBlockTimestamp(WEEK * 1);
         await (await callbackRelayer_.removeCallbackHandle(liquidityGauge_.address)).wait();
         handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(0);
-        await increaseNextBlockTimestamp(WEEK * 1); // 3 weeks since last tx to votingEscrow
+        await increaseNextBlockTimestamp(WEEK * 1);
         await (await callbackRelayer_.addCallbackHandle(liquidityGauge_.address)).wait();
         handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(1);
     });
     it("lock SYM, trigger callback and vest", async () => {
-        await increaseNextBlockTimestamp(WEEK * 1); // 3 weeks since last tx to votingEscrow
+        await increaseNextBlockTimestamp(WEEK * 1);
         const lockEnd = startOfWeek(await helpers.time.latest()) + 2 * WEEK;
         const evmTime = (await helpers.time.latest()) + 1 * WEEK;
-        expect(await votingEscrow_.connect(account1).createLock(normalized(100), lockEnd, 0, false))
+        const vested = 86400 * 7 * 7;
+        await expect(votingEscrow_.connect(account1).createLock(normalized(100), lockEnd, 0, false))
             .to.emit(votingEscrow_, "Deposit")
-            .withArgs(await account1.getAddress(), normalized(100), lockEnd, 0, false, 0)
+            .withArgs(await account1.getAddress(), normalized(100), lockEnd, 0, false, 0, evmTime)
             .to.emit(votingEscrow_, "Vested")
             .withArgs(
                 await account1.getAddress(),
-                normalized(3628800), // 6 * weeks * 1 sym/sec
+                normalized(vested), // 7 * weeks * 1 sym/sec
                 evmTime
             )
             .to.emit(liquidityGauge_, "UpdateWorkingPower")
-            .withArgs(await account1.getAddress(), normalized(100))
-            .to.emit(votingEscrow_, "Claimed")
-            .withArgs(await account1.getAddress(), normalized(330), evmTime);
+            .withArgs(await account1.getAddress(), normalized(100));
         // check balances
-        expect(await sym_.balanceOf(await account1.getAddress())).to.deep.eq(normalized(330 + 330 - 100));
+        expect(await sym_.balanceOf(await account1.getAddress())).to.deep.eq(normalized(330 - 100));
         const n = (await votingEscrow_.userVestEpoch(await account1.getAddress())).toNumber();
-        expect(n).to.deep.eq(18);
+        expect(n).to.deep.eq(19);
+        const newVestPerWeek = vested / 12; // 352800
         for (let i = 1; i <= n; ++i) {
             const vest = await votingEscrow_.userVestHistory(await account1.getAddress(), i);
-            if (vest.ts >= (await helpers.time.latest())) {
+            if (vest.ts >= (await helpers.time.latest()) + WEEK) {
                 if (i <= 12) {
-                    expect(vest.amount).to.deep.eq(normalized(302400 + 110));
+                    expect(vest.amount).to.deep.eq(normalized(newVestPerWeek + 110));
                 } else {
-                    expect(vest.amount).to.deep.eq(normalized(302400));
+                    expect(vest.amount).to.deep.eq(normalized(newVestPerWeek));
                 }
             } else {
                 expect(vest.amount).to.deep.eq(normalized(110));
@@ -220,9 +222,7 @@ describe("tokenomics", () => {
                 evmTime
             )
             .to.emit(liquidityGauge_, "UpdateWorkingPower")
-            .withArgs(await account1.getAddress(), normalized(100))
-            .to.emit(votingEscrow_, "Claimed")
-            .withArgs(await account1.getAddress(), normalized((302400 + 110) * 3), evmTime);
+            .withArgs(await account1.getAddress(), normalized(100));
         expect(await votingEscrow_.totalSupply()).to.deep.eq((await userVestBalanceAt(account1, evmTime)).toString(10));
         expect(await votingEscrow_.totalSupplyAt(evmTime - 2 * WEEK)).to.deep.eq(balance2);
         expect(await votingEscrow_.balanceOfAt(await account1.getAddress(), evmTime - 2 * WEEK)).to.deep.eq(balance2);

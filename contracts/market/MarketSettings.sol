@@ -33,7 +33,7 @@ contract MarketSettings is IMarketSettings, Ownable, Initializable {
         return intVals[_key];
     }
 
-    function getIntValsByMarket(bytes32 _marketKey, bytes32 _key) external view returns (int) {
-        return intVals[keccak256(abi.encodePacked([_marketKey, _key]))];
+    function getIntValsByDomain(bytes32 _domainKey, bytes32 _key) external view returns (int) {
+        return intVals[keccak256(abi.encodePacked([_domainKey, _key]))];
     }
 }

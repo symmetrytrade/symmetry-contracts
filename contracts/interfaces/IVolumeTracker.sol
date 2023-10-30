@@ -25,7 +25,7 @@ interface IVolumeTracker {
 
     function claimLuckyCoupon() external;
 
-    function claimWeeklyTradingFeeCoupon(uint _t) external returns (uint);
+    function claimWeeklyTradingFeeCoupon(uint[] memory _t) external returns (uint);
 
     function coupon() external view returns (address);
 

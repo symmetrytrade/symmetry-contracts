@@ -1,5 +1,6 @@
 import { ArbGoerliTestnetConfig } from "./networks/ArbGoerli";
-import { normalized } from "./utils/utils";
+import { ScrollSepoliaConfig } from "./networks/ScrollSepolia";
+import { normalized, usdcOf } from "./utils/utils";
 
 interface ChainlinkConfig {
     sequencerUptimeFeed?: string;
@@ -15,6 +16,7 @@ interface PythConfig {
 interface MarketGeneralConfig {
     pythMaxAge: number;
     maxPriceDivergence: string;
+    minMaintenanceMargin: string;
     maintenanceMarginRatio: string;
     maxLeverageRatio: number;
     liquidationFeeRatio: string;
@@ -35,14 +37,27 @@ interface MarketGeneralConfig {
     maxCouponDeductionRatio: string;
     tokenOILimitRatio: string;
     veSYMFeeIncentiveRatio: string;
+    treasuryFeeRatio: string;
     oneDrawRequirement: string;
     oneDrawReward: string;
     minCouponValue: string;
+    baseConversionRatio: string;
+    maxDebtRatio: string;
+    vertexDebtRatio: string;
+    vertexInterestRate: string;
+    maxInterestRate: string;
+    minInterestRate: string;
+    settleThreshold: string;
 }
 
 // to be loaded in MarketSetting contract by market key
 interface MarketConfig {
     proportionRatio: string;
+}
+
+interface MarginConfig {
+    conversionRatio: string;
+    floorPriceRatio: string;
 }
 
 // to be loaded in separate contracts
@@ -54,6 +69,7 @@ interface OtherConfig {
     tradingFeeRebateTiers: TradingFeeRebateTier[];
     symRate: Rate[];
     luckyNumberAnnouncer?: string;
+    treasuryAddr: string;
 }
 
 export interface NetworkConfigs {
@@ -63,6 +79,7 @@ export interface NetworkConfigs {
     gracePeriodTime: number;
     marketGeneralConfig: MarketGeneralConfig;
     marketConfig: { [key: string]: MarketConfig };
+    marginConfig: { [key: string]: MarginConfig };
     otherConfig: OtherConfig;
 }
 
@@ -86,6 +103,7 @@ const DefaultConfig: NetworkConfigs = {
     marketGeneralConfig: {
         pythMaxAge: 180, // 3 minutes
         maxPriceDivergence: normalized(1.005), // 0.5%
+        minMaintenanceMargin: normalized(20), // 20u
         maintenanceMarginRatio: normalized(0.02), // 2%
         maxLeverageRatio: 25, // 25x
         liquidationFeeRatio: normalized(0.0035), // 0.35%
@@ -97,7 +115,7 @@ const DefaultConfig: NetworkConfigs = {
         softLimitThreshold: normalized(0.5), // 50% of lp net value
         hardLimitThreshold: normalized(0.9), // 90% of lp net value
         minOrderDelay: 60, // 1 minute
-        minKeeperFee: normalized(1), // 1 usd
+        minKeeperFee: usdcOf(1), // 1 usd
         minMargin: normalized(50), // 50 usd
         maxSlippage: normalized(0.5),
         maxFundingVelocity: normalized(300), // 30000% / day^2
@@ -106,9 +124,17 @@ const DefaultConfig: NetworkConfigs = {
         maxCouponDeductionRatio: normalized(1), // 100%
         tokenOILimitRatio: normalized(0.7),
         veSYMFeeIncentiveRatio: normalized(0), // 0%
+        treasuryFeeRatio: normalized(0), // 0%
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
         minCouponValue: normalized(1), // 1 usd
+        baseConversionRatio: normalized(1.2), // 1.2
+        maxDebtRatio: normalized(2), // 200%
+        vertexDebtRatio: normalized(0.4), // 40%
+        vertexInterestRate: normalized(0.25), // 25%
+        maxInterestRate: normalized(1.2), // 120%
+        minInterestRate: normalized(0.05), // 5%
+        settleThreshold: usdcOf(10000), // 10000 USDC
     },
     marketConfig: {
         WBTC: {
@@ -116,6 +142,16 @@ const DefaultConfig: NetworkConfigs = {
         },
         WETH: {
             proportionRatio: normalized(1),
+        },
+    },
+    marginConfig: {
+        USDC: {
+            conversionRatio: normalized(1),
+            floorPriceRatio: normalized(1),
+        },
+        WBTC: {
+            conversionRatio: normalized(0.9),
+            floorPriceRatio: normalized(0.99),
         },
     },
     otherConfig: {
@@ -137,11 +173,13 @@ const DefaultConfig: NetworkConfigs = {
             { startTime: 0, rate: normalized(1) },
             { startTime: 3000000000, rate: normalized(0) },
         ],
+        treasuryAddr: "0x9Eb8595d0ed3d46EBD991Fbae3ECb0E85e0354dB",
     },
 };
 
 const GlobalConfig: { [key: string]: NetworkConfigs } = {
     ArbGoerliTestnet: ArbGoerliTestnetConfig,
+    ScrollSepolia: ScrollSepoliaConfig,
     hardhat: DefaultConfig,
 };
 

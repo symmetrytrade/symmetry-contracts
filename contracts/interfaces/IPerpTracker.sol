@@ -11,6 +11,7 @@ interface IPerpTracker {
         int accFunding; // accumulate funding fee for unit position size at the time of latest open/close position or lp in/out
         int accLongFinancingFee; // accumulate long financing fee for unit position size at the latest position modification
         int accShortFinancingFee; // accumulate short financing fee for unit position size at the latest position modification
+        int unsettled; // pnl and fee that realized but not settled yet
     }
 
     struct Position {
@@ -59,6 +60,8 @@ interface IPerpTracker {
 
     /*=== function ===*/
 
+    function accountStatus(address _account) external view returns (int mtm, int pnl, int positionNotional);
+
     function computePerpFillPrice(
         address _token,
         int _size,
@@ -73,13 +76,6 @@ interface IPerpTracker {
         int _kLP,
         int _lambda
     ) external pure returns (int avgPrice);
-
-    function computeTrade(
-        int _size,
-        int _avgPrice,
-        int _sizeDelta,
-        int _price
-    ) external pure returns (int nextPrice, int pnl);
 
     function currentSkew(address _token) external view returns (int);
 
@@ -114,14 +110,17 @@ interface IPerpTracker {
             int avgPrice,
             int accFunding,
             int accLongFinancingFee,
-            int accShortFinancingFee
+            int accShortFinancingFee,
+            int unsettled
         );
 
     function lpSoftLimit(int _lp) external view returns (int);
 
+    function lpStatus() external view returns (int pnl, int netOpenInterest, int netSkew);
+
     function market() external view returns (address);
 
-    function marketKey(address _token) external pure returns (bytes32);
+    function domainKey(address _token) external pure returns (bytes32);
 
     function marketTokensLength() external view returns (uint);
 
@@ -133,17 +132,11 @@ interface IPerpTracker {
 
     function nextAccFunding(address _token, int _price) external view returns (int, int);
 
-    function removeToken(uint _tokenIndex) external;
+    function removeMarketToken(address _token) external;
 
     function settings() external view returns (address);
 
-    function settleTradeForLp(
-        address _token,
-        int _sizeDelta,
-        int _execPrice,
-        int _oldSize,
-        int _newSize
-    ) external returns (int);
+    function settleTradeForLp(address _token, int _execPrice, int _oldSize, int _newSize, int _settled) external;
 
     function settleTradeForUser(
         address _account,

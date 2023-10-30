@@ -116,7 +116,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         return 0;
     }
 
-    function claimWeeklyTradingFeeCoupon(uint _t) external returns (uint value) {
+    function _claimWeeklyTradingFeeCoupon(uint _t) internal returns (uint value) {
         _t = _startOfWeek(_t);
         require(_t < _startOfWeek(block.timestamp), "VolumeTracker: invalid date");
 
@@ -140,6 +140,13 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
             emit WeeklyCouponClaimed(msg.sender, _t);
         } else {
             revert("VolumeTracker: no chance");
+        }
+    }
+
+    function claimWeeklyTradingFeeCoupon(uint[] memory _t) external returns (uint value) {
+        uint len = _t.length;
+        for (uint i = 0; i < len; ++i) {
+            value += _claimWeeklyTradingFeeCoupon(_t[i]);
         }
     }
 
@@ -213,5 +220,11 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
                 uint(MarketSettings(settings).getIntVals(ONE_DRAW_REWARD))
             );
         }
+    }
+
+    // test function, remove it in product env
+    function setLuckyNumberForTest(address _account) external {
+        uint _t = _startOfDay(block.timestamp) - 1 days;
+        userLuckyNumber[_account][_t] = luckyNumber[_t] + 9;
     }
 }

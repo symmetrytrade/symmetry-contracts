@@ -1,6 +1,13 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getProxyContract, perpConfigKey, mustGetKey } from "../utils/utils";
+import {
+    CONTRACTS,
+    deployInBeaconProxy,
+    getProxyContract,
+    perpConfigKey,
+    mustGetKey,
+    marginConfigKey,
+} from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -32,6 +39,18 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                 : (await hre.ethers.getContract(market)).address;
         for (const [k, v] of Object.entries(conf)) {
             const key = perpConfigKey(token, k);
+            const value = hre.ethers.BigNumber.from(v);
+            await (await settings_.setIntVals(key, value)).wait();
+        }
+    }
+    // set multi-collateral config
+    for (const [collateral, conf] of Object.entries(config.marginConfig)) {
+        const token =
+            hre.network.name !== "hardhat"
+                ? mustGetKey(config.addresses, collateral)
+                : (await hre.ethers.getContract(collateral)).address;
+        for (const [k, v] of Object.entries(conf)) {
+            const key = marginConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);
             await (await settings_.setIntVals(key, value)).wait();
         }

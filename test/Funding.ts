@@ -1,7 +1,7 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized } from "../src/utils/utils";
-import { DAY, increaseNextBlockTimestamp, setupPrices } from "../src/utils/test_utils";
+import { CONTRACTS, MAX_UINT256, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { DAY, increaseNextBlockTimestamp, setPythAutoRefresh, setupPrices } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
@@ -47,18 +47,14 @@ describe("Funding", () => {
         positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
         config = getConfig(hre.network.name);
 
-        await (
-            await USDC_.transfer(await account1.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
-        ).wait();
-        await (
-            await USDC_.transfer(await account2.getAddress(), hre.ethers.BigNumber.from(100000000).mul(UNIT))
-        ).wait();
+        await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
+        await (await USDC_.transfer(await account2.getAddress(), usdcOf(100000000))).wait();
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
-        const amount = hre.ethers.BigNumber.from(1000000).mul(UNIT); // 1M
-        const minLp = hre.ethers.BigNumber.from(100000).mul(UNIT);
+        const amount = usdcOf(1000000); // 1M
+        const minLp = normalized(100000);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
@@ -88,16 +84,14 @@ describe("Funding", () => {
                 normalized(0.1)
             )
         ).wait();
+        await setPythAutoRefresh(hre);
     });
 
     it("open ETH long, keep it for 1 day", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
         await (
-            await positionManager_.depositMargin(
-                hre.ethers.BigNumber.from(10000).mul(UNIT),
-                hre.ethers.constants.HashZero
-            )
+            await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.constants.HashZero)
         ).wait();
 
         // open eth long, 50000 notional
@@ -106,7 +100,7 @@ describe("Funding", () => {
                 WETH,
                 normalized(50),
                 normalized(1000),
-                normalized(1),
+                usdcOf(1),
                 (await helpers.time.latest()) + 100,
                 false,
             ])
@@ -123,7 +117,8 @@ describe("Funding", () => {
                 normalized(50),
                 normalized(1000),
                 normalized(0),
-                normalized(0)
+                normalized(0),
+                orderId
             );
 
         expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(normalized(0.01));
@@ -143,7 +138,7 @@ describe("Funding", () => {
                 WETH,
                 normalized(-100),
                 normalized(1000),
-                normalized(1),
+                usdcOf(1),
                 evmTime + 2 * DAY,
                 false,
             ])
@@ -160,7 +155,8 @@ describe("Funding", () => {
                 normalized(-100),
                 normalized(1000),
                 normalized(0),
-                normalized(0)
+                normalized(0),
+                orderId
             );
 
         expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq("-9990009990009990");

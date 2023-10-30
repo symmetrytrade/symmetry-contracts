@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS } from "../utils/utils";
+import { CONTRACTS, normalized } from "../utils/utils";
 import { chainlinkAggregators, tokens } from "../utils/test_utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -14,14 +14,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // deploy test tokens
     for (const token of tokens) {
+        const decimals = token.symbol === "USDC" ? 6 : 18;
         await deploy(CONTRACTS[token.symbol].name, {
             from: deployer,
             contract: CONTRACTS[token.symbol].contract,
-            args: [token.name, token.symbol, 18],
+            args: [token.name, token.symbol, decimals],
             log: true,
         });
         const faucetToken = await hre.ethers.getContract(CONTRACTS[token.symbol].name, deployer);
-        await (await faucetToken.mint(deployer, hre.ethers.BigNumber.from("10000000000000000000000000000"))).wait();
+        await (await faucetToken.mint(deployer, normalized(1e18))).wait();
     }
     // deploy chainlink aggregators
     for (const aggregator of chainlinkAggregators) {

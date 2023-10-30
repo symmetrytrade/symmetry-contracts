@@ -26,7 +26,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)
                 : (await hre.ethers.getContract(market)).address;
-        await (await perpTracker_.setMarketToken(token)).wait();
+        await (await perpTracker_.addMarketToken(token)).wait();
     }
 
     // set perpTracker for market
