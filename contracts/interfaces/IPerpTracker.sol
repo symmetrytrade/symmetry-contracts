@@ -35,6 +35,20 @@ interface IPerpTracker {
         int skew; // latest token skew(in USD) when any position of the token is updated
     }
 
+    struct PriceInfo {
+        int longByMidPrice; // p_{long} / p_{mid} in latest trade, should be always >= 1
+        int shortByMidPrice; // p_{short} / p_{mid} in latest trade, should be always between (0, 1]
+        uint updateTime; // the latest trade timestamp
+    }
+
+    struct SwapParams {
+        address token;
+        int skew;
+        int size;
+        int oraclePrice;
+        int lpNetValue;
+    }
+
     /*=== event ===*/
 
     event NewMarket(address token);
@@ -62,20 +76,7 @@ interface IPerpTracker {
 
     function accountStatus(address _account) external view returns (int mtm, int pnl, int positionNotional);
 
-    function computePerpFillPrice(
-        address _token,
-        int _size,
-        int _oraclePrice,
-        int _lpNetValue
-    ) external view returns (int avgPrice);
-
-    function computePerpFillPriceRaw(
-        int _skew,
-        int _size,
-        int _oraclePrice,
-        int _kLP,
-        int _lambda
-    ) external pure returns (int avgPrice);
+    function swapOnAMM(SwapParams memory _params) external returns (int avgPrice);
 
     function currentSkew(address _token) external view returns (int);
 
@@ -90,6 +91,8 @@ interface IPerpTracker {
     function getPosition(address _account, address _token) external view returns (Position memory);
 
     function getPositionSize(address _account, address _token) external view returns (int);
+
+    function getPriceInfo(address _token) external view returns (PriceInfo memory);
 
     function getTokenInfo(address _token) external view returns (TokenInfo memory);
 

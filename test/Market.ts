@@ -227,8 +227,8 @@ describe("Market", () => {
                 await account1.getAddress(),
                 WBTC,
                 normalized(-0.5),
-                "19929034394156457648360", // avg price
-                "9974491688766995820", // trading fee
+                "19929034394156457628380", // avg price
+                "9974491688766995810", // trading fee
                 "0",
                 orderId
             );
@@ -236,7 +236,7 @@ describe("Market", () => {
         expect(userCollaterals).to.deep.eq(usdcOf(1500));
         const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
         expect(position.accFunding).to.deep.eq(0);
-        expect(position.avgPrice).to.deep.eq("19929034394156457648360");
+        expect(position.avgPrice).to.deep.eq("19929034394156457628380");
         // funding of ETH position
         // since the long ETH trade, there should be 5+5+60+100+10+60=240s passed
         const fs = await perpTracker_.nextAccFunding(WETH, normalized(1500));
@@ -244,13 +244,13 @@ describe("Market", () => {
         expect(fs[1]).to.deep.eq("26571164738199000"); // acc funding
         // margin status
         const status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.deep.eq("1361796128287989705730");
+        expect(status.currentMargin).to.deep.eq("1361796128287989695740");
         expect(status.positionNotional).to.deep.eq("25000000000000000000000");
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
         expect(lpPosition.longSize).to.deep.eq(normalized(0.5));
         expect(lpPosition.shortSize).to.deep.eq(0);
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq("980108203871712010294270");
+        expect(globalStatus.lpNetValue).to.deep.eq("980108203871712010304260");
         expect(globalStatus.netOpenInterest).to.deep.eq("25000000000000000000000");
     });
 
@@ -281,8 +281,8 @@ describe("Market", () => {
                 await account1.getAddress(),
                 WBTC,
                 normalized(0.5),
-                "15015000000000000000000", // avg price
-                "7500000000000000000", // trading fee
+                "14986202042334606478395", // avg price
+                "7485615405761541697", // trading fee
                 "0",
                 orderId
             );
@@ -292,21 +292,21 @@ describe("Market", () => {
         expect(fs[0]).to.deep.eq("-2479884920822164"); // next funding rate
         expect(fs[1]).to.deep.eq("-15068745178605000"); // acc funding
         const userCollaterals = await marginTracker_.userCollaterals(await account1.getAddress(), USDC_.address);
-        expect(userCollaterals).to.deep.eq("3957009662");
+        expect(userCollaterals).to.deep.eq("3971408641");
         const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
         expect(position.accFunding).to.deep.eq("0");
         expect(position.avgPrice).to.deep.eq("0");
         // margin status
         const status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.deep.eq("3804970797566562836550");
+        expect(status.currentMargin).to.deep.eq("3819081796986562836550");
         expect(status.positionNotional).to.deep.eq(normalized(15000));
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
         expect(lpPosition.longSize).to.deep.eq(0);
         expect(lpPosition.shortSize).to.deep.eq(0);
-        expect(lpPosition.avgPrice).to.deep.eq("15015000000000000000000");
+        expect(lpPosition.avgPrice).to.deep.eq("14986202042334606478395");
         expect(lpPosition.accFunding).to.deep.eq("-15068745178605000");
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq("977665029202433437163450");
+        expect(globalStatus.lpNetValue).to.deep.eq("977650918203013437163450");
         expect(globalStatus.netOpenInterest).to.deep.eq("15000000000000000000000");
     });
 });

@@ -45,14 +45,9 @@ interface IMarket {
 
     function baseTokenToUsd(int _amount, bool _useMax) external view returns (int);
 
-    function computeTrade(
-        address _account,
-        address _token,
-        int _size,
-        uint _orderTime
-    ) external view returns (int, uint, uint);
+    function tradeSwap(address _account, address _token, int _size, uint _orderTime) external returns (int, uint, uint);
 
-    function computeLiquidation(address _account, address _token) external view returns (int, int, int, uint, uint);
+    function liquidationSwap(address _account, address _token) external returns (int, int, int, uint, uint);
 
     function coverDeficitLoss(int _loss) external returns (uint insuranceOut, uint lpOut);
 
@@ -78,7 +73,7 @@ interface IMarket {
 
     function priceOracle() external view returns (address);
 
-    function redeemTradingFee(int _lp, int _redeemValue) external returns (uint fee);
+    function redeemSwap(int _lp, int _redeemValue) external returns (uint fee);
 
     function sendToLp(int _amount) external;
 

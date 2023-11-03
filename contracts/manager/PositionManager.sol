@@ -363,7 +363,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
         market_.updateFee(order.data.token);
         {
             // calculate fill price
-            (int execPrice, uint fee, uint couponUsed) = market_.computeTrade(
+            (int execPrice, uint fee, uint couponUsed) = market_.tradeSwap(
                 order.account,
                 order.data.token,
                 order.data.size,
@@ -484,7 +484,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
             int execPrice;
             uint fee;
             uint couponUsed;
-            (size, notionalLiquidated, execPrice, fee, couponUsed) = market_.computeLiquidation(_account, _token);
+            (size, notionalLiquidated, execPrice, fee, couponUsed) = market_.liquidationSwap(_account, _token);
             // close position
             IMarket.TradeParams memory params = IMarket.TradeParams(
                 _account,
