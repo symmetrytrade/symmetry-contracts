@@ -48,6 +48,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         minKeeperFee: "1000000",
         minMargin: normalized(50),
         maxSlippage: normalized(0.05),
+        priceDelay: 60,
         maxFundingVelocity: normalized(0.0533),
         maxFinancingFeeRate: normalized(0.09),
         perpTradingFee: normalized(0.001),

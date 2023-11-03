@@ -35,6 +35,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     mapping(address => FeeInfo) private feeInfos;
     mapping(address => TokenInfo) private tokenInfos;
+    mapping(address => PriceInfo) private priceInfos;
 
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -51,6 +52,10 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     }
 
     /*=== owner ===*/
+
+    function setMarket(address _market) external onlyOwner {
+        market = _market;
+    }
 
     /* === Token Management === */
 
@@ -75,6 +80,10 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
 
     function getFeeInfo(address _token) external view returns (FeeInfo memory) {
         return feeInfos[_token];
+    }
+
+    function getPriceInfo(address _token) external view returns (PriceInfo memory) {
+        return priceInfos[_token];
     }
 
     function getLpPosition(address _token) external view returns (LpPosition memory) {
@@ -265,78 +274,63 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
     /*=== trading ===*/
 
     /**
-     * @dev calculate price coefficient when trade _size on _skew.
-     *      Here _size and _skew have the same sign.
-     *      avgPrice = priceCoefficient * oraclePrice
+     * @dev calculate mid price coefficient given skew and lp.
+     *      midPrice = priceCoefficient * oraclePrice
      */
-    function _computePriceCoefficient(
+    function _computeMidPriceCoefficient(
         int _skew,
-        int _size,
         int _kLP,
         int _lambda
     ) internal pure returns (int priceCoefficient) {
-        if (_skew.abs() >= _kLP) {
-            priceCoefficient = (_UNIT + (_skew > 0 ? _lambda : -_lambda));
-        } else if ((_skew + _size).abs() <= _kLP) {
-            priceCoefficient = (_UNIT + ((_skew + _size / 2) * _lambda) / _kLP);
-        } else {
-            // |skew| < kLP, |skew + size| > kLP
-            int kLPSigned = _skew + _size > 0 ? _kLP : -_kLP;
-            int numerator = (_UNIT + ((_skew + kLPSigned) * _lambda) / (2 * _kLP)).multiplyDecimal(kLPSigned - _skew);
-            numerator += (_UNIT + (_skew + _size > 0 ? _lambda : -_lambda)).multiplyDecimal(_skew + _size - kLPSigned);
-            priceCoefficient = numerator.divideDecimal(_size);
-        }
+        priceCoefficient = _UNIT + (_skew * _lambda) / _kLP;
     }
 
-    function computePerpFillPriceRaw(
-        int _skew,
-        int _size,
-        int _oraclePrice,
-        int _kLP,
-        int _lambda
-    ) public pure returns (int avgPrice) {
-        require(_kLP > 0, "PerpTracker: non-positive kLP");
-
-        if ((_skew >= 0 && _size >= 0) || (_skew <= 0 && _size <= 0)) {
-            // trade direction is the same as skew
-            avgPrice = _computePriceCoefficient(_skew, _size, _kLP, _lambda).multiplyDecimal(_oraclePrice);
-        } else if ((_skew >= 0 && _skew + _size >= 0) || (_skew <= 0 && _skew + _size <= 0)) {
-            // trade direction is different from skew but won't flip skew
-            avgPrice = _oraclePrice;
-        } else {
-            // trade direction is different from skew and will flip skew
-            int numerator = _UNIT.multiplyDecimal(_skew.abs());
-            numerator += _computePriceCoefficient(0, _skew + _size, _kLP, _lambda).multiplyDecimal(
-                (_skew + _size).abs()
-            );
-            avgPrice = (numerator * _oraclePrice) / _size.abs();
+    function _delayedCoefficients(PriceInfo memory _priceInfo, int _mid) internal view returns (int long, int short) {
+        int priceDelay = IMarketSettings(settings).getIntVals(PRICE_DELAY);
+        int timeElapsed = int(block.timestamp - _priceInfo.updateTime);
+        if (timeElapsed >= priceDelay) {
+            return (_mid, _mid);
         }
+        long = _priceInfo.longByMidPrice - ((_priceInfo.longByMidPrice - _UNIT) * timeElapsed) / priceDelay;
+        long = long.multiplyDecimal(_mid);
+        short = _priceInfo.shortByMidPrice + ((_UNIT - _priceInfo.shortByMidPrice) * timeElapsed) / priceDelay;
+        short = short.multiplyDecimal(_mid);
     }
 
     /**
-     * @notice compute the fill price of a trade
-     * @dev premium = lambda * clamp(skew / (k * LP / price), -1, 1)
-     *      fill price is the average price of trading _size at current market
-     * @param _token token to trade
-     * @param _size trade size, positive for long, negative for short
-     * @param _oraclePrice oracle price
-     * @param _lpNetValue lp net value
+     * @notice execute swap on AMM
      * @return avgPrice the fill price
      */
-    function computePerpFillPrice(
-        address _token,
-        int _size,
-        int _oraclePrice,
-        int _lpNetValue
-    ) external view returns (int avgPrice) {
-        IMarketSettings settings_ = IMarketSettings(settings);
-
-        int lambda = settings_.getIntVals(MAX_SLIPPAGE);
-        int skew = currentSkew(_token);
-        int kLP = settings_.getIntValsByDomain(domainKey(_token), PROPORTION_RATIO);
-        kLP = (kLP * _lpNetValue) / _oraclePrice;
-
-        return computePerpFillPriceRaw(skew, _size, _oraclePrice, kLP, lambda);
+    function swapOnAMM(SwapParams memory _params) public onlyMarket returns (int avgPrice) {
+        int lambda = IMarketSettings(settings).getIntVals(MAX_SLIPPAGE);
+        int kLP = IMarketSettings(settings).getIntValsByDomain(domainKey(_params.token), PROPORTION_RATIO);
+        kLP = (kLP * _params.lpNetValue) / _params.oraclePrice;
+        int mid = _computeMidPriceCoefficient(_params.skew, kLP, lambda);
+        int nextMid = _computeMidPriceCoefficient(_params.skew + _params.size, kLP, lambda);
+        (int long, int short) = _delayedCoefficients(priceInfos[_params.token], mid);
+        if (_params.size > 0) {
+            if (long >= nextMid) {
+                avgPrice = long;
+            } else {
+                avgPrice = ((long - mid) * long + ((nextMid - long) * (long + nextMid)) / 2) / (nextMid - mid);
+            }
+        } else {
+            if (short <= nextMid) {
+                avgPrice = short;
+            } else {
+                avgPrice = ((mid - short) * short + ((short - nextMid) * (short + nextMid)) / 2) / (mid - nextMid);
+            }
+        }
+        // update price
+        long = long.max(nextMid);
+        short = short.min(nextMid);
+        priceInfos[_params.token] = PriceInfo({
+            longByMidPrice: long.divideDecimal(nextMid),
+            shortByMidPrice: short.divideDecimal(nextMid),
+            updateTime: block.timestamp
+        });
+        // execution price
+        avgPrice = avgPrice.multiplyDecimal(_params.oraclePrice);
     }
 
     function _computeFinancingFee(address _account, address _token) internal view returns (int) {

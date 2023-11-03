@@ -102,7 +102,7 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         int redeemFee = 0;
         {
             // redeem trade
-            redeemFee += IMarket(market).redeemTradingFee(lpNetValue, redeemValue).toInt256();
+            redeemFee += IMarket(market).redeemSwap(lpNetValue, redeemValue).toInt256();
             // redeem fee
             redeemFee += IMarketSettings(market_.settings()).getIntVals(LIQUIDITY_REDEEM_FEE).multiplyDecimal(
                 redeemValue - redeemFee

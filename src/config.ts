@@ -31,6 +31,7 @@ interface MarketGeneralConfig {
     minKeeperFee: string;
     minMargin: string;
     maxSlippage: string;
+    priceDelay: number;
     maxFundingVelocity: string;
     maxFinancingFeeRate: string;
     perpTradingFee: string;
@@ -118,6 +119,7 @@ const DefaultConfig: NetworkConfigs = {
         minKeeperFee: usdcOf(1), // 1 usd
         minMargin: normalized(50), // 50 usd
         maxSlippage: normalized(0.5),
+        priceDelay: 10, // 10 seconds,
         maxFundingVelocity: normalized(300), // 30000% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day
         perpTradingFee: normalized(0.001), // 0.1%

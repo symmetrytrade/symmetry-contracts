@@ -1,7 +1,10 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, getProxyContract, normalized, perpDomainKey } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getProxyContract, normalized, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
+import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import BigNumber from "bignumber.js";
 
 describe("PerpTracker", () => {
     let perpTracker_: ethers.Contract;
@@ -14,77 +17,67 @@ describe("PerpTracker", () => {
         perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
         WETH = (await hre.ethers.getContract("WETH")).address;
         WBTC = (await hre.ethers.getContract("WBTC")).address;
+        // set market to deployer for test
+        await (await perpTracker_.setMarket(deployer)).wait();
     });
 
-    it("computePerpFillPriceRaw", async () => {
+    async function swapOnAMM(
+        skew: string,
+        size: string,
+        expectedFillPrice: string,
+        expectedLongByMidPrice: string,
+        expectedShortByMidPrice: string,
+        nextBlockDelay: number
+    ) {
+        const oraclePrice = normalized(2000);
+        const kLP = normalized(10000 * 2000);
+        const fillPrice = await perpTracker_.callStatic.swapOnAMM([WETH, skew, size, oraclePrice, kLP]);
+        assertDiffWithin(fillPrice, expectedFillPrice, "2000");
+        await (await perpTracker_.swapOnAMM([WETH, skew, size, oraclePrice, kLP])).wait();
+        const priceInfo = await perpTracker_.getPriceInfo(WETH);
+        assertDiffWithin(priceInfo.longByMidPrice, expectedLongByMidPrice, "1");
+        assertDiffWithin(priceInfo.shortByMidPrice, expectedShortByMidPrice, "1");
+        await increaseNextBlockTimestamp(nextBlockDelay);
+        await helpers.mine();
+    }
+
+    function assertDiffWithin(x: ethers.BigNumber, y: string, maxDiff: string) {
+        expect(new BigNumber(x.toString()).minus(y).abs().lte(maxDiff)).eq(true);
+    }
+
+    function div(x: number, y: number) {
+        return ethers.BigNumber.from(x).mul(UNIT).div(y).toString();
+    }
+
+    it("swapOnAMM", async () => {
         // oracle price = 2000 USDC/ETH
         // lambda = 0.5
         // kLP = 10000 ETH
-        const oraclePrice = normalized(2000);
-        const lambda = normalized(0.5);
-        const kLP = normalized(10000);
-        let skew, size, fillPrice;
-
-        // case 1: skew = 1000 ETH, size = 1000 ETH
-        skew = normalized(1000);
-        size = normalized(1000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(2150));
-        // case 2: skew = 1000 ETH, size = 10000 ETH
-        skew = normalized(1000);
-        size = normalized(10000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(2595));
-        // case 3: skew = 15000 ETH, size = 1000 ETH
-        skew = normalized(15000);
-        size = normalized(1000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(3000));
-        // case 4: skew = 0 ETH, size = -1000 ETH
-        skew = normalized(0);
-        size = normalized(-1000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(1950));
-        // case 5: skew = -1000 ETH, size = -10000 ETH
-        skew = normalized(-1000);
-        size = normalized(-10000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(1405));
-        // case 6: skew = -15000 ETH, size = -1000 ETH
-        skew = normalized(-15000);
-        size = normalized(-1000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(1000));
-        // case 7: skew = 15000 ETH, size = -10000 ETH
-        skew = normalized(15000);
-        size = normalized(-10000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(2000));
-        // case 8: skew = 20000 ETH, size = -25000 ETH
-        skew = normalized(20000);
-        size = normalized(-25000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(1950));
-        // case 9: skew = 20000 ETH, size = -50000 ETH
-        skew = normalized(20000);
-        size = normalized(-50000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq("1499999999999999999600");
-        // case 10: skew = -15000 ETH, size = 10000 ETH
-        skew = normalized(-15000);
-        size = normalized(10000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(2000));
-        // case 11: skew = -20000 ETH, size = 25000 ETH
-        skew = normalized(-20000);
-        size = normalized(25000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq(normalized(2050));
-        // case 12: skew = -20000 ETH, size = 50000 ETH
-        skew = normalized(-20000);
-        size = normalized(50000);
-        fillPrice = await perpTracker_.computePerpFillPriceRaw(skew, size, oraclePrice, kLP, lambda);
-        expect(fillPrice).to.deep.eq("2499999999999999999200");
+        let skew = 0;
+        // case 1: trade 1000 ETH, p_{mid}=2000, p'_{mid}=2100, p_{exec}=2050
+        // buy price evenly distributed from p_{buy} and p'_{mid}
+        await swapOnAMM(normalized(skew), normalized(1000), normalized(2050), normalized(1), div(2000, 2100), 2);
+        skew += 1000;
+        // case 2: trade -500 ETH, p_{mid}=2100, p'_{mid}=2050, p_{exec}=2020
+        // sell price is exactly p_{sell}
+        await swapOnAMM(normalized(skew), normalized(-500), normalized(2020), div(2100, 2050), div(2020, 2050), 5);
+        skew -= 500;
+        // case 3: trade 100 ETH, p_{mid}=2050, p'_{mid}=2060, p_{exec}=2075
+        // buy price is exactly p_{buy}
+        await swapOnAMM(normalized(skew), normalized(100), normalized(2075), div(2075, 2060), div(2035, 2060), 10);
+        skew += 100;
+        // case 4: trade -600 ETH, p_{mid}=2060, p'_{mid}=2000, p_{exec}=2030
+        // sell price is evenly distributed between p_{sell} and p'_{mid}
+        await swapOnAMM(normalized(skew), normalized(-600), normalized(2030), div(2060, 2000), normalized(1), 5);
+        skew -= 600;
+        // case 5: trade 1000 ETH, p_{mid}=2000, p'_{mid}=2100, p_{exec}=((2030-2000)*2030+(2100-2030)*2065)/100=2054.5
+        // sell price is weighted average between p_{mid} to p'_{mid}
+        await swapOnAMM(normalized(skew), normalized(1000), normalized(2054.5), normalized(1), div(2000, 2100), 5);
+        skew += 1000;
+        // case 6: trade -2000 ETH, p_{mid}=2100, p'_{mid}=1900, p_{exec}=((2100-2050)*2050+(2050-1900)*1975)/200=1993.75
+        // sell price is weighted average between p_{mid} to p'_{mid}
+        await swapOnAMM(normalized(skew), normalized(-2000), normalized(1993.75), div(2100, 1900), normalized(1), 5);
+        skew -= 2000;
     });
 
     it("market key", async () => {

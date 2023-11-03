@@ -9,6 +9,7 @@ contract MarketSettingsContext {
     /*=== general setting keys ===*/
     // trading
     bytes32 internal constant MAX_SLIPPAGE = "maxSlippage";
+    bytes32 internal constant PRICE_DELAY = "priceDelay";
     // oracle
     bytes32 internal constant PYTH_MAX_AGE = "pythMaxAge";
     bytes32 internal constant MAX_PRICE_DIVERGENCE = "maxPriceDivergence";

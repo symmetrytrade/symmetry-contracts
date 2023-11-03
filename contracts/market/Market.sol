@@ -314,29 +314,26 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         _updateTokenInfoAndDebt(_token);
     }
 
-    function redeemTradingFee(int _lp, int _redeemValue) external view onlyOperator returns (uint fee) {
+    function redeemSwap(int _lp, int _redeemValue) external onlyOperator returns (uint fee) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
         IPriceOracle priceOracle_ = IPriceOracle(priceOracle);
-        IMarketSettings settings_ = IMarketSettings(settings);
 
         address[] memory tokens = perpTracker_.getMarketTokens();
 
-        int lambda = settings_.getIntVals(MAX_SLIPPAGE);
         for (uint i = 0; i < tokens.length; ++i) {
             int oraclePrice = priceOracle_.getPrice(tokens[i]);
 
             int skew = perpTracker_.currentSkew(tokens[i]);
             if (skew != 0) {
                 int tradeAmount = (skew * _redeemValue) / _lp;
-                int kLP = settings_.getIntValsByDomain(perpTracker_.domainKey(tokens[i]), PROPORTION_RATIO);
-                kLP = (kLP * (_lp - _redeemValue)) / oraclePrice;
-                int fillPrice = perpTracker_.computePerpFillPriceRaw(
+                IPerpTracker.SwapParams memory params = IPerpTracker.SwapParams(
+                    tokens[i],
                     skew - tradeAmount,
                     tradeAmount,
                     oraclePrice,
-                    kLP,
-                    lambda
+                    _lp - _redeemValue
                 );
+                int fillPrice = perpTracker_.swapOnAMM(params);
                 // pnl = (oracle_price - fill_price) * volume
                 // fee = |pnl| = -pnl
                 fee += (fillPrice - oraclePrice).multiplyDecimal(tradeAmount).toUint256();
@@ -344,45 +341,54 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         }
     }
 
-    /*=== liquidation ===*/
+    /*=== trade ===*/
+
+    function _swap(
+        address _account,
+        address _token,
+        int _size,
+        int _oraclePrice
+    ) internal returns (int execPrice, uint fee, uint couponUsed) {
+        IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
+
+        (int lpNetValue, , ) = globalStatus();
+        int skew = perpTracker_.currentSkew(_token);
+        int fillPrice = perpTracker_.swapOnAMM(IPerpTracker.SwapParams(_token, skew, _size, _oraclePrice, lpNetValue));
+        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice);
+    }
+
     /**
      * @notice compute the fill price of liquidation
      * @param _account account to liquidate
      * @param _token token to liquidate
      */
-    function computeLiquidation(
+    function liquidationSwap(
         address _account,
         address _token
-    ) external view returns (int size, int positionNotional, int execPrice, uint fee, uint couponUsed) {
+    ) external onlyOperator returns (int size, int positionNotional, int execPrice, uint fee, uint couponUsed) {
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
         int oraclePrice = IPriceOracle(priceOracle).getPrice(_token);
         size = -perpTracker_.getPositionSize(_account, _token);
         require(size != 0, "Market: liquidate zero position");
         positionNotional = size.multiplyDecimal(oraclePrice).abs();
-        (int lpNetValue, , ) = globalStatus();
-        int fillPrice = IPerpTracker(perpTracker).computePerpFillPrice(_token, size, oraclePrice, lpNetValue);
-        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, size, fillPrice);
+        (execPrice, fee, couponUsed) = _swap(_account, _token, size, oraclePrice);
     }
 
-    /*=== trade ===*/
-
     /**
-     * @notice compute the fill price of a trade
+     * @notice do swap on AMM
      * @param _account account to trade
      * @param _token token to trade
      * @param _size trade size, positive for long, negative for short
      * @param _orderTime order submit time
      */
-    function computeTrade(
+    function tradeSwap(
         address _account,
         address _token,
         int _size,
         uint _orderTime
-    ) external view returns (int execPrice, uint fee, uint couponUsed) {
+    ) external onlyOperator returns (int execPrice, uint fee, uint couponUsed) {
         int oraclePrice = IPriceOracle(priceOracle).getOffchainPrice(_token, _orderTime);
-        (int lpNetValue, , ) = globalStatus();
-        int fillPrice = IPerpTracker(perpTracker).computePerpFillPrice(_token, _size, oraclePrice, lpNetValue);
-        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice);
+        (execPrice, fee, couponUsed) = _swap(_account, _token, _size, oraclePrice);
     }
 
     function _logTrade(address _account, uint _volume, uint _fee) internal {
@@ -405,7 +411,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     }
 
     /**
-     * @notice notice update a position with a new trade. Will settle p&l if it is a position decrement.
+     * @notice update a position with a new trade. Will settle p&l if it is a position decrement.
      * @dev make sure the funding & financing fee is updated before calling this function.
      * @param _params trade params
      */

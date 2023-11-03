@@ -1,29 +1,29 @@
 import { NetworkConfigs } from "../config";
 import { normalized, usdcOf } from "../utils/utils";
 
-export const ScrollSepoliaConfig: NetworkConfigs = {
+export const ScrollConfig: NetworkConfigs = {
     addresses: {
-        USDC: "0x44Acdf4a9C8A48e126c73f5BF211722AfaF4aEde",
-        WETH: "0x9984C06f5133B44891f9429D5bC2dE1Aa326f1DB",
-        WBTC: "0xa94376fa84691d27f263add4c5713Af9e147D070",
-        LINK: "0x23993528dD69F632830FeF82e514D7CB619d9678",
+        USDC: "0x06efdbff2a14a7c8e15944d1f4a48f9f95f663a4",
+        WETH: "0x5300000000000000000000000000000000000004",
+        WBTC: "0x3c1bca5a656e69edcd0d4e36bebb3fcdaca60cf1",
+        WSTETH: "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32",
     },
     chainlink: {
         sequencerUptimeFeed: "0x0000000000000000000000000000000000000000",
         aggregators: {
-            USDC: "0xFadA8b0737D4A3AE7118918B7E69E689034c0127",
-            WETH: "0x59F1ec1f10bD7eD9B938431086bC1D9e233ECf41",
-            WBTC: "0x87dce67002e66C17BC0d723Fe20D736b80CAaFda",
-            LINK: "0xaC3E04999aEfE44D508cB3f9B972b0Ecd07c1efb",
+            USDC: "",
+            WETH: "",
+            WBTC: "",
+            WSTETH: "",
         },
     },
     pyth: {
         priceFeed: "0xA2aa501b19aff244D90cc15a4Cf739D2725B5729",
         assetIds: {
-            USDC: "0x41f3625971ca2ed2263e78573fe5ce23e13d2558ed3f2e47ab0f84fb9e7ae722",
-            WETH: "0xca80ba6dc32e08d06f1aa886011eed1d77c77be9eb761cc10d72b7d0a2fd57a6",
-            WBTC: "0xf9c0172ba10dfa4d19088d94f5bf61d3b54d5bd7483a322a982e1373ee8ea31b",
-            LINK: "0x83be4ed61dd8a3518d198098ce37240c494710a7b9d85e35d9fceac21df08994",
+            USDC: "0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a",
+            WETH: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
+            WBTC: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
+            WSTETH: "0x6df640f3b8963d8f8358f791f352b8364513f6ab1cca5ed3f1f7b5448980e784",
         },
     },
     gracePeriodTime: 0,
@@ -52,7 +52,7 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         maxCouponDeductionRatio: normalized(0.2),
         tokenOILimitRatio: normalized(1.1),
         veSYMFeeIncentiveRatio: normalized(0.2),
-        treasuryFeeRatio: normalized(0.1),
+        treasuryFeeRatio: normalized(0.3),
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
         minCouponValue: normalized(1),
