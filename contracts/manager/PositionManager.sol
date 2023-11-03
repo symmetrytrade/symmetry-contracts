@@ -30,6 +30,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     // states
     address public market;
     address public coupon;
+    address public WETH;
 
     enum OrderStatus {
         None,
@@ -117,8 +118,8 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
 
     /*=== margin ===*/
 
-    function depositMargin(address _token, uint _amount, bytes32 _referral) external {
-        IMarket(market).transferMarginIn(msg.sender, msg.sender, _token, _amount);
+    function depositMargin(address _token, uint _amount, bytes32 _referral) external payable {
+        IMarket(market).transferMarginIn{value: msg.value}(msg.sender, msg.sender, _token, _amount);
         // update debt
         IMarket(market).updateDebt();
 

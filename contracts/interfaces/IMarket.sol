@@ -89,7 +89,7 @@ interface IMarket {
 
     function transferLiquidityOut(address _account, uint _amount) external;
 
-    function transferMarginIn(address _sender, address _receiver, address _token, uint _amount) external;
+    function transferMarginIn(address _sender, address _receiver, address _token, uint _amount) external payable;
 
     function transferMarginOut(address _sender, address _receiver, address _token, uint _amount) external;
 

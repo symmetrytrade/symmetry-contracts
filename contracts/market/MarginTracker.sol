@@ -272,7 +272,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
         }
     }
 
-    function liquidate(address _account, address _token, uint _maxAmount) external {
+    function liquidate(address _account, address _token, uint _maxAmount) external payable {
         require(collateralTokens.contains(_token) && _token != baseToken, "MarginTracker: invalid token");
 
         IMarket market_ = IMarket(market);
@@ -293,7 +293,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
             .toUint256();
         require(_maxAmount >= repayAmount, "MarginTracker: price mismatch");
         // liquidate
-        market_.transferMarginIn(msg.sender, _account, baseToken, repayAmount);
+        market_.transferMarginIn{value: msg.value}(msg.sender, _account, baseToken, repayAmount);
         market_.transferMarginOut(_account, msg.sender, _token, liquidateAmount.toUint256());
         // pay liquidation fee or cover deficit loss
         int penalty = baseAmount.multiplyDecimal(settings_.getIntVals(COLLATERAL_LIQUIDATION_PENALTY));

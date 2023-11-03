@@ -100,12 +100,12 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
         contract: "VotingEscrowCallbackRelayer",
     },
     SYMRate: { name: "SYMRate", contract: "SYMRate" },
-    Timelock: { name: "Timelock", contract: "Timelock" },
+    Timelock: { name: "Timelock", contract: "TimelockController" },
     NFTDescriptor: { name: "NFTDescriptor", contract: "NFTDescriptor" },
     DebtInterestRateModel: { name: "DebtInterestRateModel", contract: "DebtInterestRateModel" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
-    WETH: { name: "WETH", contract: "FaucetToken" },
+    WETH: { name: "WETH", contract: "FaucetWETH" },
     WBTC: { name: "WBTC", contract: "FaucetToken" },
     ChainlinkAggregatorSequencer: {
         name: "ChainlinkAggregatorSequencer",
