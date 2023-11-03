@@ -17,6 +17,7 @@ import "../interfaces/IMarketSettings.sol";
 import "../interfaces/IFeeTracker.sol";
 import "../interfaces/IPerpTracker.sol";
 import "../interfaces/IPriceOracle.sol";
+import "../interfaces/IWETH.sol";
 
 import "./VolumeTracker.sol";
 import "./MarketSettingsContext.sol";
@@ -42,6 +43,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     address public settings; // settings for markets
     mapping(address => bool) public isOperator; // operator contracts
 
+    address public WETH;
+
     // liquidity margin (deposited liquidity + realized pnl)
     int private liquidityBalance;
     // insurance, collection of liquidation penalty
@@ -55,10 +58,16 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     }
 
     /*=== initialize ===*/
-    function initialize(address _baseToken, address _priceOracle, address _settings) external onlyInitializeOnce {
+    function initialize(
+        address _baseToken,
+        address _priceOracle,
+        address _settings,
+        address _WETH
+    ) external onlyInitializeOnce {
         baseToken = _baseToken;
         priceOracle = _priceOracle;
         settings = _settings;
+        WETH = _WETH;
 
         _transferOwnership(msg.sender);
     }
@@ -174,14 +183,28 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
 
     /*=== margin ===*/
 
-    function transferMarginIn(address _sender, address _receiver, address _token, uint _amount) external onlyOperator {
-        IERC20(_token).safeTransferFrom(_sender, address(this), _amount);
+    function transferMarginIn(
+        address _sender,
+        address _receiver,
+        address _token,
+        uint _amount
+    ) external payable onlyOperator {
+        if (_token == WETH && msg.value >= _amount) {
+            IWETH(WETH).deposit{value: msg.value}();
+        } else {
+            IERC20(_token).safeTransferFrom(_sender, address(this), _amount);
+        }
         IMarginTracker(marginTracker).modifyMargin(_receiver, _token, _amount.toInt256());
     }
 
     function transferMarginOut(address _sender, address _receiver, address _token, uint _amount) external onlyOperator {
         IMarginTracker(marginTracker).withdrawMargin(_sender, _token, _amount.toInt256());
-        IERC20(_token).safeTransfer(_receiver, _amount);
+        if (_token == WETH) {
+            IWETH(WETH).withdraw(_amount);
+            payable(_receiver).transfer(_amount);
+        } else {
+            IERC20(_token).safeTransfer(_receiver, _amount);
+        }
     }
 
     function deductKeeperFee(address _account, int _amount) external onlyOperator {

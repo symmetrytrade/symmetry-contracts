@@ -20,7 +20,16 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const priceOracle = (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).address;
     const marketSettings = (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).address;
     if (!(await market_.initialized())) {
-        await (await market_.initialize(baseToken, priceOracle, marketSettings)).wait();
+        await (
+            await market_.initialize(
+                baseToken,
+                priceOracle,
+                marketSettings,
+                (
+                    await hre.ethers.getContract(CONTRACTS.WETH.name)
+                ).address
+            )
+        ).wait();
     }
     // set coupon
     const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
