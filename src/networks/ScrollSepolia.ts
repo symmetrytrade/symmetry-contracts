@@ -51,7 +51,7 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         perpTradingFee: normalized(0.001),
         maxCouponDeductionRatio: normalized(0.2),
         tokenOILimitRatio: normalized(1.1),
-        veSYMFeeIncentiveRatio: normalized(0.2),
+        veSYMFeeIncentiveRatio: normalized(0),
         treasuryFeeRatio: normalized(0.1),
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
@@ -101,7 +101,7 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
             { requirement: normalized(100000), rebateRatio: normalized(0.01) },
         ],
         symRate: [
-            { startTime: 0, rate: normalized(1) },
+            { startTime: 0, rate: normalized(0) },
             { startTime: 3000000000, rate: normalized(0) },
         ],
         luckyNumberAnnouncer: "0x47ED834153Ab43289Dae7C822EA25e2CE1A8F263",

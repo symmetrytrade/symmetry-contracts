@@ -11,9 +11,10 @@ task("faucet:deploy", "deploy faucet token")
         const { deployer } = await getNamedAccounts();
         const { deploy } = deployments;
 
+        const contract = taskArgs.symbol === "WETH" ? "FaucetWETH" : "FaucetToken";
         await deploy(taskArgs.symbol, {
             from: deployer,
-            contract: "FaucetToken",
+            contract: contract,
             args: [taskArgs.name, taskArgs.symbol, taskArgs.decimals],
             log: true,
         });
