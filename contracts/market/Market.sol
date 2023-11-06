@@ -43,7 +43,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     address public settings; // settings for markets
     mapping(address => bool) public isOperator; // operator contracts
 
-    address public WETH;
+    address public wETH;
 
     // liquidity margin (deposited liquidity + realized pnl)
     int private liquidityBalance;
@@ -62,12 +62,12 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         address _baseToken,
         address _priceOracle,
         address _settings,
-        address _WETH
+        address _wETH
     ) external onlyInitializeOnce {
         baseToken = _baseToken;
         priceOracle = _priceOracle;
         settings = _settings;
-        WETH = _WETH;
+        wETH = _wETH;
 
         _transferOwnership(msg.sender);
     }
@@ -189,8 +189,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         address _token,
         uint _amount
     ) external payable onlyOperator {
-        if (_token == WETH && msg.value >= _amount) {
-            IWETH(WETH).deposit{value: msg.value}();
+        if (_token == wETH && msg.value >= _amount) {
+            IWETH(wETH).deposit{value: msg.value}();
         } else {
             IERC20(_token).safeTransferFrom(_sender, address(this), _amount);
         }

@@ -30,7 +30,6 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     // states
     address public market;
     address public coupon;
-    address public WETH;
 
     enum OrderStatus {
         None,

@@ -80,22 +80,29 @@ describe("Incentives", () => {
         await (await liquidityGauge_.connect(account1).withdraw(normalized(1000))).wait();
 
         // set financing&funding fee rate to zero
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxFundingVelocity"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxFinancingFeeRate"), 0)).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
+        ).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFinancingFeeRate")], [0])
+        ).wait();
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxPriceDivergence"), normalized(2))
+            await marketSettings_.setIntVals(
+                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
+                [normalized(2)]
+            )
         ).wait();
         await (
-            await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("pythMaxAge"), normalized(10000))
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [normalized(10000)])
         ).wait();
         // set slippage to zero
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxSlippage"), 0)).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxSlippage")], [0])).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("veSYMFeeIncentiveRatio"),
-                normalized(0.1)
+                [hre.ethers.utils.formatBytes32String("veSYMFeeIncentiveRatio")],
+                [normalized(0.1)]
             )
         ).wait();
         // allocate sym
