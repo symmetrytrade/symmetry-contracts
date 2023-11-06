@@ -3,10 +3,10 @@ import { normalized, usdcOf } from "../utils/utils";
 
 export const ScrollSepoliaConfig: NetworkConfigs = {
     addresses: {
-        USDC: "0x44Acdf4a9C8A48e126c73f5BF211722AfaF4aEde",
-        WETH: "0x9984C06f5133B44891f9429D5bC2dE1Aa326f1DB",
-        WBTC: "0xa94376fa84691d27f263add4c5713Af9e147D070",
-        LINK: "0x23993528dD69F632830FeF82e514D7CB619d9678",
+        USDC: "0x454c861f9DAE3aD9ab9d431825b8C935549a8D40",
+        WETH: "0x863d7Abb9c62d8Bc69eA9EbC3E3583057D533e6f",
+        WBTC: "0xd2406163DaEf35d8Ee069F3B6b034451e60Db8A4",
+        LINK: "0x6E2cA697c9b19Bf403bca4B8D2ADFf3abeb496a0",
     },
     chainlink: {
         sequencerUptimeFeed: "0x0000000000000000000000000000000000000000",
