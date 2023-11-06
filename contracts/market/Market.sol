@@ -199,8 +199,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
 
     function transferMarginOut(address _sender, address _receiver, address _token, uint _amount) external onlyOperator {
         IMarginTracker(marginTracker).withdrawMargin(_sender, _token, _amount.toInt256());
-        if (_token == WETH) {
-            IWETH(WETH).withdraw(_amount);
+        if (_token == wETH) {
+            IWETH(wETH).withdraw(_amount);
             payable(_receiver).transfer(_amount);
         } else {
             IERC20(_token).safeTransfer(_receiver, _amount);
