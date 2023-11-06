@@ -1,14 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    CONTRACTS,
-    deployInBeaconProxy,
-    getProxyContract,
-    perpConfigKey,
-    mustGetKey,
-    marginConfigKey,
-} from "../utils/utils";
-import { getConfig } from "../config";
+import { CONTRACTS, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { updateSettings } from "../tasks/settings";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
@@ -24,37 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await (await settings_.initialize()).wait();
     }
 
-    // set general config
-    const config = getConfig(hre.network.name);
-    for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-        const key = hre.ethers.utils.formatBytes32String(term);
-        const value = hre.ethers.BigNumber.from(rawValue);
-        await (await settings_.setIntVals(key, value)).wait();
-    }
-    // set market specific config
-    for (const [market, conf] of Object.entries(config.marketConfig)) {
-        const token =
-            hre.network.name !== "hardhat"
-                ? mustGetKey(config.addresses, market)
-                : (await hre.ethers.getContract(market)).address;
-        for (const [k, v] of Object.entries(conf)) {
-            const key = perpConfigKey(token, k);
-            const value = hre.ethers.BigNumber.from(v);
-            await (await settings_.setIntVals(key, value)).wait();
-        }
-    }
-    // set multi-collateral config
-    for (const [collateral, conf] of Object.entries(config.marginConfig)) {
-        const token =
-            hre.network.name !== "hardhat"
-                ? mustGetKey(config.addresses, collateral)
-                : (await hre.ethers.getContract(collateral)).address;
-        for (const [k, v] of Object.entries(conf)) {
-            const key = marginConfigKey(token, k);
-            const value = hre.ethers.BigNumber.from(v);
-            await (await settings_.setIntVals(key, value)).wait();
-        }
-    }
+    await updateSettings(hre);
 };
 
 deploy.tags = [CONTRACTS.MarketSettings.name, "prod"];

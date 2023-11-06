@@ -88,22 +88,30 @@ describe("Margin", () => {
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         // set fee and slippage to zero for convenience
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxFundingVelocity"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxFinancingFeeRate"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxSlippage"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("perpTradingFee"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("pythMaxAge"), 1000000)).wait();
         await (
-            await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minKeeperFee"), normalized(0))
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
+        ).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFinancingFeeRate")], [0])
+        ).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxSlippage")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("perpTradingFee")], [0])).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [1000000])
+        ).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [normalized(0)])
         ).wait();
         // set debt interest rate to 0%
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minInterestRate"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("maxInterestRate"), 0)).wait();
-        await (await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("vertexInterestRate"), 0)).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minInterestRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxInterestRate")], [0])).wait();
+        await (
+            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("vertexInterestRate")], [0])
+        ).wait();
         await (
             await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("maxPriceDivergence"),
-                normalized(1000)
+                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
+                [normalized(1000)]
             )
         ).wait();
         await setPythAutoRefresh(hre);
@@ -162,7 +170,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(0);
         expect(await marginTracker_.totalDebt()).to.deep.eq(0);
         // set keeper fee to 1 usdc
-        await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minKeeperFee"), usdcOf(1));
+        await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
         await market_.connect(keeper).settle(await account1.getAddress(), []);
         const totalDebt = await marginTracker_.totalDebt();
@@ -195,24 +203,24 @@ describe("Margin", () => {
         // set debt interest rate to 0%
         await (
             await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("minInterestRate"),
-                config.marketGeneralConfig.minInterestRate
+                [hre.ethers.utils.formatBytes32String("minInterestRate")],
+                [config.marketGeneralConfig.minInterestRate]
             )
         ).wait();
         await (
             await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("maxInterestRate"),
-                config.marketGeneralConfig.maxInterestRate
+                [hre.ethers.utils.formatBytes32String("maxInterestRate")],
+                [config.marketGeneralConfig.maxInterestRate]
             )
         ).wait();
         await (
             await marketSettings_.setIntVals(
-                hre.ethers.utils.formatBytes32String("vertexInterestRate"),
-                config.marketGeneralConfig.vertexInterestRate
+                [hre.ethers.utils.formatBytes32String("vertexInterestRate")],
+                [config.marketGeneralConfig.vertexInterestRate]
             )
         ).wait();
 
-        await marketSettings_.setIntVals(hre.ethers.utils.formatBytes32String("minKeeperFee"), 0);
+        await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [0]);
         await increaseNextBlockTimestamp(HOUR);
         await helpers.mine();
         const interest = await interestRateModel_.nextInterest();

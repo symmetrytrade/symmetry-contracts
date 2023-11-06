@@ -21,10 +21,13 @@ contract MarketSettings is IMarketSettings, Ownable, Initializable {
 
     /*=== setters ===*/
 
-    function setIntVals(bytes32 _key, int _value) external onlyOwner {
-        intVals[_key] = _value;
-
-        emit SetKey(_key, _value);
+    function setIntVals(bytes32[] memory _keys, int[] memory _values) external onlyOwner {
+        require(_keys.length == _values.length, "MarketSettings: length not match");
+        uint len = _keys.length;
+        for (uint i = 0; i < len; ++i) {
+            intVals[_keys[i]] = _values[i];
+            emit SetKey(_keys[i], _values[i]);
+        }
     }
 
     /*=== getters ===*/
