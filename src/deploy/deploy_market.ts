@@ -17,19 +17,13 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const baseToken = config.addresses?.USDC
         ? config.addresses.USDC
         : (await hre.ethers.getContract(CONTRACTS.USDC.name)).address;
+    const WETH = config.addresses?.WETH
+        ? config.addresses.WETH
+        : (await hre.ethers.getContract(CONTRACTS.WETH.name)).address;
     const priceOracle = (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).address;
     const marketSettings = (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).address;
     if (!(await market_.initialized())) {
-        await (
-            await market_.initialize(
-                baseToken,
-                priceOracle,
-                marketSettings,
-                (
-                    await hre.ethers.getContract(CONTRACTS.WETH.name)
-                ).address
-            )
-        ).wait();
+        await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
     const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
