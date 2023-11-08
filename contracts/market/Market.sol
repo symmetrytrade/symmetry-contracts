@@ -58,7 +58,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
     }
 
     /*=== fallbacks ===*/
-    
+
     fallback() external payable {}
 
     receive() external payable {}
