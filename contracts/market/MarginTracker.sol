@@ -163,6 +163,8 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
             IMarket(market).sendToLp(-delta);
             // update accDebt
             userAccDebts[_account] = accDebt;
+
+            emit DebtUpdated(_account, accDebt);
         }
     }
 
