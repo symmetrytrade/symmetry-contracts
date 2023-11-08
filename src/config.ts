@@ -155,6 +155,10 @@ const DefaultConfig: NetworkConfigs = {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.99),
         },
+        WETH: {
+            conversionRatio: normalized(0.9),
+            floorPriceRatio: normalized(0.985),
+        },
     },
     otherConfig: {
         lockMaxTime: 3600 * 24 * 365 * 2, // 2 years

@@ -358,4 +358,15 @@ describe("Margin", () => {
         expect(await interestRateModel_.totalDebt()).to.deep.eq(0);
         expect(await interestRateModel_.debtRatio()).to.deep.eq(0);
     });
+    it("deposit&withdraw WETH", async () => {
+        // deposit WETH
+        await (
+            await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.constants.HashZero, {
+                value: normalized(1),
+            })
+        ).wait();
+
+        // withdraw WETH
+        await (await positionManager_.withdrawMargin(WETH, normalized(1))).wait();
+    });
 });

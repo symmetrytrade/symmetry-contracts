@@ -57,6 +57,12 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         _;
     }
 
+    /*=== fallbacks ===*/
+    
+    fallback() external payable {}
+
+    receive() external payable {}
+
     /*=== initialize ===*/
     function initialize(
         address _baseToken,
