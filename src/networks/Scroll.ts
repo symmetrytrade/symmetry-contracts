@@ -51,7 +51,7 @@ export const ScrollConfig: NetworkConfigs = {
         perpTradingFee: normalized(0.001),
         maxCouponDeductionRatio: normalized(0.2),
         tokenOILimitRatio: normalized(1.1),
-        veSYMFeeIncentiveRatio: normalized(0.2),
+        veSYMFeeIncentiveRatio: normalized(0),
         treasuryFeeRatio: normalized(0.3),
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),

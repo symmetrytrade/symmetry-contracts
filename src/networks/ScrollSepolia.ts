@@ -52,7 +52,7 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         maxCouponDeductionRatio: normalized(0.2),
         tokenOILimitRatio: normalized(1.1),
         veSYMFeeIncentiveRatio: normalized(0),
-        treasuryFeeRatio: normalized(0.1),
+        treasuryFeeRatio: normalized(0.3),
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
         minCouponValue: normalized(1),
