@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
@@ -14,7 +14,9 @@ import "../market/MarketSettingsContext.sol";
 
 import "../tokens/LPToken.sol";
 
-contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
+import "../security/PauseControl.sol";
+
+contract LiquidityManager is MarketSettingsContext, AccessControlEnumerable, PauseControl, Initializable {
     using SignedSafeDecimalMath for int;
     using SafeDecimalMath for uint;
     using SafeCast for int;
@@ -44,12 +46,18 @@ contract LiquidityManager is MarketSettingsContext, Ownable, Initializable {
         market = _market;
         lpToken = _lpToken;
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(PAUSER_ROLE, msg.sender);
     }
 
     /*=== liquidity ===*/
 
-    function addLiquidity(uint _amount, uint _minLp, address _receiver, bool _stake) external returns (uint) {
+    function addLiquidity(
+        uint _amount,
+        uint _minLp,
+        address _receiver,
+        bool _stake
+    ) external whenNotPaused returns (uint) {
         return _addLiquidity(msg.sender, _amount, _minLp, _receiver, _stake);
     }
 

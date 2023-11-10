@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "../interfaces/IMarketSettings.sol";
@@ -14,7 +14,7 @@ import "../market/MarketSettingsContext.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
 
-contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializable {
+contract PriceOracle is IPriceOracle, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using SafeCast for int;
     using SafeCast for uint;
     using SafeDecimalMath for uint;
@@ -43,30 +43,36 @@ contract PriceOracle is IPriceOracle, MarketSettingsContext, Ownable, Initializa
     function initialize(address _settings) external onlyInitializeOnce {
         settings = _settings;
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== owner ===*/
 
-    function setSetting(address _settings) external onlyOwner {
+    function setSetting(address _settings) external onlyRole(DEFAULT_ADMIN_ROLE) {
         settings = _settings;
     }
 
-    function setChainlinkSequencerUptimeFeed(address _sequencerUptimeFeed, uint _gracePeriodTime) public onlyOwner {
+    function setChainlinkSequencerUptimeFeed(
+        address _sequencerUptimeFeed,
+        uint _gracePeriodTime
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
         sequencerUptimeFeed = _sequencerUptimeFeed;
         gracePeriodTime = _gracePeriodTime;
     }
 
-    function setChainlinkAggregators(address[] calldata _tokens, address[] calldata _aggregators) external onlyOwner {
+    function setChainlinkAggregators(
+        address[] calldata _tokens,
+        address[] calldata _aggregators
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_tokens.length == _aggregators.length, "PriceOracle: length not match");
         for (uint i = 0; i < _tokens.length; ++i) aggregators[_tokens[i]] = _aggregators[i];
     }
 
-    function setPythOracle(address _pythOracle) external onlyOwner {
+    function setPythOracle(address _pythOracle) external onlyRole(DEFAULT_ADMIN_ROLE) {
         pythOracle = _pythOracle;
     }
 
-    function setPythIds(address[] calldata _tokens, bytes32[] calldata _ids) external onlyOwner {
+    function setPythIds(address[] calldata _tokens, bytes32[] calldata _ids) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_tokens.length == _ids.length, "PriceOracle: length not match");
         for (uint i = 0; i < _tokens.length; ++i) assetIds[_tokens[i]] = _ids[i];
     }

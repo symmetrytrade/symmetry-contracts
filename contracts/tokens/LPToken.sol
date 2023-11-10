@@ -15,24 +15,20 @@ contract LPToken is ERC20, AccessControlEnumerable {
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setLiquidityGauge(address _liquidityGauge) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "LPToken: forbid");
+    function setLiquidityGauge(address _liquidityGauge) external onlyRole(DEFAULT_ADMIN_ROLE) {
         liquidityGauge = _liquidityGauge;
     }
 
-    function mint(address _to, uint _amount) public virtual {
-        require(hasRole(MINTER_ROLE, msg.sender), "LPToken: must have minter role to mint");
+    function mint(address _to, uint _amount) public virtual onlyRole(MINTER_ROLE) {
         _mint(_to, _amount);
     }
 
-    function mintAndStake(address _to, uint _amount) public virtual {
-        require(hasRole(MINTER_ROLE, msg.sender), "LPToken: must have minter role to mint");
+    function mintAndStake(address _to, uint _amount) public virtual onlyRole(MINTER_ROLE) {
         _mint(liquidityGauge, _amount);
         ILiquidityGauge(liquidityGauge).depositAfterMint(_to, _amount);
     }
 
-    function burn(address _account, uint _amount) public virtual {
-        require(hasRole(MINTER_ROLE, msg.sender), "LPToken: must have minter role to burn");
+    function burn(address _account, uint _amount) public virtual onlyRole(MINTER_ROLE) {
         _burn(_account, _amount);
     }
 }

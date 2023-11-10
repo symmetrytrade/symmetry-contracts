@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/ISYMRate.sol";
 
-contract SYMRate is ISYMRate, Ownable {
+contract SYMRate is ISYMRate, AccessControlEnumerable {
     // release rate in seconds
     Rate[] public rates;
 
-    constructor() {}
+    constructor() {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
 
-    function changeRate(Rate[] calldata _rates) external onlyOwner {
+    function changeRate(Rate[] calldata _rates) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(_rates.length > 0, "SYMRate: empty rate");
         require(_rates[_rates.length - 1].rate == 0, "SYMRate: never end");
         delete rates;
