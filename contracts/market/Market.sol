@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -19,10 +19,12 @@ import "../interfaces/IPerpTracker.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../interfaces/IWETH.sol";
 
+import "../security/PauseControl.sol";
+
 import "./VolumeTracker.sol";
 import "./MarketSettingsContext.sol";
 
-contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initializable {
+contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlEnumerable, PauseControl, Initializable {
     using SafeERC20 for IERC20;
     using SafeDecimalMath for uint;
     using SignedSafeDecimalMath for int;
@@ -75,48 +77,49 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, Ownable, Initi
         settings = _settings;
         wETH = _wETH;
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(PAUSER_ROLE, msg.sender);
     }
 
     /*=== owner functions ===*/
 
-    function setPerpTracker(address _perpTracker) external onlyOwner {
+    function setPerpTracker(address _perpTracker) external onlyRole(DEFAULT_ADMIN_ROLE) {
         perpTracker = _perpTracker;
 
         emit SetPerpTracker(_perpTracker);
     }
 
-    function setFeeTracker(address _feeTracker) external onlyOwner {
+    function setFeeTracker(address _feeTracker) external onlyRole(DEFAULT_ADMIN_ROLE) {
         feeTracker = _feeTracker;
 
         emit SetFeeTracker(_feeTracker);
     }
 
-    function setVolumeTracker(address _volumeTracker) external onlyOwner {
+    function setVolumeTracker(address _volumeTracker) external onlyRole(DEFAULT_ADMIN_ROLE) {
         volumeTracker = _volumeTracker;
 
         emit SetVolumeTracker(_volumeTracker);
     }
 
-    function setMarginTracker(address _marginTracker) external onlyOwner {
+    function setMarginTracker(address _marginTracker) external onlyRole(DEFAULT_ADMIN_ROLE) {
         marginTracker = _marginTracker;
 
         emit SetMarginTracker(_marginTracker);
     }
 
-    function setOperator(address _operator, bool _status) external onlyOwner {
+    function setOperator(address _operator, bool _status) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isOperator[_operator] = _status;
 
         emit SetOperator(_operator, _status);
     }
 
-    function setCoupon(address _coupon) external onlyOwner {
+    function setCoupon(address _coupon) external onlyRole(DEFAULT_ADMIN_ROLE) {
         coupon = _coupon;
 
         emit SetCoupon(_coupon);
     }
 
-    function setTreasury(address _treasury) external onlyOwner {
+    function setTreasury(address _treasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
         treasury = _treasury;
     }
 

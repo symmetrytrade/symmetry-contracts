@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -18,7 +18,7 @@ import "../interfaces/IDebtInterestRateModel.sol";
 
 import "./MarketSettingsContext.sol";
 
-contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SignedSafeDecimalMath for int;
     using SafeCast for int;
@@ -58,18 +58,18 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
         baseToken = IMarket(_market).baseToken();
         settings = IMarket(_market).settings();
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== tokens ===*/
 
-    function addCollateralToken(address _token) external onlyOwner {
+    function addCollateralToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (collateralTokens.add(_token)) {
             emit NewCollateral(_token);
         }
     }
 
-    function removeCollateralToken(address _token) external onlyOwner {
+    function removeCollateralToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (collateralTokens.remove(_token)) {
             emit RemoveCollateral(_token);
         }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -16,7 +16,7 @@ import "../interfaces/IPriceOracle.sol";
 
 import "./MarketSettingsContext.sol";
 
-contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SignedSafeDecimalMath for int;
     using SafeCast for uint;
@@ -48,25 +48,25 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Owna
         market = _market;
         settings = IMarket(_market).settings();
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== owner ===*/
 
-    function setMarket(address _market) external onlyOwner {
+    function setMarket(address _market) external onlyRole(DEFAULT_ADMIN_ROLE) {
         market = _market;
     }
 
     /* === Token Management === */
 
-    function addMarketToken(address _token) external onlyOwner {
+    function addMarketToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (marketTokens.add(_token)) {
             emit NewMarket(_token);
         }
         if (feeInfos[_token].updateTime == 0) feeInfos[_token].updateTime = int(block.timestamp);
     }
 
-    function removeMarketToken(address _token) external onlyOwner {
+    function removeMarketToken(address _token) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (marketTokens.remove(_token)) {
             emit RemoveMarket(_token);
         }

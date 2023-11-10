@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "../utils/SafeDecimalMath.sol";
@@ -15,7 +15,7 @@ import "../interfaces/ITradingFeeCoupon.sol";
 import "./MarketSettings.sol";
 import "./MarketSettingsContext.sol";
 
-contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using SafeDecimalMath for uint;
     using SignedSafeDecimalMath for int;
     using SafeCast for uint;
@@ -53,16 +53,16 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         coupon = _coupon;
         settings = IMarket(_market).settings();
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== owner ===*/
 
-    function setLuckyNumberAnnouncer(address _announcer) external onlyOwner {
+    function setLuckyNumberAnnouncer(address _announcer) external onlyRole(DEFAULT_ADMIN_ROLE) {
         luckyNumberAnnouncer = _announcer;
     }
 
-    function setRebateTiers(Tier[] memory _tiers) external onlyOwner {
+    function setRebateTiers(Tier[] memory _tiers) external onlyRole(DEFAULT_ADMIN_ROLE) {
         delete rebateTiers;
 
         uint len = _tiers.length;

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../interfaces/IMarket.sol";
 import "../interfaces/IMarketSettings.sol";
@@ -18,7 +18,9 @@ import "../utils/CommonContext.sol";
 import "../utils/SafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 
-contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initializable {
+import "../security/PauseControl.sol";
+
+contract PositionManager is CommonContext, MarketSettingsContext, AccessControlEnumerable, PauseControl, Initializable {
     using SignedSafeDecimalMath for int;
     using SafeDecimalMath for uint;
     using SafeCast for int;
@@ -98,7 +100,8 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
         market = _market;
         coupon = _coupon;
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(PAUSER_ROLE, msg.sender);
     }
 
     /*=== view ===*/
@@ -187,7 +190,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     /**
      * @notice submit an order to the contract.
      */
-    function submitOrder(OrderData memory _orderData) external {
+    function submitOrder(OrderData memory _orderData) external whenNotPaused {
         require(_orderData.size != 0, "PositionManager: zero size");
         IMarket market_ = IMarket(market);
         require(
@@ -338,7 +341,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, Ownable, Initi
     /// @notice execute an submitted execution order, this function is payable for paying the oracle update fee
     /// @param _id order id
     /// @param _priceUpdateData price update data for pyth oracle
-    function executeOrder(uint _id, bytes[] calldata _priceUpdateData) external payable {
+    function executeOrder(uint _id, bytes[] calldata _priceUpdateData) external payable whenNotPaused {
         Order memory order = orders[_id];
         require(_id < orderCnt, "PositionManger: invalid order id");
         require(order.status == OrderStatus.Pending, "PositionManager: not pending");

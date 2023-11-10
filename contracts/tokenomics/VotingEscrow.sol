@@ -75,8 +75,7 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
 
     /*=== owner ===*/
 
-    function setCallbackRelayer(address _relayer) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "VotingEscrow: not owner");
+    function setCallbackRelayer(address _relayer) external onlyRole(DEFAULT_ADMIN_ROLE) {
         callbackRelayer = _relayer;
     }
 
@@ -309,8 +308,7 @@ contract VotingEscrow is IVotingEscrow, CommonContext, ReentrancyGuard, AccessCo
         return min;
     }
 
-    function vest(address _addr, uint _amount) external {
-        require(hasRole(VESTING_ROLE, msg.sender), "VotingEscrow: not vesting role");
+    function vest(address _addr, uint _amount) external onlyRole(VESTING_ROLE) {
         require(_amount > 0, "VotingEscrow: need non-zero value");
 
         uint uepoch = userVestEpoch(_addr);

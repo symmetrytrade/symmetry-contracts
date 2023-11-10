@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -21,7 +21,7 @@ import "../interfaces/ITradingFeeCoupon.sol";
 
 import "./MarketSettingsContext.sol";
 
-contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownable, Initializable {
+contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using SafeERC20 for IERC20;
     using SafeDecimalMath for uint;
     using SignedSafeDecimalMath for int;
@@ -64,12 +64,12 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Ownabl
         settings = IMarket(_market).settings();
         votingEscrow = _votingEscrow;
 
-        _transferOwnership(msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /*=== owner functions ===*/
 
-    function setTradingFeeTiers(Tier[] memory _tiers) external onlyOwner {
+    function setTradingFeeTiers(Tier[] memory _tiers) external onlyRole(DEFAULT_ADMIN_ROLE) {
         delete tradingFeeTiers;
 
         uint len = _tiers.length;

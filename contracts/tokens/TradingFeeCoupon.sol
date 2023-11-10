@@ -18,6 +18,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
     mapping(address => uint) public unspents;
     Mintable[] public mintables;
     mapping(uint => uint) public tokenSalt;
+    mapping(uint => uint) public mintDate;
     address public descriptor;
 
     constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
@@ -26,9 +27,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setDescriptor(address _descriptor) external {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "TradingFeeCoupon: forbid");
-
+    function setDescriptor(address _descriptor) external onlyRole(DEFAULT_ADMIN_ROLE) {
         descriptor = _descriptor;
     }
 
@@ -38,9 +37,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         return ERC721.supportsInterface(interfaceId) || AccessControlEnumerable.supportsInterface(interfaceId);
     }
 
-    function preMint(address _to, uint _value, uint _expire) external returns (uint id) {
-        require(hasRole(MINTER_ROLE, msg.sender), "TradingFeeCoupon: must have minter role to pre-mint");
-
+    function preMint(address _to, uint _value, uint _expire) external onlyRole(MINTER_ROLE) returns (uint id) {
         id = mintables.length;
         mintables.push(Mintable({to: _to, value: _value, expire: _expire}));
         emit PreMint(id, _to, _value, _expire);
@@ -66,9 +63,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         return _mintCoupon(mintable.to, mintable.value);
     }
 
-    function mintCoupon(address _to, uint _value) external {
-        require(hasRole(MINTER_ROLE, msg.sender), "TradingFeeCoupon: must have minter role to pre-mint");
-
+    function mintCoupon(address _to, uint _value) external onlyRole(MINTER_ROLE) {
         _mintCoupon(_to, _value);
     }
 
@@ -83,6 +78,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         id = tokenCount;
         couponValues[id] = _value;
         tokenSalt[id] = uint(keccak256(abi.encodePacked(blockhash(block.number - 1), id, _value)));
+        mintDate[id] = block.timestamp;
         _mint(_to, id);
         tokenCount = id + 1;
 
@@ -99,8 +95,7 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         emit Applied(_id, _account, couponValues[_id]);
     }
 
-    function spend(address _account, uint _amount) external {
-        require(hasRole(SPENDER_ROLE, msg.sender), "TradingFeeCoupon: must have spender role to spend");
+    function spend(address _account, uint _amount) external onlyRole(SPENDER_ROLE) {
         require(unspents[_account] >= _amount, "TradingFeeCoupon: insufficient unspents");
 
         unspents[_account] -= _amount;
@@ -116,7 +111,8 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
                 INFTDescriptor.TokenURIParams({
                     tokenId: _tokenId,
                     tokenSalt: tokenSalt[_tokenId],
-                    value: couponValues[_tokenId]
+                    value: couponValues[_tokenId],
+                    ts: mintDate[_tokenId]
                 })
             );
     }

@@ -6,6 +6,7 @@ interface INFTDescriptor {
         uint tokenId;
         uint tokenSalt;
         uint value;
+        uint ts;
     }
 
     function constructTokenURI(TokenURIParams memory _params) external pure returns (string memory);
