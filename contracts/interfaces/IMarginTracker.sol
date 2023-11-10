@@ -17,7 +17,8 @@ interface IMarginTracker {
         uint penaltyToTreasury,
         uint deficitLoss
     );
-    event DebtUpdated(address account, int accDebt);
+    event DebtUpdated(int accDebt);
+    event UserDebtUpdated(address account, int accDebt);
 
     /*=== function ===*/
 

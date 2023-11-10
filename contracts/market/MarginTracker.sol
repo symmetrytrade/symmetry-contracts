@@ -148,6 +148,8 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
         accDebt = nextAccDebt;
         unsettledInterest = nextUnsettledInterest;
         IDebtInterestRateModel(interestRateModel).updateMaxInterestRate();
+
+        emit DebtUpdated(accDebt);
     }
 
     function _updateUserDebt(address _account) internal {
@@ -164,7 +166,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
             // update accDebt
             userAccDebts[_account] = accDebt;
 
-            emit DebtUpdated(_account, accDebt);
+            emit UserDebtUpdated(_account, accDebt);
         }
     }
 
