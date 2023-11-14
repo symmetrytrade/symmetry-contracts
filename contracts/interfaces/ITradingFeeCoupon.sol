@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
+import "./INFTDescriptor.sol";
+
 interface ITradingFeeCoupon {
     /*=== struct ===*/
 
@@ -8,6 +10,7 @@ interface ITradingFeeCoupon {
         address to;
         uint value;
         uint expire;
+        uint salt;
     }
 
     /*=== event ===*/
@@ -26,9 +29,9 @@ interface ITradingFeeCoupon {
 
     function mintAndApply(uint _preMintId) external;
 
-    function mintCoupon(address _to, uint _value) external;
+    function mintCoupon(address _to, uint _value, uint _salt) external;
 
-    function mintables(uint) external view returns (address to, uint value, uint expire);
+    function mintables(uint) external view returns (address to, uint value, uint expire, uint salt);
 
     function preMint(address _to, uint _value, uint _expire) external returns (uint id);
 
@@ -37,4 +40,6 @@ interface ITradingFeeCoupon {
     function spend(address _account, uint _amount) external;
 
     function unspents(address) external view returns (uint);
+
+    function tokenURIParams(uint _tokenId) external view returns (INFTDescriptor.TokenURIParams memory);
 }

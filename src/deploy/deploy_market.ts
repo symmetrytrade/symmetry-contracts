@@ -26,7 +26,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
-    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
+    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     await (await market_.setCoupon(coupon_.address)).wait();
 
     // add spender role of coupon

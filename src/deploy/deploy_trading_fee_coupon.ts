@@ -1,21 +1,20 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS } from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getProxyContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre;
+    const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
 
-    await deploy(CONTRACTS.TradingFeeCoupon.name, {
-        from: deployer,
-        contract: CONTRACTS.TradingFeeCoupon.contract,
-        args: ["Symmetry Trading Coupon NFT", "SYM-COUPON"],
-        log: true,
-    });
+    await deployInBeaconProxy(hre, CONTRACTS.TradingFeeCoupon);
+
+    console.log(`initializing ${CONTRACTS.TradingFeeCoupon.name}..`);
+    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    if (!(await coupon_.initialized())) {
+        await (await coupon_.initialize("Symmetry Trading Coupon NFT", "SYM-COUPON")).wait();
+    }
 
     const descriptor_ = await hre.ethers.getContract(CONTRACTS.NFTDescriptor.name);
-    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
     // set descriptor
     await (await coupon_.setDescriptor(descriptor_.address)).wait();
 };

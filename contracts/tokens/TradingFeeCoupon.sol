@@ -7,12 +7,17 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "../interfaces/ITradingFeeCoupon.sol";
 import "../interfaces/INFTDescriptor.sol";
 
-contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable {
+import "../utils/Initializable.sol";
+
+contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable, Initializable {
     // constants
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant SPENDER_ROLE = keccak256("SPENDER_ROLE");
 
     // states
+    string private _name;
+    string private _symbol;
+
     uint public tokenCount;
     mapping(uint => uint) public couponValues;
     mapping(address => uint) public unspents;
@@ -21,10 +26,23 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
     mapping(uint => uint) public mintDate;
     address public descriptor;
 
-    constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {
-        mintables.push(Mintable(address(0), 0, 0));
+    constructor() ERC721("", "") {}
+
+    function initialize(string memory name_, string memory symbol_) external onlyInitializeOnce {
+        _name = name_;
+        _symbol = symbol_;
+
+        mintables.push(Mintable(address(0), 0, 0, 0));
 
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    function name() public view override returns (string memory) {
+        return _name;
+    }
+
+    function symbol() public view override returns (string memory) {
+        return _symbol;
     }
 
     function setDescriptor(address _descriptor) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -39,7 +57,8 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
 
     function preMint(address _to, uint _value, uint _expire) external onlyRole(MINTER_ROLE) returns (uint id) {
         id = mintables.length;
-        mintables.push(Mintable({to: _to, value: _value, expire: _expire}));
+        uint salt = uint(keccak256(abi.encodePacked(blockhash(block.number - 1), id, _value)));
+        mintables.push(Mintable({to: _to, value: _value, expire: _expire, salt: salt}));
         emit PreMint(id, _to, _value, _expire);
     }
 
@@ -60,11 +79,11 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         mintables[_preMintId].expire = 0;
 
         emit PreMintConsumed(_preMintId);
-        return _mintCoupon(mintable.to, mintable.value);
+        return _mintCoupon(mintable.to, mintable.value, mintable.salt);
     }
 
-    function mintCoupon(address _to, uint _value) external onlyRole(MINTER_ROLE) {
-        _mintCoupon(_to, _value);
+    function mintCoupon(address _to, uint _value, uint _salt) external onlyRole(MINTER_ROLE) {
+        _mintCoupon(_to, _value, _salt);
     }
 
     function applyCoupons(uint[] memory _ids) external {
@@ -74,10 +93,10 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         }
     }
 
-    function _mintCoupon(address _to, uint _value) internal returns (uint id) {
+    function _mintCoupon(address _to, uint _value, uint _salt) internal returns (uint id) {
         id = tokenCount;
         couponValues[id] = _value;
-        tokenSalt[id] = uint(keccak256(abi.encodePacked(blockhash(block.number - 1), id, _value)));
+        tokenSalt[id] = _salt;
         mintDate[id] = block.timestamp;
         _mint(_to, id);
         tokenCount = id + 1;
@@ -103,17 +122,23 @@ contract TradingFeeCoupon is ITradingFeeCoupon, ERC721, AccessControlEnumerable 
         emit Spent(_account, _amount);
     }
 
-    function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
+    function _tokenURIParams(uint _tokenId) internal view returns (INFTDescriptor.TokenURIParams memory) {
+        return
+            INFTDescriptor.TokenURIParams({
+                tokenId: _tokenId,
+                tokenSalt: tokenSalt[_tokenId],
+                value: couponValues[_tokenId],
+                ts: mintDate[_tokenId]
+            });
+    }
+
+    function tokenURIParams(uint _tokenId) external view returns (INFTDescriptor.TokenURIParams memory) {
+        return _tokenURIParams(_tokenId);
+    }
+
+    function tokenURI(uint _tokenId) public view virtual override returns (string memory) {
         _requireMinted(_tokenId);
 
-        return
-            INFTDescriptor(descriptor).constructTokenURI(
-                INFTDescriptor.TokenURIParams({
-                    tokenId: _tokenId,
-                    tokenSalt: tokenSalt[_tokenId],
-                    value: couponValues[_tokenId],
-                    ts: mintDate[_tokenId]
-                })
-            );
+        return INFTDescriptor(descriptor).constructTokenURI(_tokenURIParams(_tokenId));
     }
 }

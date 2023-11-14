@@ -15,7 +15,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.VolumeTracker.name}..`);
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
+    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await volumeTracker_.initialized())) {
         await (await volumeTracker_.initialize(market_.address, coupon_.address)).wait();
     }
