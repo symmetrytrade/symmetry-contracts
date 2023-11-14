@@ -33,6 +33,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
     EnumerableSet.AddressSet private collateralTokens; // collaterals
     // account => token => amount mapping
     mapping(address => mapping(address => int)) public userCollaterals;
+    mapping(address => int) public totalCollaterals;
     mapping(address => int) public freezed; // freezed user margin in baseToken for keeper fee
     address public interestRateModel;
 
@@ -214,6 +215,13 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
             _modifyBaseMargin(_account, _delta);
         } else {
             userCollaterals[_account][_token] += _delta;
+            totalCollaterals[_token] += _delta;
+            require(
+                totalCollaterals[_token] <=
+                    IMarketSettings(settings).getIntValsByDomain(domainKey(_token), COLLATERAL_CAP),
+                "MarginTracker: collateral exceed cap"
+            );
+
             emit MarginTransferred(_account, _token, _delta);
         }
     }
