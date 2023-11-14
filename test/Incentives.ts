@@ -97,7 +97,7 @@ describe("Incentives", () => {
             await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [normalized(10000)])
         ).wait();
         // set slippage to zero
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxSlippage")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(

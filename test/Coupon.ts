@@ -64,7 +64,7 @@ describe("Coupon", () => {
         feeTracker_ = await getProxyContract(hre, CONTRACTS.FeeTracker, account1);
         volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, account1);
         votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
-        coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, account1);
+        coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
         sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
         config = getConfig(hre.network.name);
 
@@ -98,7 +98,7 @@ describe("Coupon", () => {
             await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [normalized(10000)])
         ).wait();
         // set slippage to zero
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxSlippage")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(
@@ -259,6 +259,9 @@ describe("Coupon", () => {
 
         expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(0);
 
+        await (await volumeTracker_.issueLuckyNumber(startOfWeek((await helpers.time.latest()) - WEEK))).wait();
+        await helpers.mine(3);
+        await (await volumeTracker_.drawLuckyNumber(startOfWeek((await helpers.time.latest()) - WEEK))).wait();
         await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([(await helpers.time.latest()) - WEEK]))
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
@@ -367,17 +370,26 @@ describe("Coupon", () => {
     });
     it("lucky number", async () => {
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
-        await expect(volumeTracker_.drawLuckyNumber()).to.be.revertedWith("VolumeTracker: not issued");
-        await (await volumeTracker_.issueLuckyNumber()).wait();
-        await expect(volumeTracker_.drawLuckyNumber()).to.be.revertedWith("VolumeTracker: hash unavailable");
+        await helpers.mine();
+        await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
+            "VolumeTracker: not issued"
+        );
+        await (await volumeTracker_.issueLuckyNumber(await helpers.time.latest())).wait();
+        await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
+            "VolumeTracker: hash unavailable"
+        );
         await helpers.mine(5);
-        await (await volumeTracker_.drawLuckyNumber()).wait();
-        await expect(volumeTracker_.drawLuckyNumber()).to.be.revertedWith("VolumeTracker: drawed");
+        await (await volumeTracker_.drawLuckyNumber(await helpers.time.latest())).wait();
+        await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
+            "VolumeTracker: drawed"
+        );
 
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
-        await (await volumeTracker_.issueLuckyNumber()).wait();
+        await helpers.mine();
+        await (await volumeTracker_.issueLuckyNumber(await helpers.time.latest())).wait();
         await expect(
             volumeTracker_.drawLuckyNumberByAnnouncer(
+                await helpers.time.latest(),
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero
@@ -386,21 +398,25 @@ describe("Coupon", () => {
         volumeTracker_ = volumeTracker_.connect(deployer);
         await expect(
             volumeTracker_.drawLuckyNumberByAnnouncer(
+                await helpers.time.latest(),
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero
             )
         ).to.be.revertedWith("VolumeTracker: too early");
         await helpers.mine(300);
-        await expect(volumeTracker_.drawLuckyNumber()).to.be.revertedWith("VolumeTracker: hash unavailable");
+        await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
+            "VolumeTracker: hash unavailable"
+        );
         await (
             await volumeTracker_.drawLuckyNumberByAnnouncer(
+                await helpers.time.latest(),
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero,
                 hre.ethers.constants.HashZero
             )
         ).wait();
         const t = startOfDay(await helpers.time.latest()) - DAY;
-        expect(await volumeTracker_.luckyNumber(t)).to.deep.eq(10);
+        expect(await volumeTracker_.luckyNumber(t)).to.deep.eq("0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22");
     });
 });

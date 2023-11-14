@@ -17,7 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
     const votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, deployer);
     const perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
-    const coupon_ = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name, deployer);
+    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await feeTracker_.initialized())) {
         await (
             await feeTracker_.initialize(market_.address, perpTracker_.address, coupon_.address, votingEscrow_.address)

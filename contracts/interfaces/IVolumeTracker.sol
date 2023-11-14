@@ -29,9 +29,9 @@ interface IVolumeTracker {
 
     function coupon() external view returns (address);
 
-    function drawLuckyNumber() external;
+    function drawLuckyNumber(uint _t) external;
 
-    function drawLuckyNumberByAnnouncer(bytes32 h1, bytes32 h2, bytes32 h3) external;
+    function drawLuckyNumberByAnnouncer(uint _t, bytes32 h1, bytes32 h2, bytes32 h3) external;
 
     function logTrade(address _account, uint _volume) external;
 

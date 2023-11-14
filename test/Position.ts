@@ -94,7 +94,7 @@ describe("Position", () => {
         await (
             await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
         ).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxSlippage")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
         await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("perpTradingFee")], [0])).wait();
         await (
             await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [1000000])
