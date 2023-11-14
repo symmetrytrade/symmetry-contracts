@@ -123,7 +123,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         require(!weeklyCouponClaimed[msg.sender][_t], "VolumeTracker: claimed already");
         weeklyCouponClaimed[msg.sender][_t] = true;
 
-        uint luckyNum = luckyNumber[_t];
+        uint luckyNum = luckyNumber[_t + 6 * 1 days];
         require(luckyNum != 0, "VolumeTracker: not determined");
 
         uint volume = userWeeklyVolume[msg.sender][_t];

@@ -259,9 +259,9 @@ describe("Coupon", () => {
 
         expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(0);
 
-        await (await volumeTracker_.issueLuckyNumber(startOfWeek((await helpers.time.latest()) - WEEK))).wait();
+        await (await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
         await helpers.mine(3);
-        await (await volumeTracker_.drawLuckyNumber(startOfWeek((await helpers.time.latest()) - WEEK))).wait();
+        await (await volumeTracker_.drawLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
         await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([(await helpers.time.latest()) - WEEK]))
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
@@ -417,6 +417,8 @@ describe("Coupon", () => {
             )
         ).wait();
         const t = startOfDay(await helpers.time.latest()) - DAY;
-        expect(await volumeTracker_.luckyNumber(t)).to.deep.eq("0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22");
+        expect(await volumeTracker_.luckyNumber(t)).to.deep.eq(
+            "0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22"
+        );
     });
 });
