@@ -30,7 +30,7 @@ interface MarketGeneralConfig {
     minOrderDelay: number;
     minKeeperFee: string;
     minMargin: string;
-    maxSlippage: string;
+    liquidityRange: string;
     priceDelay: number;
     maxFundingVelocity: string;
     maxFinancingFeeRate: string;
@@ -59,6 +59,7 @@ interface MarketConfig {
 interface MarginConfig {
     conversionRatio: string;
     floorPriceRatio: string;
+    collateralCap: string;
 }
 
 // to be loaded in separate contracts
@@ -118,7 +119,7 @@ const DefaultConfig: NetworkConfigs = {
         minOrderDelay: 60, // 1 minute
         minKeeperFee: usdcOf(1), // 1 usd
         minMargin: normalized(50), // 50 usd
-        maxSlippage: normalized(0.5),
+        liquidityRange: normalized(0.5),
         priceDelay: 10, // 10 seconds,
         maxFundingVelocity: normalized(300), // 30000% / day^2
         maxFinancingFeeRate: normalized(0.09), // 9% per day
@@ -150,14 +151,17 @@ const DefaultConfig: NetworkConfigs = {
         USDC: {
             conversionRatio: normalized(1),
             floorPriceRatio: normalized(1),
+            collateralCap: "0",
         },
         WBTC: {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.99),
+            collateralCap: normalized(100),
         },
         WETH: {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.985),
+            collateralCap: normalized(1000),
         },
     },
     otherConfig: {

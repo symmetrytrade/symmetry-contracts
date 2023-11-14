@@ -47,7 +47,7 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         minOrderDelay: 1,
         minKeeperFee: "1000000",
         minMargin: normalized(50),
-        maxSlippage: normalized(0.05),
+        liquidityRange: normalized(0.05),
         priceDelay: 60,
         maxFundingVelocity: normalized(0.0533),
         maxFinancingFeeRate: normalized(0.09),
@@ -71,10 +71,12 @@ export const ArbGoerliTestnetConfig: NetworkConfigs = {
         USDC: {
             conversionRatio: normalized(1),
             floorPriceRatio: normalized(1),
+            collateralCap: "0",
         },
         WBTC: {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.99),
+            collateralCap: normalized(100),
         },
     },
     marketConfig: {

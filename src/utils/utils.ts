@@ -28,6 +28,10 @@ export function diff_D(x: ethers.BigNumber, y: ethers.BigNumber) {
     return x > y ? x.sub(y) : y.sub(x);
 }
 
+export function tokenOf(x: number, decimals: number) {
+    return new BigNumber(x).multipliedBy(10 ** decimals).toString(10);
+}
+
 export function normalized(x: number) {
     return new BigNumber(x).multipliedBy(UNIT).toString(10);
 }
