@@ -8,7 +8,7 @@ contract MarketSettingsContext {
 
     /*=== general setting keys ===*/
     // trading
-    bytes32 internal constant MAX_SLIPPAGE = "maxSlippage";
+    bytes32 internal constant LIQUIDITY_RANGE = "liquidityRange";
     bytes32 internal constant PRICE_DELAY = "priceDelay";
     // oracle
     bytes32 internal constant PYTH_MAX_AGE = "pythMaxAge";
@@ -64,4 +64,5 @@ contract MarketSettingsContext {
     /*=== setting keys per collateral ===*/
     bytes32 internal constant CONVERSION_RATIO = "conversionRatio";
     bytes32 internal constant FLOOR_PRICE_RATIO = "floorPriceRatio";
+    bytes32 internal constant COLLATERAL_CAP = "collateralCap";
 }

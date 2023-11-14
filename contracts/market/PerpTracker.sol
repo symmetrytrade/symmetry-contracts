@@ -302,7 +302,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
      * @return avgPrice the fill price
      */
     function swapOnAMM(SwapParams memory _params) public onlyMarket returns (int avgPrice) {
-        int lambda = IMarketSettings(settings).getIntVals(MAX_SLIPPAGE);
+        int lambda = IMarketSettings(settings).getIntVals(LIQUIDITY_RANGE);
         int kLP = IMarketSettings(settings).getIntValsByDomain(domainKey(_params.token), PROPORTION_RATIO);
         kLP = (kLP * _params.lpNetValue) / _params.oraclePrice;
         int mid = _computeMidPriceCoefficient(_params.skew, kLP, lambda);
