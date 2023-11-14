@@ -1,5 +1,5 @@
 import { NetworkConfigs } from "../config";
-import { normalized, usdcOf } from "../utils/utils";
+import { normalized, tokenOf, usdcOf } from "../utils/utils";
 
 export const ScrollSepoliaConfig: NetworkConfigs = {
     addresses: {
@@ -44,7 +44,7 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         minOrderDelay: 1,
         minKeeperFee: "1000000",
         minMargin: normalized(50),
-        maxSlippage: normalized(0.05),
+        liquidityRange: normalized(0.05),
         priceDelay: 60,
         maxFundingVelocity: normalized(0.0533),
         maxFinancingFeeRate: normalized(0.09),
@@ -68,14 +68,17 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         USDC: {
             conversionRatio: normalized(1),
             floorPriceRatio: normalized(1),
+            collateralCap: "0",
         },
         WBTC: {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.99),
+            collateralCap: tokenOf(100, 8),
         },
         WETH: {
             conversionRatio: normalized(0.9),
             floorPriceRatio: normalized(0.985),
+            collateralCap: normalized(10000),
         },
     },
     marketConfig: {
