@@ -217,7 +217,8 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
             userCollaterals[_account][_token] += _delta;
             totalCollaterals[_token] += _delta;
             require(
-                totalCollaterals[_token] <=
+                _delta < 0 ||
+                    totalCollaterals[_token] <=
                     IMarketSettings(settings).getIntValsByDomain(domainKey(_token), COLLATERAL_CAP),
                 "MarginTracker: collateral exceed cap"
             );
