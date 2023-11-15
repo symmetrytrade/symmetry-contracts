@@ -233,6 +233,6 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     // test function, remove it in product env
     function setLuckyNumberForTest(address _account) external {
         uint _t = _startOfDay(block.timestamp) - 1 days;
-        userLuckyNumber[_account][_t] = luckyNumber[_t] + 9;
+        userLuckyNumber[_account][_t] = luckyNumber[_t];
     }
 }
