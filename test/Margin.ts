@@ -27,6 +27,7 @@ const pythPrices: { [key: string]: number } = {
 
 describe("Margin", () => {
     let account1: ethers.Signer;
+    let account2: ethers.Signer;
     let liquidator: ethers.Signer;
     let deployer: ethers.Signer;
     let keeper: ethers.Signer;
@@ -50,6 +51,7 @@ describe("Margin", () => {
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
+        account2 = (await hre.ethers.getSigners())[2];
         liquidator = (await hre.ethers.getSigners())[2];
         keeper = (await hre.ethers.getSigners())[6];
         await deployments.fixture();
@@ -359,14 +361,21 @@ describe("Margin", () => {
         expect(await interestRateModel_.debtRatio()).to.deep.eq(0);
     });
     it("deposit&withdraw WETH", async () => {
+        positionManager_ = positionManager_.connect(account2);
         // deposit WETH
         await (
             await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.constants.HashZero, {
                 value: normalized(1),
             })
         ).wait();
-
+        expect(await marginTracker_.userCollaterals(await account2.getAddress(), WETH)).to.deep.eq(normalized(1));
         // withdraw WETH
-        await (await positionManager_.withdrawMargin(WETH, normalized(1))).wait();
+        const balanceBefore = await hre.ethers.provider.getBalance(account2.getAddress());
+        // set next block gas price to 0
+        await helpers.setNextBlockBaseFeePerGas(0);
+        await (await positionManager_.withdrawMarginETH(normalized(1), { gasPrice: 0 })).wait();
+        expect(await marginTracker_.userCollaterals(await account2.getAddress(), WETH)).to.deep.eq(0);
+        const balanceAfter = await hre.ethers.provider.getBalance(account2.getAddress());
+        expect(balanceAfter.sub(balanceBefore)).to.deep.eq(normalized(1));
     });
 });
