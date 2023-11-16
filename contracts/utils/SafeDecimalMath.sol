@@ -2,12 +2,8 @@
 pragma solidity ^0.8.2;
 
 library SafeDecimalMath {
-    uint8 public constant DECIMALS = 18;
-    uint public constant UNIT = 10 ** DECIMALS;
-
-    function unit() external pure returns (uint) {
-        return UNIT;
-    }
+    uint8 private constant DECIMALS = 18;
+    uint private constant UNIT = 10 ** DECIMALS;
 
     function multiplyDecimal(uint x, uint y) internal pure returns (uint) {
         return (x * y) / UNIT;
@@ -27,12 +23,8 @@ library SafeDecimalMath {
 }
 
 library SignedSafeDecimalMath {
-    uint8 public constant DECIMALS = 18;
-    int public constant UNIT = int(10 ** DECIMALS);
-
-    function unit() external pure returns (int) {
-        return UNIT;
-    }
+    uint8 private constant DECIMALS = 18;
+    int private constant UNIT = int(10 ** DECIMALS);
 
     function multiplyDecimal(int x, int y) internal pure returns (int) {
         return (x * y) / UNIT;
