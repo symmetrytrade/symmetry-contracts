@@ -29,6 +29,7 @@ import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
 import "./src/tasks/settings";
 import "./src/tasks/collateral";
+import "./src/tasks/example";
 
 const config: HardhatUserConfig = {
     paths: {
@@ -42,7 +43,7 @@ const config: HardhatUserConfig = {
             {
                 version: "0.8.16",
                 settings: {
-                    evmVersion: "istanbul",
+                    evmVersion: "london",
                     optimizer: {
                         enabled: true,
                         runs: 200,
