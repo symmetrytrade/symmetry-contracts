@@ -486,9 +486,6 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
         IPerpTracker perpTracker_ = IPerpTracker(perpTracker);
         IPriceOracle priceOracle_ = IPriceOracle(priceOracle);
         IMarginTracker marginTracker_ = IMarginTracker(marginTracker);
-        if (_tokens.length == 0) {
-            _tokens = perpTracker_.getMarketTokens();
-        }
         int oldTotalDebt = marginTracker_.totalDebt();
         uint len = _tokens.length;
         for (uint i = 0; i < len; ++i) {
