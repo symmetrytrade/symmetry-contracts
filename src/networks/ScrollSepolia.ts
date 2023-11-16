@@ -63,6 +63,8 @@ export const ScrollSepoliaConfig: NetworkConfigs = {
         maxInterestRate: normalized(1.2), // 120%
         minInterestRate: normalized(0.05), // 5%
         settleThreshold: usdcOf(10000), // 10000 USDC
+        collateralLiquidationPenalty: normalized(0.01), // 1%
+        collateralPenaltyToLp: normalized(0.5), // 50%
     },
     marginConfig: {
         USDC: {
