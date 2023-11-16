@@ -516,6 +516,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
                 emit Settled(_account, _tokens[i], price, amount);
             }
         }
+        // update user debt
+        IMarginTracker(marginTracker).modifyMargin(_account, baseToken, 0);
         // pay keeper fee
         if (
             !isOperator[msg.sender] &&

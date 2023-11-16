@@ -197,6 +197,8 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
 
     /*=== margin ===*/
     function _modifyBaseMargin(address _account, int _delta) internal {
+        if (_delta == 0) return;
+
         int oldMargin = userCollaterals[_account][baseToken];
         int newMargin = oldMargin + _delta;
         // update user
