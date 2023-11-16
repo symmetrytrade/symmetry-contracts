@@ -108,4 +108,6 @@ interface IMarket {
     function usdToToken(address _token, int _amount) external view returns (int);
 
     function volumeTracker() external view returns (address);
+
+    function wETH() external view returns (address);
 }

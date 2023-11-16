@@ -11,6 +11,7 @@ import "../interfaces/IFeeTracker.sol";
 import "../interfaces/IPerpTracker.sol";
 import "../interfaces/IPriceOracle.sol";
 import "../interfaces/ITradingFeeCoupon.sol";
+import "../interfaces/IWETH.sol";
 
 import "../market/MarketSettingsContext.sol";
 
@@ -104,6 +105,10 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         _setupRole(PAUSER_ROLE, msg.sender);
     }
 
+    /*=== fallbacks ===*/
+
+    receive() external payable {}
+
     /*=== view ===*/
 
     function getUserOrders(address _account, uint _offset) external view returns (Order[] memory result) {
@@ -128,16 +133,27 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         emit MarginDeposit(msg.sender, _token, _amount, _referral);
     }
 
-    function withdrawMargin(address _token, uint _amount) external {
+    function _withdrawMargin(address _sender, address _receiver, address _token, uint _amount) internal {
         IMarket market_ = IMarket(market);
-        market_.transferMarginOut(msg.sender, msg.sender, _token, _amount);
+        market_.transferMarginOut(_sender, _receiver, _token, _amount);
         // check leverage ratio
-        (, int currentMargin, int notional) = IMarket(market).accountMarginStatus(msg.sender);
-        notional += pendingOrderNotional[msg.sender];
+        (, int currentMargin, int notional) = IMarket(market).accountMarginStatus(_sender);
+        notional += pendingOrderNotional[_sender];
         require(!_leverageRatioExceeded(currentMargin, notional), "PositionManager: leverage ratio too large");
         // update debt
         IMarket(market).updateDebt();
-        emit MarginWithdraw(msg.sender, _token, _amount);
+        emit MarginWithdraw(_sender, _token, _amount);
+    }
+
+    function withdrawMargin(address _token, uint _amount) external {
+        _withdrawMargin(msg.sender, msg.sender, _token, _amount);
+    }
+
+    function withdrawMarginETH(uint _amount) external {
+        IWETH wETH_ = IWETH(IMarket(market).wETH());
+        _withdrawMargin(msg.sender, address(this), address(wETH_), _amount);
+        wETH_.withdraw(_amount);
+        payable(msg.sender).transfer(_amount);
     }
 
     function isLiquidatable(address _account) public view returns (bool) {

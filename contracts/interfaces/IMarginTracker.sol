@@ -22,11 +22,15 @@ interface IMarginTracker {
 
     /*=== function ===*/
 
+    function baseToken() external view returns (address);
+
     function userCollaterals(address _account, address _token) external view returns (int);
 
     function freezed(address _account) external view returns (int);
 
     function accountMargin(address _account) external view returns (int baseMargin, int otherMargin);
+
+    function liquidate(address _account, address _token, uint _maxAmount) external payable;
 
     function nextDebt() external view returns (int nextAccDebt, int nextUnsettledInterest);
 
