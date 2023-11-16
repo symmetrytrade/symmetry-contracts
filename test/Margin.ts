@@ -174,7 +174,7 @@ describe("Margin", () => {
         // set keeper fee to 1 usdc
         await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
-        await market_.connect(keeper).settle(await account1.getAddress(), []);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
         const totalDebt = await marginTracker_.totalDebt();
         expect(totalDebt).to.deep.eq(usdcOf(200 * 500));
         expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(usdcOf(1));
@@ -246,7 +246,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userAccDebts(await account1.getAddress())).to.deep.eq(0);
         // settle debt
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await market_.connect(keeper).settle(await account1.getAddress(), []);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
