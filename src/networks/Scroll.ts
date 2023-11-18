@@ -120,10 +120,10 @@ export const ScrollConfig: NetworkConfigs = {
             { requirement: normalized(100000), rebateRatio: normalized(0.01) },
         ],
         symRate: [
-            { startTime: 0, rate: normalized(1) },
+            { startTime: 0, rate: normalized(0) },
             { startTime: 3000000000, rate: normalized(0) },
         ],
-        luckyNumberAnnouncer: "0x47ED834153Ab43289Dae7C822EA25e2CE1A8F263",
-        treasuryAddr: "0x9Eb8595d0ed3d46EBD991Fbae3ECb0E85e0354dB",
+        luckyNumberAnnouncer: "0x408c26a70ca09ccd3808dbbea043311c35fb7730",
+        treasuryAddr: "0x0B62247F3eD3163275253140CB98e56CfA0091f1",
     },
 };
