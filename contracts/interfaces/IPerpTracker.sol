@@ -74,7 +74,9 @@ interface IPerpTracker {
 
     /*=== function ===*/
 
-    function accountStatus(address _account) external view returns (int mtm, int pnl, int positionNotional);
+    function accountStatus(
+        address _account
+    ) external view returns (int mtm, int pnlOracle, int pnlMid, int positionNotional);
 
     function swapOnAMM(SwapParams memory _params) external returns (int avgPrice);
 

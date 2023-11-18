@@ -246,22 +246,29 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
         liquidityBalance += _amount;
     }
 
+    function _computeMargin(int _pnl, int _baseMargin, int _otherMargin) internal view returns (int margin) {
+        margin = _pnl + _baseMargin;
+        if (margin < 0) {
+            margin = margin.multiplyDecimal(IMarketSettings(settings).getIntVals(BASE_CONVERSION_RATIO));
+        }
+        margin += _otherMargin;
+    }
+
     /// @notice get user's margin status
     /// @param _account user address
     /// @return mtm maintenance margin including liquidation fee and penalty
-    /// @return currentMargin user current margin including position p&l and funding fee in usd
+    /// @return currentMargin user current margin including position p&l(oracle price) and funding fee in usd
+    /// @return availableMargin user available margin including position p&l(worst case of mid&oracle price) and funding fee in usd
     /// @return positionNotional notional value of all user positions
     function accountMarginStatus(
         address _account
-    ) external view returns (int mtm, int currentMargin, int positionNotional) {
-        int pnl;
-        (mtm, pnl, positionNotional) = IPerpTracker(perpTracker).accountStatus(_account);
+    ) external view returns (int mtm, int currentMargin, int availableMargin, int positionNotional) {
+        int pnlOracle;
+        int pnlMid;
+        (mtm, pnlOracle, pnlMid, positionNotional) = IPerpTracker(perpTracker).accountStatus(_account);
         (int baseMargin, int otherMargin) = IMarginTracker(marginTracker).accountMargin(_account);
-        currentMargin = pnl + baseMargin;
-        if (currentMargin < 0) {
-            currentMargin = currentMargin.multiplyDecimal(IMarketSettings(settings).getIntVals(BASE_CONVERSION_RATIO));
-        }
-        currentMargin += otherMargin;
+        currentMargin = _computeMargin(pnlOracle, baseMargin, otherMargin);
+        availableMargin = _computeMargin(pnlMid, baseMargin, otherMargin);
     }
 
     function allocateIncentives(address _account, int _amount) external {

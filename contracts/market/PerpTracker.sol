@@ -158,7 +158,9 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
         }
     }
 
-    function accountStatus(address _account) external view returns (int mtm, int pnl, int positionNotional) {
+    function accountStatus(
+        address _account
+    ) external view returns (int mtm, int pnlOracle, int pnlMid, int positionNotional) {
         IPriceOracle oracle_ = IPriceOracle(IMarket(market).priceOracle());
         address[] memory tokens = marketTokens.values();
         int mtmRatio;
@@ -171,6 +173,7 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
             minFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
             mtm = settings_.getIntVals(MIN_MAINTENANCE_MARGIN);
         }
+        (int lp, , ) = IMarket(market).globalStatus();
         for (uint i = 0; i < tokens.length; ++i) {
             Position memory position = userPositions[_account][tokens[i]];
             if (position.size == 0) continue;
@@ -183,20 +186,40 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
                 mtm += notional.multiplyDecimal(mtmRatio - feeRatio) + notional.multiplyDecimal(feeRatio).max(minFee);
             }
             // update pnl by price
-            pnl += position.size.multiplyDecimal(price - position.avgPrice);
             {
-                // update pnl by funding fee
+                // pnl oracle
+                int pnl = position.size.multiplyDecimal(price - position.avgPrice);
+                pnlOracle += pnl;
+                // pnl mid
+                SwapParams memory params = SwapParams({
+                    token: tokens[i],
+                    skew: _currentSkew(tokens[i]),
+                    size: 0,
+                    oraclePrice: price,
+                    lpNetValue: lp
+                });
+                (int midPrice, ) = _nextMidPrice(params);
+                midPrice = midPrice.multiplyDecimal(price);
+                pnl = pnl.min(position.size.multiplyDecimal(midPrice - position.avgPrice));
+                pnlMid += pnl;
+            }
+            // update pnl by funding fee
+            {
                 (, int nextAccFundingFee) = nextAccFunding(tokens[i], price);
-                pnl -= position.size.multiplyDecimal(nextAccFundingFee - position.accFunding);
+                int fee = position.size.multiplyDecimal(nextAccFundingFee - position.accFunding);
+                pnlOracle -= fee;
+                pnlMid -= fee;
             }
             // update pnl by financing fee
             {
                 (, , int nextAccLongFinancingFee, int nextAccShortFinancingFee) = nextAccFinancingFee(tokens[i], price);
-                pnl -= position.size.abs().multiplyDecimal(
+                int fee = position.size.abs().multiplyDecimal(
                     position.size > 0
                         ? nextAccLongFinancingFee - position.accFinancingFee
                         : nextAccShortFinancingFee - position.accFinancingFee
                 );
+                pnlOracle -= fee;
+                pnlMid -= fee;
             }
         }
         // set maintenance margin to zero if there is no position
@@ -262,13 +285,17 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
         return keccak256(abi.encodePacked(_token, PERP_DOMAIN));
     }
 
+    function _currentSkew(address _token) internal view returns (int) {
+        LpPosition storage lpPosition = lpPositions[_token];
+        return -(lpPosition.longSize + lpPosition.shortSize);
+    }
+
     /**
      * @notice get the current skew of a market(in underlying size)
      * @param _token token address
      */
     function currentSkew(address _token) public view returns (int) {
-        LpPosition storage lpPosition = lpPositions[_token];
-        return -(lpPosition.longSize + lpPosition.shortSize);
+        return _currentSkew(_token);
     }
 
     /*=== trading ===*/
@@ -297,16 +324,24 @@ contract PerpTracker is IPerpTracker, CommonContext, MarketSettingsContext, Acce
         short = short.multiplyDecimal(_mid);
     }
 
+    function _nextMidPrice(SwapParams memory _params) internal view returns (int mid, int nextMid) {
+        int lambda = IMarketSettings(settings).getIntVals(LIQUIDITY_RANGE);
+        int kLP = IMarketSettings(settings).getIntValsByDomain(domainKey(_params.token), PROPORTION_RATIO);
+        kLP = (kLP * _params.lpNetValue) / _params.oraclePrice;
+        mid = _computeMidPriceCoefficient(_params.skew, kLP, lambda);
+        if (_params.size != 0) {
+            nextMid = _computeMidPriceCoefficient(_params.skew + _params.size, kLP, lambda);
+        } else {
+            nextMid = mid;
+        }
+    }
+
     /**
      * @notice execute swap on AMM
      * @return avgPrice the fill price
      */
     function swapOnAMM(SwapParams memory _params) public onlyMarket returns (int avgPrice) {
-        int lambda = IMarketSettings(settings).getIntVals(LIQUIDITY_RANGE);
-        int kLP = IMarketSettings(settings).getIntValsByDomain(domainKey(_params.token), PROPORTION_RATIO);
-        kLP = (kLP * _params.lpNetValue) / _params.oraclePrice;
-        int mid = _computeMidPriceCoefficient(_params.skew, kLP, lambda);
-        int nextMid = _computeMidPriceCoefficient(_params.skew + _params.size, kLP, lambda);
+        (int mid, int nextMid) = _nextMidPrice(_params);
         (int long, int short) = _delayedCoefficients(priceInfos[_params.token], mid);
         if (_params.size > 0) {
             if (long >= nextMid) {

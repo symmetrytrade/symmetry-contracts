@@ -137,9 +137,9 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         IMarket market_ = IMarket(market);
         market_.transferMarginOut(_sender, _receiver, _token, _amount);
         // check leverage ratio
-        (, int currentMargin, int notional) = IMarket(market).accountMarginStatus(_sender);
+        (, , int availableMargin, int notional) = IMarket(market).accountMarginStatus(_sender);
         notional += pendingOrderNotional[_sender];
-        require(!_leverageRatioExceeded(currentMargin, notional), "PositionManager: leverage ratio too large");
+        require(!_leverageRatioExceeded(availableMargin, notional), "PositionManager: leverage ratio too large");
         // update debt
         IMarket(market).updateDebt();
         emit MarginWithdraw(_sender, _token, _amount);
@@ -157,7 +157,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     }
 
     function isLiquidatable(address _account) public view returns (bool) {
-        (int maintenanceMargin, int currentMargin, int positionNotional) = IMarket(market).accountMarginStatus(
+        (int maintenanceMargin, int currentMargin, , int positionNotional) = IMarket(market).accountMarginStatus(
             _account
         );
         return positionNotional > 0 && maintenanceMargin > currentMargin;
@@ -177,7 +177,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     /*=== position ===*/
 
     function _validateOrder(address _account, OrderData memory _orderData) internal {
-        (int mtm, int currentMargin, int notional) = IMarket(market).accountMarginStatus(_account);
+        (int mtm, int currentMargin, int availableMargin, int notional) = IMarket(market).accountMarginStatus(_account);
         if (_orderData.reduceOnly) {
             // check liquidation
             require(mtm <= currentMargin, "PositionManager: account is liquidatable");
@@ -199,7 +199,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
             // update pending order notional
             pendingOrderNotional[_account] = orderNotional;
             // check post trade leverage
-            require(!_leverageRatioExceeded(currentMargin, notional), "PositionManager: leverage ratio too large");
+            require(!_leverageRatioExceeded(availableMargin, notional), "PositionManager: leverage ratio too large");
         }
     }
 
@@ -321,7 +321,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
 
     function _canExecute(Order memory _order, int _fee) internal view returns (bool) {
         IMarket market_ = IMarket(market);
-        (int mtm, int currentMargin, int notional) = market_.accountMarginStatus(_order.account);
+        (int mtm, int currentMargin, int availableMargin, int notional) = market_.accountMarginStatus(_order.account);
         // check liquidation
         if (mtm > currentMargin) {
             return false;
@@ -347,7 +347,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
             }
         } else {
             // check leverage ratio
-            if (_leverageRatioExceeded(currentMargin - _fee, notional + notionalDelta)) {
+            if (_leverageRatioExceeded(availableMargin - _fee, notional + notionalDelta)) {
                 return false;
             }
         }
@@ -517,7 +517,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
             market_.trade(params);
         }
         // post trade margin
-        (, int currentMargin, ) = market_.accountMarginStatus(_account);
+        (, int currentMargin, , ) = market_.accountMarginStatus(_account);
         // deduct liquidation fee to liquidator
         int liquidationFee = _payLiquidationFee(_account, msg.sender, notionalLiquidated);
         // deduct liquidation penalty to insurance account
