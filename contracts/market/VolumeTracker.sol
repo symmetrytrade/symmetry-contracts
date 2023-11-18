@@ -164,6 +164,10 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         luckyNumberIssuedAt[_t] = block.number;
     }
 
+    function _computeLuckyNumber(bytes32 _h1, bytes32 _h2, bytes32 _h3) internal pure returns (uint) {
+        return uint(keccak256(abi.encodePacked(_h1, _h2, _h3))) + 1; // +1 to make it > 0
+    }
+
     function _drawLuckyNumber(uint _t) internal returns (bool, RevertReason) {
         if (luckyNumber[_t] != 0) {
             return (false, RevertReason.DRAWED);
@@ -178,7 +182,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         if (h1 == 0x0 || h2 == 0x0 || h3 == 0x0) {
             return (false, RevertReason.HASH_UNAVAILABLE);
         }
-        luckyNumber[_t] = (uint(keccak256(abi.encodePacked(h1, h2, h3))) % 10) + 1;
+        luckyNumber[_t] = _computeLuckyNumber(h1, h2, h3);
         return (true, RevertReason.EMPTY);
     }
 
@@ -209,7 +213,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
                 revert(_drawRevertReason(reason));
             }
             require(luckyNumberIssuedAt[_t] < block.number - 3, "VolumeTracker: too early");
-            luckyNumber[_t] = uint(keccak256(abi.encodePacked(_h1, _h2, _h3))) + 1; // +1 to make it > 0
+            luckyNumber[_t] = _computeLuckyNumber(_h1, _h2, _h3);
         }
     }
 
