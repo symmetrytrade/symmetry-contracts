@@ -296,7 +296,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
         _updateUserDebt(_account);
         // validation
         {
-            (, int currentMargin, int positionNotional) = market_.accountMarginStatus(_account);
+            (, int currentMargin, , int positionNotional) = market_.accountMarginStatus(_account);
             require(positionNotional == 0, "MarginTracker: non-zero position notional");
             require(currentMargin < 0, "MarginTracker: non-negative margin");
         }

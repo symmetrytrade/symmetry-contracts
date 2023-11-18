@@ -37,7 +37,7 @@ interface IMarket {
 
     function accountMarginStatus(
         address _account
-    ) external view returns (int mtm, int currentMargin, int positionNotional);
+    ) external view returns (int mtm, int currentMargin, int availableMargin, int positionNotional);
 
     function allocateIncentives(address _account, int _amount) external;
 
