@@ -1,5 +1,6 @@
 import { ArbGoerliTestnetConfig } from "./networks/ArbGoerli";
 import { ScrollSepoliaConfig } from "./networks/ScrollSepolia";
+import { ScrollConfig } from "./networks/Scroll";
 import { normalized, usdcOf } from "./utils/utils";
 
 interface ChainlinkConfig {
@@ -194,12 +195,16 @@ const DefaultConfig: NetworkConfigs = {
 const GlobalConfig: { [key: string]: NetworkConfigs } = {
     ArbGoerliTestnet: ArbGoerliTestnetConfig,
     ScrollSepolia: ScrollSepoliaConfig,
+    Scroll: ScrollConfig,
     hardhat: DefaultConfig,
 };
 
 function getConfig(network: string) {
     if (network in GlobalConfig) return GlobalConfig[network];
-    return DefaultConfig;
+    if (network === "hardhat") {
+        return DefaultConfig;
+    }
+    throw new Error(`network ${network} non-exist`);
 }
 
 export { GlobalConfig, DefaultConfig, getConfig };

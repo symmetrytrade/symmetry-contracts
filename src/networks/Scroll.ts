@@ -45,7 +45,7 @@ export const ScrollConfig: NetworkConfigs = {
         softLimitThreshold: normalized(0.7),
         hardLimitThreshold: normalized(0.9),
         minOrderDelay: 1,
-        minKeeperFee: "1000000",
+        minKeeperFee: "2000000",
         minMargin: normalized(50),
         liquidityRange: normalized(0.05),
         priceDelay: 60,
