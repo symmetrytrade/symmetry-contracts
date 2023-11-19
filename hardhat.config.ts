@@ -66,6 +66,12 @@ const config: HardhatUserConfig = {
         ScrollSepolia: {
             ...userConfig,
             url: "https://sepolia-rpc.scroll.io",
+            gasPrice: 10000000, // 0.01 gwei
+        },
+        Scroll: {
+            ...userConfig,
+            url: "https://rpc.scroll.io",
+            gasPrice: 400000000, // 0.4 gwei
         },
     },
     namedAccounts: {
