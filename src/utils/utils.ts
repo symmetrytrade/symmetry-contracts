@@ -7,7 +7,9 @@ import { BigNumber } from "bignumber.js";
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
+export const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 export const MINTER_ROLE = ethers.utils.id("MINTER_ROLE");
+export const PAUSER_ROLE = ethers.utils.id("PAUSER_ROLE");
 export const SPENDER_ROLE = ethers.utils.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.utils.id("VESTING_ROLE");
 export const PERP_DOMAIN = ethers.utils.formatBytes32String("perpDomain");
@@ -15,6 +17,16 @@ export const MARGIN_DOMAIN = ethers.utils.formatBytes32String("marginDomain");
 export const UNIT = "1000000000000000000";
 export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
+
+export function validateError(e: unknown, msg: string) {
+    if (e instanceof Error) {
+        if (!e.toString().includes(msg)) {
+            throw Error(`unexpected error: ${e}`);
+        }
+    } else {
+        throw Error(`unexpected error: ${e}`);
+    }
+}
 
 export function mul_D(x: ethers.BigNumber, y: ethers.BigNumber) {
     return x.mul(y).div(UNIT);
