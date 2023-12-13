@@ -4,7 +4,7 @@ import { task, types } from "hardhat/config";
 import { CONTRACTS, DEFAULT_ADMIN_ROLE, PAUSER_ROLE, getProxyContract, validateError } from "../utils/utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
-async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
+export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
     const proxied = new Set();
     const contracts = Object.keys(CONTRACTS);
     for (const key of contracts) {

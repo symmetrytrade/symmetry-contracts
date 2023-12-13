@@ -9,5 +9,13 @@ interface INFTDescriptor {
         uint ts;
     }
 
-    function constructTokenURI(TokenURIParams memory _params) external pure returns (string memory);
+    struct RareEvent {
+        uint start;
+        uint end;
+        uint rate;
+    }
+
+    function isRare(uint _salt, uint _ts) external view returns (bool);
+
+    function constructTokenURI(TokenURIParams memory _params) external view returns (string memory);
 }
