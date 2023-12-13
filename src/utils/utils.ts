@@ -119,6 +119,8 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     Timelock: { name: "Timelock", contract: "TimelockController" },
     NFTDescriptor: { name: "NFTDescriptor", contract: "NFTDescriptor" },
     DebtInterestRateModel: { name: "DebtInterestRateModel", contract: "DebtInterestRateModel" },
+    TokenMinter: { name: "TokenMinter", contract: "TokenMinter" },
+    CouponStaking: { name: "CouponStaking", contract: "CouponStaking" },
     // for test env
     USDC: { name: "USDC", contract: "FaucetToken" },
     WETH: { name: "WETH", contract: "FaucetWETH" },
