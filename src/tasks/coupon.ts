@@ -22,11 +22,13 @@ task("descriptor:deploy", "deploy NFT descriptor")
 
 task("couponStaking:deploy", "deploy coupon staking")
     .addParam("timelock", "timelock address", undefined, types.string, false)
+    .addParam("start", "start time", undefined, types.int, false)
+    .addParam("end", "end time", undefined, types.int, false)
     .setAction(async (taskArgs, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
-        await deployInBeaconProxy(hre, CONTRACTS.CouponStaking);
+        await deployInBeaconProxy(hre, CONTRACTS.CouponStaking, [taskArgs.start, taskArgs.end]);
 
         const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
         const couponStaking = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);

@@ -144,7 +144,7 @@ const CONTRACTS: { [key: string]: ContractMeta } = {
     Pyth: { name: "Pyth", contract: "PythMock" },
 };
 
-async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: ContractMeta) {
+async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: ContractMeta, args: unknown[] = []) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
@@ -152,7 +152,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     await deploy(`${contract.name}Impl`, {
         from: deployer,
         contract: contract.contract,
-        args: [],
+        args: args,
         log: true,
     });
     const implementation = await hre.ethers.getContract(`${contract.name}Impl`);
