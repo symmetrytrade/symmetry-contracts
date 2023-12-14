@@ -12,8 +12,10 @@ interface INFTDescriptor {
     struct RareEvent {
         uint start;
         uint end;
-        uint rate;
+        uint rate; // rare ratio = rate / 10000
     }
+
+    function getSymbolNum(uint _salt) external pure returns (uint);
 
     function isRare(uint _salt, uint _ts) external view returns (bool);
 
