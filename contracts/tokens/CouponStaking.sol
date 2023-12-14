@@ -41,7 +41,18 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
     /*=== stake ===*/
 
     function _computeDiscount(address _account) internal view returns (uint) {
-        return staked[_account].length > 10000 ? 0 : 0;
+        uint[] memory coupons = staked[_account];
+        ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
+        INFTDescriptor descriptor_ = INFTDescriptor(coupon_.descriptor());
+        uint cnt = 0;
+        for (uint i = 0; i < coupons.length; ++i) {
+            INFTDescriptor.TokenURIParams memory params = coupon_.tokenURIParams(coupons[i]);
+            if (descriptor_.getSymbolNum(params.tokenSalt) < 12) {
+                cnt += 1;
+            }
+        }
+        if (cnt >= 6) return 2e17;
+        return 0;
     }
 
     function _snapshotDiscount(address _account) internal {
