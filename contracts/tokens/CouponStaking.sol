@@ -12,8 +12,15 @@ import "../interfaces/ICouponStaking.sol";
 import "../utils/Initializable.sol";
 
 contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable {
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
+    // non-zero version number
+    uint public constant VERSION = 1;
+
     address public coupon;
     mapping(address => uint[]) private staked;
+    mapping(address => Discount) private discounts;
 
     function initialize(address _admin, address _coupon) external onlyInitializeOnce {
         coupon = _coupon;
@@ -27,6 +34,16 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
 
     /*=== stake ===*/
 
+    function _computeDiscount(address _account) internal view returns (uint) {
+        return staked[_account].length > 10000 ? 0 : 0;
+    }
+
+    function _snapshotDiscount(address _account) internal {
+        Discount storage discount = discounts[_account];
+        discount.version = VERSION;
+        discount.discount = _computeDiscount(_account);
+    }
+
     function stake(uint[] memory _ids) external {
         IERC721 coupon_ = IERC721(coupon);
 
@@ -37,12 +54,14 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
         for (uint i = 0; i < _ids.length; ++i) {
             coupon_.safeTransferFrom(msg.sender, address(this), _ids[i]);
         }
+        staked[msg.sender] = _ids;
+        _snapshotDiscount(msg.sender);
     }
 
     /*=== campaigns ===*/
 
     function getDiscount(address _account) external view returns (uint) {
-        // TODO: calculate discount by user staked coupons
-        return staked[_account].length > 10000 ? 0 : 0;
+        Discount memory discount = discounts[_account];
+        return discount.version == VERSION ? discount.discount : 0;
     }
 }

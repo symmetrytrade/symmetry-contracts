@@ -21,6 +21,9 @@ contract NFTDescriptor is INFTDescriptor, AccessControlEnumerable, Initializable
 
     uint private constant UNIT = 1e18;
 
+    // reserved storage slots for base contract upgrade in future
+    uint256[50] private __gap;
+
     RareEvent[] public rareEvents;
 
     function initialize(address _admin) external onlyInitializeOnce {
@@ -80,12 +83,12 @@ contract NFTDescriptor is INFTDescriptor, AccessControlEnumerable, Initializable
                 return rareEvents[i].rate;
             }
         }
-        return 20;
+        return 500; // 5% by default
     }
 
     function isRare(uint _salt, uint _ts) public view returns (bool) {
         _salt = uint(keccak256(abi.encodePacked(_salt, RARE_DOMAIN)));
-        return _salt % _rareRate(_ts) == 0; // 5%
+        return _salt % 10000 < _rareRate(_ts);
     }
 
     function _generateBackground(uint _salt) internal pure returns (string memory) {
@@ -146,8 +149,12 @@ contract NFTDescriptor is INFTDescriptor, AccessControlEnumerable, Initializable
             );
     }
 
+    function getSymbolNum(uint _salt) public pure returns (uint) {
+        return uint(keccak256(abi.encodePacked(_salt, SYMBOL_DOMAIN))) % 24;
+    }
+
     function _generateSymbol(uint _salt) internal pure returns (string memory image) {
-        _salt = uint(keccak256(abi.encodePacked(_salt, SYMBOL_DOMAIN))) % 24;
+        _salt = getSymbolNum(_salt);
         string memory greek;
         string memory greekName;
         uint y;
