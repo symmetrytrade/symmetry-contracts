@@ -15,12 +15,18 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
     // reserved storage slots for base contract upgrade in future
     uint256[50] private __gap;
 
-    // non-zero version number
-    uint public constant VERSION = 1;
+    // discount end timestamp
+    uint public immutable discountStart;
+    uint public immutable discountEnd;
 
     address public coupon;
     mapping(address => uint[]) private staked;
     mapping(address => Discount) private discounts;
+
+    constructor(uint _start, uint _end) {
+        discountStart = _start;
+        discountEnd = _end;
+    }
 
     function initialize(address _admin, address _coupon) external onlyInitializeOnce {
         coupon = _coupon;
@@ -40,7 +46,7 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
 
     function _snapshotDiscount(address _account) internal {
         Discount storage discount = discounts[_account];
-        discount.version = VERSION;
+        discount.ts = block.timestamp;
         discount.discount = _computeDiscount(_account);
     }
 
@@ -56,12 +62,19 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
         }
         staked[msg.sender] = _ids;
         _snapshotDiscount(msg.sender);
+        require(_ids.length == 0 || discounts[msg.sender].discount > 0, "CouponStaking: cannot get discount");
     }
 
     /*=== campaigns ===*/
 
     function getDiscount(address _account) external view returns (uint) {
         Discount memory discount = discounts[_account];
-        return discount.version == VERSION ? discount.discount : 0;
+        return
+            discount.ts >= discountStart &&
+                discount.ts <= discountEnd &&
+                block.timestamp >= discountStart &&
+                block.timestamp <= discountEnd
+                ? discount.discount
+                : 0;
     }
 }

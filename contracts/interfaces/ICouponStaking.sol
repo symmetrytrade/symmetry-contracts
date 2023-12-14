@@ -6,7 +6,7 @@ interface ICouponStaking {
 
     struct Discount {
         uint discount;
-        uint version;
+        uint ts;
     }
 
     /*=== function ===*/
