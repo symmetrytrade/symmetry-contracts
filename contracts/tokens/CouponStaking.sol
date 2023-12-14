@@ -51,6 +51,11 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
     }
 
     function stake(uint[] memory _ids) external {
+        require(
+            (block.timestamp >= discountStart && block.timestamp <= discountEnd) || _ids.length == 0,
+            "CouponStaking: not now"
+        );
+
         IERC721 coupon_ = IERC721(coupon);
 
         uint[] memory old = staked[msg.sender];
