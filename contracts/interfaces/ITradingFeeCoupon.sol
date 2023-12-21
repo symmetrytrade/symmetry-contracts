@@ -25,6 +25,8 @@ interface ITradingFeeCoupon {
 
     function couponValues(uint) external view returns (uint);
 
+    function descriptor() external view returns (address);
+
     function mint(uint _preMintId) external;
 
     function mintAndApply(uint _preMintId) external;

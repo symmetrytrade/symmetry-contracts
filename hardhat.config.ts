@@ -29,6 +29,8 @@ import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
 import "./src/tasks/settings";
 import "./src/tasks/collateral";
+import "./src/tasks/access";
+import "./src/tasks/coupon";
 
 const config: HardhatUserConfig = {
     paths: {

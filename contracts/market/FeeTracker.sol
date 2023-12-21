@@ -18,6 +18,7 @@ import "../interfaces/IMarket.sol";
 import "../interfaces/IMarginTracker.sol";
 import "../interfaces/IVotingEscrow.sol";
 import "../interfaces/ITradingFeeCoupon.sol";
+import "../interfaces/ICouponStaking.sol";
 
 import "./MarketSettingsContext.sol";
 
@@ -45,6 +46,8 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
     uint public incentiveStartTime;
     mapping(uint => uint) public veSupply;
     uint public incentiveWeekCursor; // week cursor of veSYM total supply snapshot
+
+    address public couponStaking;
 
     modifier onlyMarket() {
         require(msg.sender == market, "FeeTracker: sender is not market");
@@ -81,6 +84,10 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
         }
     }
 
+    function setCouponStaking(address _couponStaking) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        couponStaking = _couponStaking;
+    }
+
     /*=== discount === */
 
     function _vePortionOf(address _account) internal view returns (uint) {
@@ -93,6 +100,12 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
         return 0;
     }
 
+    function _mergeDiscount(uint _d0, uint _d1) internal pure returns (uint) {
+        if (_d0 == 0) return _d1;
+        if (_d1 == 0) return _d0;
+        return _UNSIGNED_UNIT - (_UNSIGNED_UNIT - _d0).multiplyDecimal(_UNSIGNED_UNIT - _d1);
+    }
+
     function tradingFeeDiscount(address _account) public view returns (uint discount) {
         uint portion = _vePortionOf(_account);
         uint len = tradingFeeTiers.length;
@@ -101,6 +114,9 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
                 discount = tradingFeeTiers[i].discount;
                 break;
             }
+        }
+        if (couponStaking != address(0)) {
+            discount = _mergeDiscount(discount, ICouponStaking(couponStaking).getDiscount(_account));
         }
     }
 
