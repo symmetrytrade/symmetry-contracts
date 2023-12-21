@@ -115,7 +115,9 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
                 break;
             }
         }
-        discount = _mergeDiscount(discount, ICouponStaking(couponStaking).getDiscount(_account));
+        if (couponStaking != address(0)) {
+            discount = _mergeDiscount(discount, ICouponStaking(couponStaking).getDiscount(_account));
+        }
     }
 
     /*=== perp trading fee ===*/
