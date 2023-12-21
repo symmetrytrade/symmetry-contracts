@@ -17,3 +17,5 @@ coverage.json
 typechain-types
 abis
 src/tasks/example.ts
+Scroll.json
+ScrollSepolia.json

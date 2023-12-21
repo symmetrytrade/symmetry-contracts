@@ -33,6 +33,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         tiers.push([tier.portion, tier.discount]);
     }
     await (await feeTracker_.setTradingFeeTiers(tiers)).wait();
+
+    // set coupon staking
+    const couponStaking_ = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
+    await (await feeTracker_.setCouponStaking(couponStaking_.address)).wait();
 };
 
 deploy.tags = [CONTRACTS.FeeTracker.name, "prod"];
@@ -42,5 +46,6 @@ deploy.dependencies = [
     CONTRACTS.PerpTracker.name,
     CONTRACTS.VotingEscrow.name,
     CONTRACTS.TradingFeeCoupon.name,
+    CONTRACTS.CouponStaking.name,
 ];
 export default deploy;

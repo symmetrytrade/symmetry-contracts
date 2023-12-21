@@ -46,6 +46,7 @@ describe("Coupon", () => {
     let WETH: string;
     let USDC_: ethers.Contract;
     let feeTracker_: ethers.Contract;
+    let couponStaking_: ethers.Contract;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];
@@ -65,6 +66,7 @@ describe("Coupon", () => {
         volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, account1);
         votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
         coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+        couponStaking_ = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
         sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
         config = getConfig(hre.network.name);
 
@@ -138,6 +140,9 @@ describe("Coupon", () => {
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + maxTime));
 
         await setPythAutoRefresh(hre);
+
+        expect(await couponStaking_.discountStart()).to.deep.eq(0);
+        expect(await couponStaking_.discountEnd()).to.deep.eq(10000000);
     });
 
     it("trade with tiered trading fee discount", async () => {
