@@ -85,14 +85,19 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
 
         uint t = _startOfDay(block.timestamp);
         uint totalVol = userDailyVolume[_account][t] + _volume;
+        uint oneDraw = uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT));
+        uint newDraws = totalVol / oneDraw - userDailyVolume[_account][t] / oneDraw;
         userDailyVolume[_account][t] = totalVol;
 
-        uint n = (totalVol / uint(settings_.getIntVals(ONE_DRAW_REQUIREMENT))).min(10);
-        for (uint i = 0; i < n; ++i) {
+        for (uint i = 0; i < 10; ++i) {
+            if (newDraws == 0) {
+                break;
+            }
             if (userLuckyNumber[_account][t] == 0) {
                 uint num = luckyCandidates[t] + 1;
                 luckyCandidates[t] = num;
                 userLuckyNumber[_account][t] = num;
+                --newDraws;
             }
             t += 1 days;
         }
