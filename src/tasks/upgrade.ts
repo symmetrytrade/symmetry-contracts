@@ -34,8 +34,8 @@ task("upgrade", "upgrade contract")
             // settle on chain
             await (await beacon.upgradeTo(result.address)).wait();
         } else {
-            console.log("data:");
-            console.log(beacon.interface.encodeFunctionData("upgradeTo", [result.address]));
+            console.log(`to: ${beacon.address}`);
+            console.log(`data: ${beacon.interface.encodeFunctionData("upgradeTo", [result.address])}`);
         }
     });
 

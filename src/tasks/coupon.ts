@@ -17,6 +17,10 @@ task("descriptor:deploy", "deploy NFT descriptor")
         const coupon = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
             await (await coupon.setDescriptor(descriptor.address)).wait();
+        } else {
+            console.log(`to: ${coupon.address}`);
+            console.log(coupon.interface.getFunction("setDescriptor").format());
+            console.log(`data: ${coupon.interface.encodeFunctionData("setDescriptor", [descriptor.address])}`);
         }
     });
 
@@ -54,5 +58,13 @@ task("minter:deploy", "deploy token minter")
         const coupon = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
             await (await coupon.grantRole(MINTER_ROLE, tokenMinter.address)).wait();
+        } else {
+            console.log(`to: ${coupon.address}`);
+            console.log(coupon.interface.getFunction("grantRole").format());
+            console.log(MINTER_ROLE);
+            console.log(tokenMinter.address);
+            console.log(
+                `data: ${coupon.interface.encodeFunctionData("grantRole", [MINTER_ROLE, tokenMinter.address])}`
+            );
         }
     });
