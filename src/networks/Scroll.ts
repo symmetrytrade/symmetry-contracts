@@ -37,7 +37,7 @@ export const ScrollConfig: NetworkConfigs = {
         maintenanceMarginRatio: normalized(0.02),
         maxLeverageRatio: 25,
         liquidationFeeRatio: normalized(0.0035),
-        minLiquidationFee: normalized(1),
+        minLiquidationFee: normalized(5),
         maxLiquidationFee: normalized(1000),
         liquidationPenaltyRatio: normalized(0.009),
         liquidationCouponRatio: normalized(0.001),
