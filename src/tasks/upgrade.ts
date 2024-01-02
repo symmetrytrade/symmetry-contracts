@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import { task, types } from "hardhat/config";
 import { getProxyInfo } from "./access";
-import { validateError } from "../utils/utils";
+import { transact, validateError } from "../utils/utils";
 
 task("upgrade", "upgrade contract")
     .addParam("name", "name of the proxy contract", undefined, types.string, false)
@@ -30,13 +30,7 @@ task("upgrade", "upgrade contract")
         });
         console.log(`new implementation deployed: ${result.address}`);
 
-        if (taskArgs.execute) {
-            // settle on chain
-            await (await beacon.upgradeTo(result.address)).wait();
-        } else {
-            console.log(`to: ${beacon.address}`);
-            console.log(`data: ${beacon.interface.encodeFunctionData("upgradeTo", [result.address])}`);
-        }
+        await transact(beacon, "upgradeTo", [result.address], taskArgs.execute);
     });
 
 task("upgrade:validate", "validate upgrade")
