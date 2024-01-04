@@ -230,12 +230,11 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         uint luckyNum = luckyNumber[_t];
         require(luckyNum != 0, "VolumeTracker: not determined");
         userLuckyNumber[msg.sender][_t] = 0;
-        if (num % 10 == luckyNum % 10) {
-            ITradingFeeCoupon(coupon).mintCoupon(
-                msg.sender,
-                uint(MarketSettings(settings).getIntVals(ONE_DRAW_REWARD)),
-                uint(keccak256(abi.encodePacked(luckyNum, msg.sender, "lucky")))
-            );
-        }
+        require(num % 10 == luckyNum % 10, "VolumeTracker: no prize");
+        ITradingFeeCoupon(coupon).mintCoupon(
+            msg.sender,
+            uint(MarketSettings(settings).getIntVals(ONE_DRAW_REWARD)),
+            uint(keccak256(abi.encodePacked(luckyNum, msg.sender, "lucky")))
+        );
     }
 }
