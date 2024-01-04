@@ -182,4 +182,15 @@ async function getProxyContract(
     return hre.ethers.getContractAt(contract.contract, address, signer);
 }
 
+export async function transact(contract: ethers.Contract, methodName: string, params: unknown[], execute: boolean) {
+    if (execute) {
+        await (await contract[methodName](...params)).wait();
+    } else {
+        console.log(`to: ${contract.address}`);
+        console.log(`func: ${contract.interface.getFunction(methodName).format()}`);
+        console.log(`params: ${JSON.stringify(params)}`);
+        console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);
+    }
+}
+
 export { deployInBeaconProxy, getProxyContract, CONTRACTS };
