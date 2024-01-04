@@ -245,7 +245,7 @@ contract MarginTracker is IMarginTracker, CommonContext, MarketSettingsContext, 
                 IMarket market_ = IMarket(market);
                 // this settle could be failed if the account holds too many positions
                 // the account owner can manually settle holding positions before withdrawal
-                withdrawable += market_.settle(_account, new address[](0));
+                withdrawable += market_.settle(_account, IPerpTracker(market_.perpTracker()).getMarketTokens());
                 require(withdrawable >= _amount, "MarginTracker: insufficient margin + pnl");
             }
         }
