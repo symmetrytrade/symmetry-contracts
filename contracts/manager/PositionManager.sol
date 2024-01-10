@@ -167,8 +167,9 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         if (_notional > 0) {
             IMarketSettings settings_ = IMarketSettings(IMarket(market).settings());
             int maxLeverageRatio = settings_.getIntVals(MAX_LEVERAGE_RATIO);
-            int minMargin = settings_.getIntVals(MIN_MARGIN);
-            return _notional / maxLeverageRatio > _margin - minMargin;
+            int minMtmMargin = settings_.getIntVals(MIN_MAINTENANCE_MARGIN);
+            int minLiquidationFee = settings_.getIntVals(MIN_LIQUIDATION_FEE);
+            return _notional / maxLeverageRatio > _margin - minMtmMargin - minLiquidationFee;
         } else {
             return _margin < 0;
         }
@@ -340,7 +341,10 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
             if (oldPosition.size.sign() == _order.data.size.sign() || oldPosition.size.abs() < _order.data.size.abs()) {
                 return false;
             }
-            mtm += _maintenanceMarginDelta(notional, notional + notionalDelta);
+            mtm += _maintenanceMarginDelta(
+                oldPosition.size.abs().multiplyDecimal(price),
+                (oldPosition.size + _order.data.size).abs().multiplyDecimal(price)
+            );
             // check liquidation
             if (mtm > currentMargin - _fee) {
                 return false;
