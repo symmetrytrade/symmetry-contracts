@@ -334,24 +334,20 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         );
         // validate post trade margin status
         int price = IPriceOracle(market_.priceOracle()).getPrice(_order.data.token);
-        int notionalDelta = ((oldPosition.size + _order.data.size).abs() - oldPosition.size.abs()).multiplyDecimal(
-            price
-        );
+        int oldPositionNotional = oldPosition.size.abs().multiplyDecimal(price);
+        int newPositionNotional = (oldPosition.size + _order.data.size).abs().multiplyDecimal(price);
         if (_order.data.reduceOnly) {
             if (oldPosition.size.sign() == _order.data.size.sign() || oldPosition.size.abs() < _order.data.size.abs()) {
                 return false;
             }
-            mtm += _maintenanceMarginDelta(
-                oldPosition.size.abs().multiplyDecimal(price),
-                (oldPosition.size + _order.data.size).abs().multiplyDecimal(price)
-            );
+            mtm += _maintenanceMarginDelta(oldPositionNotional, newPositionNotional);
             // check liquidation
             if (mtm > currentMargin - _fee) {
                 return false;
             }
         } else {
             // check leverage ratio
-            if (_leverageRatioExceeded(availableMargin - _fee, notional + notionalDelta)) {
+            if (_leverageRatioExceeded(availableMargin - _fee, notional + newPositionNotional - oldPositionNotional)) {
                 return false;
             }
         }
