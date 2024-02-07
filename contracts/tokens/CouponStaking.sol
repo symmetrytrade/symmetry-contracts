@@ -16,16 +16,16 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
     uint256[50] private __gap;
 
     // discount end timestamp
-    uint public immutable discountStart;
-    uint public immutable discountEnd;
+    uint public immutable DISCOUNT_START;
+    uint public immutable DISCOUNT_END;
 
     address public coupon;
     mapping(address => uint[]) private staked;
     mapping(address => Discount) private discounts;
 
     constructor(uint _start, uint _end) {
-        discountStart = _start;
-        discountEnd = _end;
+        DISCOUNT_START = _start;
+        DISCOUNT_END = _end;
     }
 
     function initialize(address _admin, address _coupon) external onlyInitializeOnce {
@@ -63,7 +63,7 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
 
     function stake(uint[] memory _ids) external {
         require(
-            (block.timestamp >= discountStart && block.timestamp <= discountEnd) || _ids.length == 0,
+            (block.timestamp >= DISCOUNT_START && block.timestamp <= DISCOUNT_END) || _ids.length == 0,
             "CouponStaking: not now"
         );
 
@@ -86,10 +86,10 @@ contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable
     function getDiscount(address _account) external view returns (uint) {
         Discount memory discount = discounts[_account];
         return
-            discount.ts >= discountStart &&
-                discount.ts <= discountEnd &&
-                block.timestamp >= discountStart &&
-                block.timestamp <= discountEnd
+            discount.ts >= DISCOUNT_START &&
+                discount.ts <= DISCOUNT_END &&
+                block.timestamp >= DISCOUNT_START &&
+                block.timestamp <= DISCOUNT_END
                 ? discount.discount
                 : 0;
     }
