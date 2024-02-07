@@ -1,7 +1,7 @@
 {
-    "name": "new-perp",
+    "name": "symmetry-trade",
     "version": "1.0.0",
-    "license": "MIT",
+    "license": "GPL-3.0",
     "scripts": {
         "build": "hardhat compile",
         "test": "hardhat test",
