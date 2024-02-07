@@ -4,6 +4,8 @@
     "rules": {
         "avoid-low-level-calls": "off",
         "compiler-version": "off",
+        "custom-errors": "off",
+        "explicit-types": "off",
         "func-visibility": ["warn", { "ignoreConstructors": true }],
         "max-states-count": "off",
         "no-empty-blocks": "off",
