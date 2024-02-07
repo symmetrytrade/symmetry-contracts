@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../utils/CommonContext.sol";
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 
 import "../interfaces/IMarginTracker.sol";
 import "../interfaces/IMarket.sol";
