@@ -2,20 +2,15 @@
     "extends": "solhint:recommended",
     "plugins": ["prettier"],
     "rules": {
+        "avoid-low-level-calls": "off",
         "compiler-version": "off",
+        "func-visibility": ["warn", { "ignoreConstructors": true }],
+        "max-states-count": "off",
+        "no-empty-blocks": "off",
         "no-global-import": "off",
         "no-inline-assembly": "off",
-        "func-visibility": [
-            "warn",
-            {
-                "ignoreConstructors": true
-            }
-        ],
-        "prettier/prettier": "error",
         "not-rely-on-time": "off",
-        "reason-string": "off",
-        "no-empty-blocks": "off",
-        "avoid-low-level-calls": "off",
-        "max-states-count": "off"
+        "prettier/prettier": "error",
+        "reason-string": "off"
     }
 }
