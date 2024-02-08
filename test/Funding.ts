@@ -60,32 +60,24 @@ describe("Funding", () => {
         await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
 
         await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxFundingVelocity")],
-                [normalized(0.2)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized(0.2)])
         ).wait();
         // set financing fee rate, trading fee to zero
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFinancingFeeRate")], [0])
-        ).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("perpTradingFee")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0])).wait();
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
-                [normalized(2)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)])
         ).wait();
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [normalized(10000)])
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)])
         ).wait();
         // set slippage to zero
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("veSYMFeeIncentiveRatio")],
+                [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
                 [normalized(0.1)]
             )
         ).wait();

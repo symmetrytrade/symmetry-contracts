@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 import { CONTRACTS, getProxyContract } from "./utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
-const abiCoder = new hardhat.ethers.utils.AbiCoder();
+const abiCoder = hardhat.ethers.AbiCoder.defaultAbiCoder();
 
 export const WEEK = 3600 * 24 * 7;
 export const DAY = 3600 * 24;
@@ -52,19 +52,19 @@ export const tokens = [
     {
         name: "USD Coin",
         symbol: "USDC",
-        pythId: hardhat.ethers.utils.formatBytes32String("USDC"),
+        pythId: hardhat.ethers.encodeBytes32String("USDC"),
         expo: -6,
     },
     {
         name: "Wrapped Ether",
         symbol: "WETH",
-        pythId: hardhat.ethers.utils.formatBytes32String("WETH"),
+        pythId: hardhat.ethers.encodeBytes32String("WETH"),
         expo: -10,
     },
     {
         name: "Wrapped Bitcoin",
         symbol: "WBTC",
-        pythId: hardhat.ethers.utils.formatBytes32String("WBTC"),
+        pythId: hardhat.ethers.encodeBytes32String("WBTC"),
         expo: -8,
     },
 ];

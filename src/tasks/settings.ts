@@ -15,7 +15,7 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     // set general config
     const config = getConfig(hre.network.name);
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-        const key = hre.ethers.utils.formatBytes32String(term);
+        const key = hre.ethers.encodeBytes32String(term);
         const value = hre.ethers.BigNumber.from(rawValue);
         const curVal = await settings_.getIntVals(key);
         if (!curVal.eq(value)) {

@@ -66,7 +66,7 @@ describe("Market", () => {
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [normalized(0)])
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
         ).wait();
     });
 
@@ -96,10 +96,7 @@ describe("Market", () => {
 
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
-                [normalized(2)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)])
         ).wait();
         await setPythAutoRefresh(hre);
     });

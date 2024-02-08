@@ -18,7 +18,7 @@ describe("MarketSettings", () => {
     it("getUintVal", async () => {
         // set general config
         for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-            const key = hre.ethers.utils.formatBytes32String(term);
+            const key = hre.ethers.encodeBytes32String(term);
             const value = await marketSettings_.getIntVals(key);
             expect(value).to.deep.eq(rawValue);
         }
@@ -30,7 +30,7 @@ describe("MarketSettings", () => {
             for (const [k, v] of Object.entries(conf)) {
                 const value = await marketSettings_.getIntValsByDomain(
                     perpDomainKey(token),
-                    hre.ethers.utils.formatBytes32String(k)
+                    hre.ethers.encodeBytes32String(k)
                 );
                 expect(value).to.deep.eq(v);
             }

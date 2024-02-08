@@ -68,14 +68,14 @@ export function marginDomainKey(token: string) {
 export function perpConfigKey(market: string, key: string) {
     return ethers.utils.solidityKeccak256(
         ["bytes32", "bytes32"],
-        [perpDomainKey(market), ethers.utils.formatBytes32String(key)]
+        [perpDomainKey(market), ethers.encodeBytes32String(key)]
     );
 }
 
 export function marginConfigKey(token: string, key: string) {
     return ethers.utils.solidityKeccak256(
         ["bytes32", "bytes32"],
-        [marginDomainKey(token), ethers.utils.formatBytes32String(key)]
+        [marginDomainKey(token), ethers.encodeBytes32String(key)]
     );
 }
 

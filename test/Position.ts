@@ -91,22 +91,13 @@ describe("Position", () => {
         await (await USDC_.connect(account3).approve(market_.address, MAX_UINT256)).wait();
 
         // set funding rate, fee and slippage to zero for convenience
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)])).wait();
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
-        ).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("perpTradingFee")], [0])).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [1000000])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [usdcOf(1)])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
-                [normalized(10)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(10)])
         ).wait();
         // deposit margins
         await (
@@ -436,10 +427,7 @@ describe("Position", () => {
 
         // decrease hard limit
         await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("hardLimitThreshold")],
-                [normalized(0.8)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("hardLimitThreshold")], [normalized(0.8)])
         ).wait();
 
         // account2 trade -5 btc and success

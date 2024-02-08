@@ -53,7 +53,7 @@ describe("Liquidity", () => {
         config = getConfig(hre.network.name);
 
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [normalized(0)])
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
         ).wait();
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(10000000))).wait();
         await setPythAutoRefresh(hre);
