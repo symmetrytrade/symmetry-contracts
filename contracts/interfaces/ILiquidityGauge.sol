@@ -19,29 +19,29 @@ interface ILiquidityGauge {
     /*=== function ===*/
     function symRate() external view returns (address);
 
-    function accRewardPerShare() external view returns (uint256);
+    function accRewardPerShare() external view returns (uint);
 
-    function deposit(uint256 _amount) external returns (uint256);
+    function deposit(uint _amount) external returns (uint);
 
-    function depositAfterMint(address _account, uint256 _amount) external returns (uint256 reward);
+    function depositAfterMint(address _account, uint _amount) external returns (uint reward);
 
-    function k() external view returns (uint256);
+    function k() external view returns (uint);
 
-    function lastRewardTime() external view returns (uint256);
+    function lastRewardTime() external view returns (uint);
 
     function lpToken() external view returns (address);
 
     function token() external view returns (address);
 
-    function totalStaked() external view returns (uint256);
+    function totalStaked() external view returns (uint);
 
-    function totalWorkingPower() external view returns (uint256);
+    function totalWorkingPower() external view returns (uint);
 
     function update() external;
 
-    function userInfo(address) external view returns (uint256 amount, uint256 workingPower, uint256 rewardPerShare);
+    function userInfo(address) external view returns (uint amount, uint workingPower, uint rewardPerShare);
 
     function votingEscrow() external view returns (address);
 
-    function withdraw(uint256 _amount) external returns (uint256 reward);
+    function withdraw(uint _amount) external returns (uint reward);
 }

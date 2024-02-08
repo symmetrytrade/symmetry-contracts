@@ -18,7 +18,7 @@ contract LiquidityGauge is ILiquidityGauge, Initializable, VotingEscrowCallback 
     using SafeERC20 for IERC20;
 
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     // states
     // global info

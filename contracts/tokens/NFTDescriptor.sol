@@ -22,7 +22,7 @@ contract NFTDescriptor is INFTDescriptor, AccessControlEnumerable, Initializable
     uint private constant UNIT = 1e18;
 
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     RareEvent[] public rareEvents;
 

@@ -10,7 +10,7 @@ import "../utils/Initializable.sol";
 
 contract TokenMinter is AccessControlEnumerable, Initializable {
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     function initialize(address _admin) external onlyInitializeOnce {
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
