@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 import "../utils/CommonContext.sol";
 import "../utils/Initializable.sol";
 

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 
 import "../interfaces/IMarketSettings.sol";

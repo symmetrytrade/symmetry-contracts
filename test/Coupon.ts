@@ -141,8 +141,8 @@ describe("Coupon", () => {
 
         await setPythAutoRefresh(hre);
 
-        expect(await couponStaking_.discountStart()).to.deep.eq(0);
-        expect(await couponStaking_.discountEnd()).to.deep.eq(10000000);
+        expect(await couponStaking_.DISCOUNT_START()).to.deep.eq(0);
+        expect(await couponStaking_.DISCOUNT_END()).to.deep.eq(10000000);
     });
 
     it("trade with tiered trading fee discount", async () => {

@@ -17,6 +17,7 @@ import "../market/MarketSettingsContext.sol";
 
 import "../utils/CommonContext.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 
 import "../security/PauseControl.sol";

@@ -1148,6 +1148,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@solidity-parser/parser@npm:^0.16.0":
+  version: 0.16.2
+  resolution: "@solidity-parser/parser@npm:0.16.2"
+  dependencies:
+    antlr4ts: ^0.5.0-alpha.4
+  checksum: 109f7bec5de943c63e444fdde179d9bba6a592c18c836f585753798f428424cfcca72c715e7a345e4b79b83d6548543c9e56cb4b263e9b1e8352af2efcfd224a
+  languageName: node
+  linkType: hard
+
 "@tsconfig/node10@npm:^1.0.7":
   version: 1.0.9
   resolution: "@tsconfig/node10@npm:1.0.9"
@@ -5769,46 +5778,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"new-perp@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "new-perp@workspace:."
-  dependencies:
-    "@nomicfoundation/hardhat-chai-matchers": ^1.0.6
-    "@nomicfoundation/hardhat-network-helpers": ^1.0.8
-    "@nomicfoundation/hardhat-toolbox": ^2.0.2
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13"
-    "@nomiclabs/hardhat-etherscan": ^3.1.6
-    "@openzeppelin/contracts": 4.8.3
-    "@openzeppelin/hardhat-upgrades": ^1.22.1
-    "@typechain/ethers-v5": ^10.2.0
-    "@typechain/hardhat": ^6.1.5
-    "@types/chai": ^4.3.4
-    "@types/mocha": ^10.0.1
-    "@typescript-eslint/eslint-plugin": ^5.52.0
-    "@typescript-eslint/parser": ^5.52.0
-    bignumber.js: ^9.1.1
-    chai: ^4.3.7
-    dotenv: ^16.0.3
-    eslint: ^8.34.0
-    eslint-config-prettier: ^8.6.0
-    eslint-plugin-no-only-tests: ^3.1.0
-    eslint-plugin-prettier: ^4.2.1
-    hardhat: ^2.12.7
-    hardhat-abi-exporter: ^2.10.1
-    hardhat-deploy: ^0.11.23
-    hardhat-gas-reporter: ^1.0.9
-    hardhat-interface-generator: ^0.0.6
-    prettier: ^2.8.4
-    prettier-plugin-solidity: ^1.1.2
-    solhint: ^3.4.0
-    solhint-plugin-prettier: ^0.0.5
-    solidity-coverage: ^0.8.2
-    ts-node: ^10.9.1
-    typechain: ^8.1.1
-    typescript: ^4.9.5
-  languageName: unknown
-  linkType: soft
-
 "node-addon-api@npm:^2.0.0":
   version: 2.0.2
   resolution: "node-addon-api@npm:2.0.2"
@@ -6847,7 +6816,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.3.5":
+"semver@npm:^7.3.5, semver@npm:^7.5.2":
   version: 7.6.0
   resolution: "semver@npm:7.6.0"
   dependencies:
@@ -7048,11 +7017,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"solhint@npm:^3.4.0":
-  version: 3.4.0
-  resolution: "solhint@npm:3.4.0"
+"solhint@npm:^3.6.2":
+  version: 3.6.2
+  resolution: "solhint@npm:3.6.2"
   dependencies:
-    "@solidity-parser/parser": ^0.15.0
+    "@solidity-parser/parser": ^0.16.0
     ajv: ^6.12.6
     antlr4: ^4.11.0
     ast-parents: ^0.0.1
@@ -7066,7 +7035,7 @@ __metadata:
     lodash: ^4.17.21
     pluralize: ^8.0.0
     prettier: ^2.8.3
-    semver: ^6.3.0
+    semver: ^7.5.2
     strip-ansi: ^6.0.1
     table: ^6.8.1
     text-table: ^0.2.0
@@ -7075,7 +7044,7 @@ __metadata:
       optional: true
   bin:
     solhint: solhint.js
-  checksum: b99ce230e6429275e1b63a0f4e41449d8a366b31d14c034f47b42bf3062b03574ac10d375ff28f4b389f796fb3f42db99dabc701fa56dddaba310dc59004806f
+  checksum: 96c2ab3c1444624facb45b929682c65d83019f392c7331463a45e8ed61f08122e24b6709a721b6086ddfb0d5e3c3d4281f175f74eb308415072917556bdeba22
   languageName: node
   linkType: hard
 
@@ -7425,6 +7394,46 @@ __metadata:
   checksum: 53b1e247e68e05db7b3808b99b892bd36fb096e6fba213a06da7fab22045e97597db425c724f2bbd6c99a3c295e1e73f3e4de78592289f38431049e1277ca0ae
   languageName: node
   linkType: hard
+
+"symmetry-trade@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "symmetry-trade@workspace:."
+  dependencies:
+    "@nomicfoundation/hardhat-chai-matchers": ^1.0.6
+    "@nomicfoundation/hardhat-network-helpers": ^1.0.8
+    "@nomicfoundation/hardhat-toolbox": ^2.0.2
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13"
+    "@nomiclabs/hardhat-etherscan": ^3.1.6
+    "@openzeppelin/contracts": 4.8.3
+    "@openzeppelin/hardhat-upgrades": ^1.22.1
+    "@typechain/ethers-v5": ^10.2.0
+    "@typechain/hardhat": ^6.1.5
+    "@types/chai": ^4.3.4
+    "@types/mocha": ^10.0.1
+    "@typescript-eslint/eslint-plugin": ^5.52.0
+    "@typescript-eslint/parser": ^5.52.0
+    bignumber.js: ^9.1.1
+    chai: ^4.3.7
+    dotenv: ^16.0.3
+    eslint: ^8.34.0
+    eslint-config-prettier: ^8.6.0
+    eslint-plugin-no-only-tests: ^3.1.0
+    eslint-plugin-prettier: ^4.2.1
+    hardhat: ^2.12.7
+    hardhat-abi-exporter: ^2.10.1
+    hardhat-deploy: ^0.11.23
+    hardhat-gas-reporter: ^1.0.9
+    hardhat-interface-generator: ^0.0.6
+    prettier: ^2.8.4
+    prettier-plugin-solidity: ^1.1.2
+    solhint: ^3.6.2
+    solhint-plugin-prettier: ^0.0.5
+    solidity-coverage: ^0.8.2
+    ts-node: ^10.9.1
+    typechain: ^8.1.1
+    typescript: ^4.9.5
+  languageName: unknown
+  linkType: soft
 
 "sync-request@npm:^6.0.0":
   version: 6.1.0

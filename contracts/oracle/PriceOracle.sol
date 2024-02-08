@@ -13,6 +13,7 @@ import "../market/MarketSettingsContext.sol";
 
 import "../utils/Initializable.sol";
 import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 
 contract PriceOracle is IPriceOracle, MarketSettingsContext, AccessControlEnumerable, Initializable {
     using SafeCast for int;

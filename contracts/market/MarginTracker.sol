@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "../utils/SafeDecimalMath.sol";
+import "../utils/SignedSafeDecimalMath.sol";
 import "../utils/Initializable.sol";
 import "../utils/CommonContext.sol";
 
