@@ -1,9 +1,8 @@
 import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
-import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-ethers";
-import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-deploy";
+import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-interface-generator";

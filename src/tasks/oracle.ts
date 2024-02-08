@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, getProxyContract } from "../utils/utils";
 import BigNumber from "bignumber.js";

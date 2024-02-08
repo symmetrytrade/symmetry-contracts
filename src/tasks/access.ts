@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, DEFAULT_ADMIN_ROLE, PAUSER_ROLE, getProxyContract, validateError } from "../utils/utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";

@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, getProxyContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
