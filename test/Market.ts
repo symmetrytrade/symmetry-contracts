@@ -61,8 +61,8 @@ describe("Market", () => {
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
-        const amount = hre.ethers.BigNumber.from(usdcOf(1000000));
-        const minLp = hre.ethers.BigNumber.from(980000).mul(UNIT);
+        const amount = BigInt(usdcOf(1000000));
+        const minLp = 980000n * UNIT;
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         await (
@@ -72,17 +72,17 @@ describe("Market", () => {
 
     it("getPrice", async () => {
         let price = await priceOracle_.getPrice(WETH);
-        expect(price.div(UNIT)).to.deep.eq(1499);
+        expect(price / UNIT).to.deep.eq(1499);
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.pythMaxAge);
         await helpers.mine();
 
         price = await priceOracle_.getPrice(WETH);
-        expect(price.div(UNIT)).to.deep.eq(1499);
+        expect(price / UNIT).to.deep.eq(1499);
 
         await setupPrices(hre, { WETH: 1500 }, {}, account1);
         price = await priceOracle_.getPrice(WETH);
-        expect(price.div(UNIT)).to.deep.eq(1500);
+        expect(price / UNIT).to.deep.eq(1500);
 
         await expect(priceOracle_.getOffchainPrice(WETH, 0)).to.be.revertedWith("PriceOracle: pyth price too stale");
 
@@ -102,17 +102,17 @@ describe("Market", () => {
     });
 
     it("tokenToUsd", async () => {
-        let usdAmount = await market_.tokenToUsd(WETH, hre.ethers.BigNumber.from(2).mul(UNIT));
-        expect(usdAmount.div(UNIT)).to.deep.eq(3000);
-        usdAmount = await market_.tokenToUsd(WETH, hre.ethers.BigNumber.from(-5).mul(UNIT));
-        expect(usdAmount.div(UNIT)).to.deep.eq(-7500);
+        let usdAmount = await market_.tokenToUsd(WETH, 2n * UNIT);
+        expect(usdAmount / UNIT).to.deep.eq(3000);
+        usdAmount = await market_.tokenToUsd(WETH, -5n * UNIT);
+        expect(usdAmount / UNIT).to.deep.eq(-7500);
     });
 
     it("usdToToken", async () => {
-        let tokenAmount = await market_.usdToToken(WETH, hre.ethers.BigNumber.from(3000).mul(UNIT));
-        expect(tokenAmount.div(UNIT)).to.deep.eq(2);
-        tokenAmount = await market_.usdToToken(WETH, hre.ethers.BigNumber.from(-7500).mul(UNIT));
-        expect(tokenAmount.div(UNIT)).to.deep.eq(-5);
+        let tokenAmount = await market_.usdToToken(WETH, 3000n * UNIT);
+        expect(tokenAmount / UNIT).to.deep.eq(2);
+        tokenAmount = await market_.usdToToken(WETH, -7500n * UNIT);
+        expect(tokenAmount / UNIT).to.deep.eq(-5);
     });
 
     it("trade ETH long", async () => {
@@ -132,7 +132,7 @@ describe("Market", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -217,7 +217,7 @@ describe("Market", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -274,7 +274,7 @@ describe("Market", () => {
                 true,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 

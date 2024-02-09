@@ -83,8 +83,8 @@ describe("Position", () => {
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
-        const amount = hre.ethers.BigNumber.from(usdcOf(1000000)); // 1M
-        const minLp = hre.ethers.BigNumber.from(100000).mul(UNIT);
+        const amount = BigInt(usdcOf(1000000)); // 1M
+        const minLp = 100000n * UNIT;
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
@@ -128,7 +128,7 @@ describe("Position", () => {
             ])
         ).wait();
         expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(normalized(701000));
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await checkOrders(await account1.getAddress(), [0]);
@@ -147,7 +147,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         await checkOrders(await account1.getAddress(), [0, 1]);
         await (
             await positionManager_.submitOrder([
@@ -159,7 +159,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         await checkOrders(await account1.getAddress(), [0, 1, 2]);
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -175,7 +175,7 @@ describe("Position", () => {
         await (await positionManager_.connect(deployer).cancelOrder(0)).wait();
         const b1 = await marginTracker_.userCollaterals(await deployer.getAddress(), await USDC_.getAddress());
         // keeper fee
-        expect(b1.sub(b0)).to.deep.eq(usdcOf(1));
+        expect(b1 - b0).to.deep.eq(usdcOf(1));
         expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(
             normalized(701000 * 2)
         );
@@ -198,7 +198,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -258,7 +258,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -280,7 +280,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -340,7 +340,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -399,7 +399,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.be.revertedWith(
             "PositionManager: open interest exceed hardlimit"
@@ -418,7 +418,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.be.revertedWith(
             "PositionManager: open interest exceed hardlimit"
@@ -442,7 +442,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await (await positionManager_.connect(deployer).executeOrder(orderId, [])).wait();
 
@@ -458,7 +458,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         to_cancel.push(orderId);
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.be.revertedWith(
@@ -481,7 +481,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
         await expect(positionManager_.connect(deployer).cancelOrder(orderId)).to.be.revertedWith(
             "PositionManager: not expired"
         );
@@ -524,7 +524,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await (await positionManager_.connect(deployer).executeOrder(orderId, [])).wait();
 
@@ -550,7 +550,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await (await positionManager_.connect(deployer).executeOrder(orderId, [])).wait();
 
@@ -575,7 +575,7 @@ describe("Position", () => {
                 true,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -608,7 +608,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await (await positionManager_.connect(deployer).executeOrder(orderId, [])).wait();
 
@@ -633,7 +633,7 @@ describe("Position", () => {
                 true,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
         const to_cancel = [];
         to_cancel.push(orderId);
 
@@ -680,7 +680,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 960 });
         await (
@@ -707,7 +707,7 @@ describe("Position", () => {
                 true,
             ])
         ).wait();
-        const reduceOnlyId = (await positionManager_.orderCnt()).sub(1);
+        const reduceOnlyId = (await positionManager_.orderCnt()) - 1n;
         let status = await market_.accountMarginStatus(await account3.getAddress());
         expect(status.mtm).to.deep.eq(normalized(212));
         expect(status.currentMargin).to.deep.eq(normalized(596));
@@ -723,7 +723,7 @@ describe("Position", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 910 });
         await (

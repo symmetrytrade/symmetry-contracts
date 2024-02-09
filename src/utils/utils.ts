@@ -13,7 +13,7 @@ export const SPENDER_ROLE = ethers.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.id("VESTING_ROLE");
 export const PERP_DOMAIN = ethers.encodeBytes32String("perpDomain");
 export const MARGIN_DOMAIN = ethers.encodeBytes32String("marginDomain");
-export const UNIT = "1000000000000000000";
+export const UNIT = 10n ** 18n;
 export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
@@ -27,16 +27,17 @@ export function validateError(e: unknown, msg: string) {
     }
 }
 
-export function mul_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x.mul(y).div(UNIT);
+export function mul_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    return (BigInt(x) * BigInt(y)) / UNIT;
 }
 
-export function div_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x.mul(UNIT).div(y);
+export function div_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    return (BigInt(x) * UNIT) / BigInt(y);
 }
 
-export function diff_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x > y ? x.sub(y) : y.sub(x);
+export function diff_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    const diff = BigInt(x) - BigInt(y);
+    return diff >= 0 ? diff : -diff;
 }
 
 export function tokenOf(x: number, decimals: number) {
@@ -44,7 +45,7 @@ export function tokenOf(x: number, decimals: number) {
 }
 
 export function normalized(x: number) {
-    return new BigNumber(x).multipliedBy(UNIT).toString(10);
+    return new BigNumber(x).multipliedBy(Number(UNIT)).toString(10);
 }
 
 export function usdcOf(x: number) {

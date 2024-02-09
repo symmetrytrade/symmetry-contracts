@@ -63,10 +63,10 @@ describe("Liquidity", () => {
         // deposit
         USDC_ = USDC_.connect(account1);
         await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
-        const amount = hre.ethers.BigNumber.from(usdcOf(100000));
-        const minLp = hre.ethers.BigNumber.from(98000).mul(UNIT);
+        const amount = BigInt(usdcOf(100000));
+        const minLp = 98000n * UNIT;
         await expect(
-            liquidityManager_.addLiquidity(amount, minLp.add(1), await account1.getAddress(), false)
+            liquidityManager_.addLiquidity(amount, minLp + 1n, await account1.getAddress(), false)
         ).to.be.revertedWith("LiquidityManager: insufficient lp amount");
         await expect(liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false))
             .to.emit(liquidityManager_, "AddLiquidity")
@@ -79,12 +79,10 @@ describe("Liquidity", () => {
         expect(globalStatus.netOpenInterest).to.deep.eq(0);
         // remove
         await expect(
-            liquidityManager_.removeLiquidity(minLp, amount.add(1), await account1.getAddress())
+            liquidityManager_.removeLiquidity(minLp, amount + 1n, await account1.getAddress())
         ).to.be.revertedWith("LiquidityManager: insufficient amountOut");
-        const outUsdc = hre.ethers.BigNumber.from(usdcOf(98000));
-        await expect(
-            liquidityManager_.removeLiquidity(minLp, outUsdc.sub(outUsdc.div(1000)), await account1.getAddress())
-        )
+        const outUsdc = BigInt(usdcOf(98000));
+        await expect(liquidityManager_.removeLiquidity(minLp, outUsdc - outUsdc / 1000n, await account1.getAddress()))
             .to.emit(liquidityManager_, "RemoveLiquidity")
             .withArgs(
                 await account1.getAddress(),
@@ -92,15 +90,11 @@ describe("Liquidity", () => {
                 normalized(98000),
                 normalized(98000),
                 normalized(98),
-                outUsdc.sub(outUsdc.div(1000))
+                outUsdc - outUsdc / 1000n
             );
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(
-            amount
-                .sub(outUsdc.sub(outUsdc.div(1000)))
-                .mul(98)
-                .div(100)
-                .mul(1e12)
+            (((amount - (outUsdc - outUsdc / 1000n)) * 98n) / 100n) * 10n ** 12n
         );
         expect(globalStatus.netOpenInterest).to.deep.eq(0);
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(0);
@@ -108,8 +102,8 @@ describe("Liquidity", () => {
 
     it("deposit&remove at non-zero skew", async () => {
         // first deposit
-        const amount = hre.ethers.BigNumber.from(usdcOf(100000));
-        const minLp = hre.ethers.BigNumber.from(98000).mul(UNIT);
+        const amount = BigInt(usdcOf(100000));
+        const minLp = 98000n * UNIT;
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
 
@@ -127,7 +121,7 @@ describe("Liquidity", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 

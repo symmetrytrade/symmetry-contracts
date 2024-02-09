@@ -7,21 +7,21 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 const abiCoder = hardhat.ethers.AbiCoder.defaultAbiCoder();
 
-export const WEEK = 3600 * 24 * 7;
-export const DAY = 3600 * 24;
-export const HOUR = 3600;
+export const WEEK = 3600n * 24n * 7n;
+export const DAY = 3600n * 24n;
+export const HOUR = 3600n;
 
-export function startOfDay(t: number) {
-    return Math.floor(t / DAY) * DAY;
+export function startOfDay(t: ethers.BigNumberish) {
+    return (BigInt(t) / DAY) * DAY;
 }
 
-export function startOfWeek(t: number) {
-    return Math.floor(t / WEEK) * WEEK;
+export function startOfWeek(t: ethers.BigNumberish) {
+    return (BigInt(t) / WEEK) * WEEK;
 }
 
-export async function increaseNextBlockTimestamp(interval: number) {
-    const evmTime = await helpers.time.latest();
-    await helpers.time.setNextBlockTimestamp(evmTime + interval);
+export async function increaseNextBlockTimestamp(interval: ethers.BigNumberish) {
+    const evmTime = BigInt(await helpers.time.latest());
+    await helpers.time.setNextBlockTimestamp(evmTime + BigInt(interval));
 }
 
 export function printValues(name: string, e: object) {
@@ -87,7 +87,7 @@ export async function updateChainlinkPrice(
     const decimals = await aggregator_.decimals();
     const updateTime = await helpers.time.latest();
     await increaseNextBlockTimestamp(1);
-    await (await aggregator_.feed(new BigNumber(price).times(10 ** decimals).toString(10), updateTime)).wait();
+    await (await aggregator_.feed(new BigNumber(price).times(10 ** Number(decimals)).toString(10), updateTime)).wait();
 }
 
 export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPrices: { [key: string]: number }) {

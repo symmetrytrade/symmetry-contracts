@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, getProxyContract } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getProxyContract } from "../src/utils/utils";
 import {
     chainlinkAggregators,
     latestBlockTimestamp,
@@ -50,7 +50,7 @@ describe("PriceOracle", () => {
                 const tokenAddress = await (await hre.ethers.getContract(aggregator.name)).getAddress();
                 const answer = await priceOracle_.getLatestChainlinkPrice(tokenAddress);
                 expect(answer[0]).to.deep.eq(1);
-                expect(answer[2]).to.deep.eq(new BigNumber(chainlinkPrices[aggregator.name]).times(1e18).toString(10));
+                expect(answer[2]).to.deep.eq(BigInt(chainlinkPrices[aggregator.name]) * UNIT);
             }
         }
     });
@@ -67,10 +67,10 @@ describe("PriceOracle", () => {
                     value: 10,
                 })
             ).wait();
-            const gasFee = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+            const gasFee = receipt.gasUsed * receipt.effectiveGasPrice;
             const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
             // check fee cost
-            expect(balanceBefore.sub(balanceAfter)).to.deep.eq(gasFee.add(10));
+            expect(balanceBefore - balanceAfter).to.deep.eq(gasFee + 10n);
             // check answer
             const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             const answer = await priceOracle_.getPythPrice(tokenAddress);

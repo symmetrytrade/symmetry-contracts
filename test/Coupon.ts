@@ -154,7 +154,7 @@ describe("Coupon", () => {
                 false,
             ])
         ).wait();
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -204,11 +204,11 @@ describe("Coupon", () => {
                 normalized(50),
                 normalized(1001),
                 usdcOf(1),
-                (await helpers.time.latest()) + DAY + 100,
+                BigInt(await helpers.time.latest()) + DAY + 100n,
                 false,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -260,7 +260,7 @@ describe("Coupon", () => {
         await (await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
         await helpers.mine(3);
         await (await volumeTracker_.drawLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
-        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([(await helpers.time.latest()) - WEEK]))
+        await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([BigInt(await helpers.time.latest()) - WEEK]))
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
     });
@@ -286,7 +286,7 @@ describe("Coupon", () => {
                 false,
             ])
         ).wait();
-        let orderId = (await positionManager_.orderCnt()).sub(1);
+        let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -315,7 +315,7 @@ describe("Coupon", () => {
                 true,
             ])
         ).wait();
-        orderId = (await positionManager_.orderCnt()).sub(1);
+        orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -341,7 +341,7 @@ describe("Coupon", () => {
         ).wait();
 
         await increaseNextBlockTimestamp(1);
-        const evmTime = (await helpers.time.latest()) + 1;
+        const evmTime = BigInt(await helpers.time.latest()) + 1n;
 
         // liquidate
         await expect(positionManager_.connect(account2).liquidatePosition(await account1.getAddress(), WETH, []))
@@ -367,7 +367,7 @@ describe("Coupon", () => {
         expect(await coupon_.tokenCount()).to.deep.eq(2);
     });
     it("lucky number", async () => {
-        await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
+        await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
         await helpers.mine();
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: not issued"
@@ -382,7 +382,7 @@ describe("Coupon", () => {
             "VolumeTracker: drawed"
         );
 
-        await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
+        await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
         await helpers.mine();
         await (await volumeTracker_.issueLuckyNumber(await helpers.time.latest())).wait();
         await expect(

@@ -102,7 +102,7 @@ describe("Funding", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -127,7 +127,7 @@ describe("Funding", () => {
         expect(fs[1]).to.deep.eq(normalized(5));
     });
     it("open ETH short, filp the skew", async () => {
-        const evmTime = await helpers.time.latest();
+        const evmTime = BigInt(await helpers.time.latest());
         await increaseNextBlockTimestamp(1);
         // open eth short, 100000 notional
         await (
@@ -136,13 +136,13 @@ describe("Funding", () => {
                 normalized(-100),
                 normalized(1000),
                 usdcOf(1),
-                evmTime + 2 * DAY,
+                evmTime + 2n * DAY,
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
-        await increaseNextBlockTimestamp(DAY - 1); // 2 days since long position opened
+        await increaseNextBlockTimestamp(DAY - 1n); // 2 days since long position opened
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
