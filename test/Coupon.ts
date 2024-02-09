@@ -139,9 +139,7 @@ describe("Coupon", () => {
     it("trade with tiered trading fee discount", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.constants.HashZero)
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.ZeroHash)).wait();
 
         // open eth long, 50000 notional
         await (
@@ -386,18 +384,18 @@ describe("Coupon", () => {
         await expect(
             volumeTracker_.drawLuckyNumberByAnnouncer(
                 await helpers.time.latest(),
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash
             )
         ).to.be.revertedWith("VolumeTracker: forbid");
         volumeTracker_ = volumeTracker_.connect(deployer);
         await expect(
             volumeTracker_.drawLuckyNumberByAnnouncer(
                 await helpers.time.latest(),
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash
             )
         ).to.be.revertedWith("VolumeTracker: too early");
         await helpers.mine(300);
@@ -407,9 +405,9 @@ describe("Coupon", () => {
         await (
             await volumeTracker_.drawLuckyNumberByAnnouncer(
                 await helpers.time.latest(),
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero,
-                hre.ethers.constants.HashZero
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash,
+                hre.ethers.ZeroHash
             )
         ).wait();
         const t = startOfDay(await helpers.time.latest()) - DAY;

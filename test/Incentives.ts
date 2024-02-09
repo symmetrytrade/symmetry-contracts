@@ -171,9 +171,7 @@ describe("Incentives", () => {
     it("week 1, claim 1 week", async () => {
         positionManager_ = positionManager_.connect(deployer);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.constants.HashZero)
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.ZeroHash)).wait();
         await trade();
         const week1 = startOfWeek(await helpers.time.latest());
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);

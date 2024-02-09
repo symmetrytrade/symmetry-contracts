@@ -110,9 +110,7 @@ describe("Margin", () => {
 
     it("trade and generate negative margin", async () => {
         // deposit BTC
-        await (
-            await positionManager_.depositMargin(WBTC_.address, normalized(5), hre.ethers.constants.HashZero)
-        ).wait();
+        await (await positionManager_.depositMargin(WBTC_.address, normalized(5), hre.ethers.ZeroHash)).wait();
         // check margin
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.deep.eq(normalized(5 * 10000 * 0.9));
@@ -257,7 +255,7 @@ describe("Margin", () => {
         expect(await interestRateModel_.totalDebt()).to.deep.eq(totalDebt);
         // deposit USDC
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(5000), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(5000), hre.ethers.ZeroHash)).wait();
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
@@ -353,7 +351,7 @@ describe("Margin", () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit WETH
         await (
-            await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.constants.HashZero, {
+            await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.ZeroHash, {
                 value: normalized(1),
             })
         ).wait();

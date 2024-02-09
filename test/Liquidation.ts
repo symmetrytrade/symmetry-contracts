@@ -99,7 +99,7 @@ describe("Liquidation", () => {
 
     it("liquidate and pay fee & penalty", async () => {
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.ZeroHash)).wait();
 
         // open eth long, 10000 notional
         await (
@@ -174,7 +174,7 @@ describe("Liquidation", () => {
     it("liquidate and pay fee, insufficient to pay all penalty", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.ZeroHash)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -239,7 +239,7 @@ describe("Liquidation", () => {
     it("liquidate but insufficient to pay fee and penalty", async () => {
         positionManager_ = positionManager_.connect(account3);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.ZeroHash)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -304,7 +304,7 @@ describe("Liquidation", () => {
     it("liquidate and generate deficit loss", async () => {
         positionManager_ = positionManager_.connect(account4);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000), hre.ethers.ZeroHash)).wait();
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional

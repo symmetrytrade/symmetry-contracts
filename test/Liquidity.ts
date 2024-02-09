@@ -114,7 +114,7 @@ describe("Liquidity", () => {
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
 
         // trade
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.ZeroHash)).wait();
         await (
             await positionManager_.submitOrder([
                 WETH,

@@ -116,7 +116,7 @@ describe("Market", () => {
     });
 
     it("trade ETH long", async () => {
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.constants.HashZero)).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.ZeroHash)).wait();
         let status = await market_.accountMarginStatus(await account1.getAddress());
         expect(status.currentMargin).to.deep.eq(normalized(1470));
 

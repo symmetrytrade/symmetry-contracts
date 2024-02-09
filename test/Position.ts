@@ -100,19 +100,13 @@ describe("Position", () => {
             await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(10)])
         ).wait();
         // deposit margins
-        await (
-            await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.constants.HashZero)
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.ZeroHash)).wait();
 
         await (
-            await positionManager_
-                .connect(account2)
-                .depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.constants.HashZero)
+            await positionManager_.connect(account2).depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.ZeroHash)
         ).wait();
         await (
-            await positionManager_
-                .connect(account3)
-                .depositMargin(USDC_.address, usdcOf(1000), hre.ethers.constants.HashZero)
+            await positionManager_.connect(account3).depositMargin(USDC_.address, usdcOf(1000), hre.ethers.ZeroHash)
         ).wait();
         await setPythAutoRefresh(hre);
     });

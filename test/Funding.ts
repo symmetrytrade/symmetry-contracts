@@ -87,9 +87,7 @@ describe("Funding", () => {
     it("open ETH long, keep it for 1 day", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.constants.HashZero)
-        ).wait();
+        await (await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.ZeroHash)).wait();
 
         // open eth long, 50000 notional
         await (
