@@ -177,7 +177,7 @@ describe("Incentives", () => {
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);
         await helpers.mine(1);
         const toClaim = await getClaimable(await account1.getAddress(), week1, week1);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week1 + WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week1 + 2 * WEEK);
@@ -200,31 +200,31 @@ describe("Incentives", () => {
         }
         // account1 claim week 2-22(inclusive)
         let toClaim = await getClaimable(await account1.getAddress(), week2, week2 + 20 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 21 * WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 21 * WEEK);
         // account1 claim week 23-42(inclusive)
         toClaim = await getClaimable(await account1.getAddress(), week2 + 21 * WEEK, week2 + 40 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 41 * WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 41 * WEEK);
         // account1 claim week 42-60(inclusive)
         toClaim = await getClaimable(await account1.getAddress(), week2 + 41 * WEEK, week2 + 58 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 59 * WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);
         // account2 claim week 1-50(inclusive)
         toClaim = await getClaimable(await account2.getAddress(), week2 - WEEK, week2 + 48 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account2.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account2.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 49 * WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);
         // account2 claim week 51-60(inclusive)
         toClaim = await getClaimable(await account2.getAddress(), week2 + 49 * WEEK, week2 + 58 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account2.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account2.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 59 * WEEK);
         expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);

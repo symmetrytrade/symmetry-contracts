@@ -31,7 +31,7 @@ describe("PerpTracker", () => {
     ) {
         const oraclePrice = normalized(2000);
         const kLP = normalized(10000 * 2000);
-        const fillPrice = await perpTracker_.callStatic.swapOnAMM([WETH, skew, size, oraclePrice, kLP]);
+        const fillPrice = await perpTracker_.swapOnAMM.staticCall([WETH, skew, size, oraclePrice, kLP]);
         assertDiffWithin(fillPrice, expectedFillPrice, "2000");
         await (await perpTracker_.swapOnAMM([WETH, skew, size, oraclePrice, kLP])).wait();
         const priceInfo = await perpTracker_.getPriceInfo(WETH);

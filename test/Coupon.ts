@@ -251,7 +251,7 @@ describe("Coupon", () => {
             "VolumeTracker: invalid date"
         );
 
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(0);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(0);
 
         await (await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
         await helpers.mine(3);
