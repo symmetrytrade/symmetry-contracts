@@ -178,6 +178,9 @@ async function getProxyContract(
     signer: ethers.Signer | string
 ) {
     const address = (await hre.ethers.getContract(contract.name)).address;
+    if (typeof signer === "string") {
+        signer = await hre.ethers.getSigner(signer);
+    }
     return hre.ethers.getContractAt(contract.contract, address, signer);
 }
 
