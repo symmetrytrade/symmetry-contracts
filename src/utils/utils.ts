@@ -58,22 +58,22 @@ export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
 }
 
 export function perpDomainKey(market: string) {
-    return ethers.utils.solidityKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
 }
 
 export function marginDomainKey(token: string) {
-    return ethers.utils.solidityKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
 }
 
 export function perpConfigKey(market: string, key: string) {
-    return ethers.utils.solidityKeccak256(
+    return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
         [perpDomainKey(market), ethers.encodeBytes32String(key)]
     );
 }
 
 export function marginConfigKey(token: string, key: string) {
-    return ethers.utils.solidityKeccak256(
+    return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
         [marginDomainKey(token), ethers.encodeBytes32String(key)]
     );
