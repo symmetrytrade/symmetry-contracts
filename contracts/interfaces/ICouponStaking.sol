@@ -13,9 +13,9 @@ interface ICouponStaking {
 
     function coupon() external view returns (address);
 
-    function getDiscount(address _account) external view returns (uint256);
+    function getDiscount(address _account) external view returns (uint);
 
-    function getStaked(address _account) external view returns (uint256[] memory);
+    function getStaked(address _account) external view returns (uint[] memory);
 
-    function stake(uint256[] memory _ids) external;
+    function stake(uint[] memory _ids) external;
 }

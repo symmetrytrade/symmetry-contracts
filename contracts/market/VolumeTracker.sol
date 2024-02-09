@@ -23,7 +23,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     using SafeCast for int;
 
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     // states
     address public market;

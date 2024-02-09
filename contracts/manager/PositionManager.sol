@@ -29,7 +29,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     using SafeCast for uint;
 
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     // states
     address public market;
@@ -113,12 +113,12 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     /*=== view ===*/
 
     function getUserOrders(address _account, uint _offset) external view returns (Order[] memory result) {
-        uint256 n = _offset + 100 < userPendingOrders[_account].length
+        uint n = _offset + 100 < userPendingOrders[_account].length
             ? _offset + 100
             : userPendingOrders[_account].length;
         if (n > _offset) {
             result = new Order[](n - _offset);
-            for (uint256 i = _offset; i < n; ++i) {
+            for (uint i = _offset; i < n; ++i) {
                 result[i - _offset] = orders[userPendingOrders[_account][i]];
             }
         }

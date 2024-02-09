@@ -10,7 +10,7 @@ import "../interfaces/IMarketSettings.sol";
  */
 contract MarketSettings is IMarketSettings, AccessControlEnumerable, Initializable {
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     // states
     mapping(bytes32 => int) private intVals;

@@ -13,7 +13,7 @@ import "../utils/Initializable.sol";
 
 contract CouponStaking is ICouponStaking, AccessControlEnumerable, Initializable {
     // reserved storage slots for base contract upgrade in future
-    uint256[50] private __gap;
+    uint[50] private __gap;
 
     // discount end timestamp
     uint public immutable DISCOUNT_START;
