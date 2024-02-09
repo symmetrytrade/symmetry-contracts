@@ -54,7 +54,7 @@ describe("Coupon", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
@@ -75,12 +75,12 @@ describe("Coupon", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
-        await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
 
         // set financing&funding fee rate to zero
         await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
@@ -123,9 +123,9 @@ describe("Coupon", () => {
         await (await sym_.grantRole(MINTER_ROLE, await deployer.getAddress())).wait();
         await (await sym_.mint(await account1.getAddress(), normalized(2))).wait();
         await (await sym_.mint(await account2.getAddress(), normalized(998))).wait();
-        await (await sym_.connect(account1).approve(votingEscrow_.address, normalized(2))).wait();
+        await (await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(2))).wait();
         await (await votingEscrow_.connect(account1).createLock(normalized(2), 0, maxTime, true)).wait();
-        await (await sym_.connect(account2).approve(votingEscrow_.address, normalized(998))).wait();
+        await (await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(998))).wait();
         await (await votingEscrow_.connect(account2).createLock(normalized(998), 0, maxTime, true)).wait();
 
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + maxTime));
@@ -139,7 +139,9 @@ describe("Coupon", () => {
     it("trade with tiered trading fee discount", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(10000), hre.ethers.ZeroHash)
+        ).wait();
 
         // open eth long, 50000 notional
         await (
@@ -175,7 +177,9 @@ describe("Coupon", () => {
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 42.75));
         expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.deep.eq(usdcOf(4.75));
-        expect(await marginTracker_.userCollaterals(feeTracker_.address, USDC_.address)).to.deep.eq(usdcOf(4.75));
+        expect(
+            await marginTracker_.userCollaterals(await feeTracker_.getAddress(), await USDC_.getAddress())
+        ).to.deep.eq(usdcOf(4.75));
         // check volume
         expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.deep.eq(
             normalized(50047.5)

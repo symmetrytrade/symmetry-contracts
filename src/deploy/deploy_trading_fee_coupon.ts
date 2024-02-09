@@ -16,7 +16,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const descriptor_ = await hre.ethers.getContract(CONTRACTS.NFTDescriptor.name);
     // set descriptor
-    await (await coupon_.setDescriptor(descriptor_.address)).wait();
+    await (await coupon_.setDescriptor(await descriptor_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.TradingFeeCoupon.name, "prod"];

@@ -44,8 +44,8 @@ describe("Market", () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
+        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
@@ -60,7 +60,7 @@ describe("Market", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
         const amount = hre.ethers.BigNumber.from(usdcOf(1000000));
         const minLp = hre.ethers.BigNumber.from(980000).mul(UNIT);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
@@ -116,7 +116,9 @@ describe("Market", () => {
     });
 
     it("trade ETH long", async () => {
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
+        ).wait();
         let status = await market_.accountMarginStatus(await account1.getAddress());
         expect(status.currentMargin).to.deep.eq(normalized(1470));
 
@@ -150,7 +152,10 @@ describe("Market", () => {
                 "0",
                 orderId
             );
-        const userCollaterals = await marginTracker_.userCollaterals(await account1.getAddress(), USDC_.address);
+        const userCollaterals = await marginTracker_.userCollaterals(
+            await account1.getAddress(),
+            await USDC_.getAddress()
+        );
         expect(userCollaterals).to.deep.eq(usdcOf(1500));
         const position = await perpTracker_.getPosition(await account1.getAddress(), WETH);
         expect(position.accFunding).to.deep.eq(0);
@@ -232,7 +237,10 @@ describe("Market", () => {
                 "0",
                 orderId
             );
-        const userCollaterals = await marginTracker_.userCollaterals(await account1.getAddress(), USDC_.address);
+        const userCollaterals = await marginTracker_.userCollaterals(
+            await account1.getAddress(),
+            await USDC_.getAddress()
+        );
         expect(userCollaterals).to.deep.eq(usdcOf(1500));
         const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
         expect(position.accFunding).to.deep.eq(0);
@@ -291,7 +299,10 @@ describe("Market", () => {
         const fs = await perpTracker_.nextAccFunding(WBTC, normalized(15000));
         expect(fs[0]).to.deep.eq("-2479884920822164"); // next funding rate
         expect(fs[1]).to.deep.eq("-15068745178605000"); // acc funding
-        const userCollaterals = await marginTracker_.userCollaterals(await account1.getAddress(), USDC_.address);
+        const userCollaterals = await marginTracker_.userCollaterals(
+            await account1.getAddress(),
+            await USDC_.getAddress()
+        );
         expect(userCollaterals).to.deep.eq("3971408641");
         const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
         expect(position.accFunding).to.deep.eq("0");

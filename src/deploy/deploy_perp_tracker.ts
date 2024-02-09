@@ -17,7 +17,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
 
     if (!(await perpTracker_.initialized())) {
-        await (await perpTracker_.initialize(market_.address)).wait();
+        await (await perpTracker_.initialize(await market_.getAddress())).wait();
     }
 
     // set market tokens
@@ -25,12 +25,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)
-                : (await hre.ethers.getContract(market)).address;
+                : await (await hre.ethers.getContract(market)).getAddress();
         await (await perpTracker_.addMarketToken(token)).wait();
     }
 
     // set perpTracker for market
-    await (await market_.setPerpTracker(perpTracker_.address)).wait();
+    await (await market_.setPerpTracker(await perpTracker_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.PerpTracker.name, "prod"];

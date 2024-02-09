@@ -15,8 +15,8 @@ describe("PerpTracker", () => {
         await deployments.fixture();
         const { deployer } = await hre.getNamedAccounts();
         perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
-        WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
+        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
         // set market to deployer for test
         await (await perpTracker_.setMarket(deployer)).wait();
     });

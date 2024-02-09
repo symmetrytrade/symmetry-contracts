@@ -39,7 +39,7 @@ describe("PriceOracle", () => {
         const aggregator_ = await hre.ethers.getContract("ChainlinkAggregatorSequencer", account1);
         await (await aggregator_.feed(1, helpers.time.latest())).wait();
         await expect(
-            priceOracle_.getLatestChainlinkPrice((await hre.ethers.getContract("USDC")).address)
+            priceOracle_.getLatestChainlinkPrice(await (await hre.ethers.getContract("USDC")).getAddress())
         ).to.be.revertedWith("PriceOracle: Sequencer is down");
     });
 
@@ -47,7 +47,7 @@ describe("PriceOracle", () => {
         for (const aggregator of chainlinkAggregators) {
             await updateChainlinkPrice(hre, aggregator.name, chainlinkPrices[aggregator.name], account1);
             if (aggregator.name !== "Sequencer") {
-                const tokenAddress = (await hre.ethers.getContract(aggregator.name)).address;
+                const tokenAddress = await (await hre.ethers.getContract(aggregator.name)).getAddress();
                 const answer = await priceOracle_.getLatestChainlinkPrice(tokenAddress);
                 expect(answer[0]).to.deep.eq(1);
                 expect(answer[2]).to.deep.eq(new BigNumber(chainlinkPrices[aggregator.name]).times(1e18).toString(10));
@@ -72,7 +72,7 @@ describe("PriceOracle", () => {
             // check fee cost
             expect(balanceBefore.sub(balanceAfter)).to.deep.eq(gasFee.add(10));
             // check answer
-            const tokenAddress = (await hre.ethers.getContract(token.symbol)).address;
+            const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             const answer = await priceOracle_.getPythPrice(tokenAddress);
             expect(answer[0]).to.deep.eq(publishTime);
             expect(answer[1]).to.deep.eq(new BigNumber(1e18).times(pythPrices[token.symbol]).toString(10));

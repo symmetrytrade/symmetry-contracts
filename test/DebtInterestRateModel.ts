@@ -41,7 +41,7 @@ describe("Debt", () => {
             log: true,
         });
         interestRateModel_ = await hre.ethers.getContract(CONTRACTS.DebtInterestRateModel.name);
-        await (await interestRateModel_.initialize(market_.address, deployer)).wait();
+        await (await interestRateModel_.initialize(await market_.getAddress(), deployer)).wait();
         totalDebt = ethers.BigNumber.from(normalized(123456789.1234567));
         debtRatio = ethers.BigNumber.from(normalized(0.1)); // 10%
         await (await interestRateModel_.update(totalDebt, debtRatio)).wait();

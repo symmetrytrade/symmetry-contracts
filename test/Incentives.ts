@@ -48,7 +48,7 @@ describe("Incentives", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
@@ -66,11 +66,11 @@ describe("Incentives", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
-        await (await lpToken_.approve(liquidityGauge_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await (await lpToken_.approve(await liquidityGauge_.getAddress(), MAX_UINT256)).wait();
 
-        await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
-        await (await USDC_.connect(deployer).approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await (await USDC_.connect(deployer).approve(await market_.getAddress(), MAX_UINT256)).wait();
 
         await (await liquidityManager_.addLiquidity(usdcOf(1e10), 0, await account1.getAddress(), false)).wait();
 
@@ -103,8 +103,8 @@ describe("Incentives", () => {
         await (await sym_.grantRole(MINTER_ROLE, await deployer.getAddress())).wait();
         await (await sym_.mint(await account1.getAddress(), normalized(100000))).wait();
         await (await sym_.mint(await account2.getAddress(), normalized(100000))).wait();
-        await (await sym_.connect(account1).approve(votingEscrow_.address, normalized(100000))).wait();
-        await (await sym_.connect(account2).approve(votingEscrow_.address, normalized(100000))).wait();
+        await (await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(100000))).wait();
+        await (await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(100000))).wait();
 
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
         await (await votingEscrow_.connect(account1).createLock(normalized(1), 0, maxTime, true)).wait();
@@ -171,7 +171,9 @@ describe("Incentives", () => {
     it("week 1, claim 1 week", async () => {
         positionManager_ = positionManager_.connect(deployer);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000000), hre.ethers.ZeroHash)
+        ).wait();
         await trade();
         const week1 = startOfWeek(await helpers.time.latest());
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);

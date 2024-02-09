@@ -56,7 +56,7 @@ describe("Margin", () => {
         keeper = (await hre.ethers.getSigners())[6];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         WBTC_ = await hre.ethers.getContract("WBTC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
@@ -73,13 +73,13 @@ describe("Margin", () => {
                 await USDC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), usdcOf(100000000))
             ).wait();
             await (
-                await USDC_.connect((await hre.ethers.getSigners())[i]).approve(market_.address, MAX_UINT256)
+                await USDC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256)
             ).wait();
             await (
                 await WBTC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), normalized(1000))
             ).wait();
             await (
-                await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(market_.address, MAX_UINT256)
+                await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256)
             ).wait();
         }
 
@@ -110,7 +110,9 @@ describe("Margin", () => {
 
     it("trade and generate negative margin", async () => {
         // deposit BTC
-        await (await positionManager_.depositMargin(WBTC_.address, normalized(5), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await WBTC_.getAddress(), normalized(5), hre.ethers.ZeroHash)
+        ).wait();
         // check margin
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.deep.eq(normalized(5 * 10000 * 0.9));
@@ -156,15 +158,17 @@ describe("Margin", () => {
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 500 * 200));
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(500 * 200));
         expect(globalStatus.netSkew).to.deep.eq(normalized(500 * 200));
-        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(0);
+        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), await USDC_.getAddress())).to.deep.eq(0);
         expect(await marginTracker_.totalDebt()).to.deep.eq(0);
         // set keeper fee to 1 usdc
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
-        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, await WBTC_.getAddress()]);
         const totalDebt = await marginTracker_.totalDebt();
         expect(totalDebt).to.deep.eq(usdcOf(200 * 500));
-        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(usdcOf(1));
+        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), await USDC_.getAddress())).to.deep.eq(
+            usdcOf(1)
+        );
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 500 * 200 - 1));
@@ -233,7 +237,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userAccDebts(await account1.getAddress())).to.deep.eq(0);
         // settle debt
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, await WBTC_.getAddress()]);
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
@@ -255,7 +259,9 @@ describe("Margin", () => {
         expect(await interestRateModel_.totalDebt()).to.deep.eq(totalDebt);
         // deposit USDC
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(5000), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(5000), hre.ethers.ZeroHash)
+        ).wait();
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
@@ -315,20 +321,22 @@ describe("Margin", () => {
         // liquidate collaterals
         const liquidatorBTC = await WBTC_.balanceOf(await liquidator.getAddress());
         const liquidatorUSDC = await USDC_.balanceOf(await liquidator.getAddress());
-        const marketUSDC = await USDC_.balanceOf(market_.address);
-        const marketBTC = await WBTC_.balanceOf(market_.address);
+        const marketUSDC = await USDC_.balanceOf(await market_.getAddress());
+        const marketBTC = await WBTC_.balanceOf(await market_.getAddress());
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
         const amount = usdcOf(50000 * 0.99);
         const loss = baseMargin.div(1e12).add(amount).mul(-1);
-        await expect(marginTracker_.connect(liquidator).liquidate(await account1.getAddress(), WBTC_.address, amount))
+        await expect(
+            marginTracker_.connect(liquidator).liquidate(await account1.getAddress(), await WBTC_.getAddress(), amount)
+        )
             .to.emit(marginTracker_, "Liquidated")
-            .withArgs(await account1.getAddress(), WBTC_.address, normalized(5), amount, 0, 0, loss)
+            .withArgs(await account1.getAddress(), await WBTC_.getAddress(), normalized(5), amount, 0, 0, loss)
             .to.emit(marginTracker_, "DeficitLoss")
             .withArgs(await account1.getAddress(), loss, insurance, loss.sub(insurance));
         expect(await WBTC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorBTC.add(normalized(5)));
         expect(await USDC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorUSDC.sub(amount));
-        expect(await USDC_.balanceOf(market_.address)).to.deep.eq(marketUSDC.add(amount));
-        expect(await WBTC_.balanceOf(market_.address)).to.deep.eq(marketBTC.sub(normalized(5)));
+        expect(await USDC_.balanceOf(await market_.getAddress())).to.deep.eq(marketUSDC.add(amount));
+        expect(await WBTC_.balanceOf(await market_.getAddress())).to.deep.eq(marketBTC.sub(normalized(5)));
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp.sub(loss.sub(insurance).mul(1e12)));

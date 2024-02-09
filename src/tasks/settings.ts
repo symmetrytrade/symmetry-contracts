@@ -34,7 +34,7 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)
-                : (await hre.ethers.getContract(market)).address;
+                : await (await hre.ethers.getContract(market)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = perpConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);
@@ -57,7 +57,7 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, collateral)
-                : (await hre.ethers.getContract(collateral)).address;
+                : await (await hre.ethers.getContract(collateral)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = marginConfigKey(token, k);
             const value = hre.ethers.BigNumber.from(v);

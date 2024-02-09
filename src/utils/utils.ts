@@ -159,7 +159,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     await deploy(`${contract.name}Beacon`, {
         from: deployer,
         contract: UPGRADEABLE_BEACON,
-        args: [implementation.address],
+        args: [await implementation.getAddress()],
         log: true,
     });
     const beacon = await hre.ethers.getContract(`${contract.name}Beacon`);
@@ -167,7 +167,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     await deploy(contract.name, {
         from: deployer,
         contract: BEACON_PROXY,
-        args: [beacon.address, []],
+        args: [await beacon.getAddress(), []],
         log: true,
     });
 }
@@ -177,7 +177,7 @@ async function getProxyContract(
     contract: ContractMeta,
     signer: ethers.Signer | string
 ) {
-    const address = (await hre.ethers.getContract(contract.name)).address;
+    const address = await (await hre.ethers.getContract(contract.name)).getAddress();
     if (typeof signer === "string") {
         signer = await hre.ethers.getSigner(signer);
     }
@@ -188,7 +188,7 @@ export async function transact(contract: ethers.Contract, methodName: string, pa
     if (execute) {
         await (await contract[methodName](...params)).wait();
     } else {
-        console.log(`to: ${contract.address}`);
+        console.log(`to: ${await contract.getAddress()}`);
         console.log(`func: ${contract.interface.getFunction(methodName).format()}`);
         console.log(`params: ${JSON.stringify(params)}`);
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);

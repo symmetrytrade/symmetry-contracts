@@ -53,13 +53,17 @@ describe("tokenomics", () => {
 
         await (await lpToken_.mint(await account2.getAddress(), normalized(1000000))).wait();
 
-        await (await lpToken_.connect(account1).approve(liquidityGauge_.address, normalized(1000000))).wait();
+        await (
+            await lpToken_.connect(account1).approve(await liquidityGauge_.getAddress(), normalized(1000000))
+        ).wait();
 
-        await (await lpToken_.connect(account2).approve(liquidityGauge_.address, normalized(1000000))).wait();
+        await (
+            await lpToken_.connect(account2).approve(await liquidityGauge_.getAddress(), normalized(1000000))
+        ).wait();
 
-        await (await sym_.connect(account1).approve(votingEscrow_.address, normalized(1000000))).wait();
+        await (await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(1000000))).wait();
 
-        await (await sym_.connect(account2).approve(votingEscrow_.address, normalized(1000000))).wait();
+        await (await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(1000000))).wait();
 
         await setPythAutoRefresh(hre);
     });
@@ -70,7 +74,7 @@ describe("tokenomics", () => {
         await helpers.time.setNextBlockTimestamp(nextWeek);
         await (await liquidityGauge_.connect(account1).deposit(normalized(1000))).wait();
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(normalized(999000));
-        expect(await lpToken_.balanceOf(liquidityGauge_.address)).to.deep.eq(normalized(1000));
+        expect(await lpToken_.balanceOf(await liquidityGauge_.getAddress())).to.deep.eq(normalized(1000));
 
         const userInfo = await liquidityGauge_.userInfo(await account1.getAddress());
         expect(userInfo.amount).to.deep.eq(normalized(1000));
@@ -90,14 +94,14 @@ describe("tokenomics", () => {
             .withArgs(await account1.getAddress(), normalized(1320), evmTime);
 
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(normalized(999900));
-        expect(await lpToken_.balanceOf(liquidityGauge_.address)).to.deep.eq(normalized(100));
+        expect(await lpToken_.balanceOf(await liquidityGauge_.getAddress())).to.deep.eq(normalized(100));
         const userInfo = await liquidityGauge_.userInfo(await account1.getAddress());
         expect(userInfo.amount).to.deep.eq(normalized(100));
         expect(userInfo.workingPower).to.deep.eq(normalized(100));
         expect(userInfo.rewardPerShare).to.deep.eq(normalized(4));
         expect(await liquidityGauge_.accRewardPerShare()).to.deep.eq(normalized(4));
         // check vesting
-        expect(await sym_.balanceOf(votingEscrow_.address)).to.deep.eq(normalized(1320));
+        expect(await sym_.balanceOf(await votingEscrow_.getAddress())).to.deep.eq(normalized(1320));
         expect(await votingEscrow_.userVestEpoch(await account1.getAddress())).to.deep.eq(12);
         let vest = await votingEscrow_.userVestHistory(await account1.getAddress(), 0);
         expect(vest.amount).to.deep.eq(0);
@@ -130,7 +134,7 @@ describe("tokenomics", () => {
         await expect(votingEscrow_.connect(account1).claimVested(await account1.getAddress()))
             .to.emit(votingEscrow_, "Claimed")
             .withArgs(await account1.getAddress(), normalized(330), evmTime);
-        expect(await sym_.balanceOf(votingEscrow_.address)).to.deep.eq(normalized(990));
+        expect(await sym_.balanceOf(await votingEscrow_.getAddress())).to.deep.eq(normalized(990));
         expect(await sym_.balanceOf(await account1.getAddress())).to.deep.eq(normalized(330));
         totalSupply = await userVestBalanceAt(account1, await helpers.time.latest());
         expect(await votingEscrow_.totalSupply()).to.deep.eq(totalSupply.toString(10));
@@ -146,11 +150,11 @@ describe("tokenomics", () => {
         let handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(1);
         await increaseNextBlockTimestamp(WEEK * 1);
-        await (await callbackRelayer_.removeCallbackHandle(liquidityGauge_.address)).wait();
+        await (await callbackRelayer_.removeCallbackHandle(await liquidityGauge_.getAddress())).wait();
         handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(0);
         await increaseNextBlockTimestamp(WEEK * 1);
-        await (await callbackRelayer_.addCallbackHandle(liquidityGauge_.address)).wait();
+        await (await callbackRelayer_.addCallbackHandle(await liquidityGauge_.getAddress())).wait();
         handles = await callbackRelayer_.getCallbackHandles();
         expect(handles.length).to.deep.eq(1);
     });

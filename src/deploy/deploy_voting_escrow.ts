@@ -14,7 +14,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // initialize
     console.log(`initializing ${CONTRACTS.VotingEscrow.name}..`);
-    const baseToken = (await hre.ethers.getContract(CONTRACTS.SYM.name)).address;
+    const baseToken = await (await hre.ethers.getContract(CONTRACTS.SYM.name)).getAddress();
     if (!(await votingEscrow_.initialized())) {
         await (
             await votingEscrow_.initialize(

@@ -15,16 +15,16 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
     const lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
     if (!(await liquidityManager_.initialized())) {
-        await (await liquidityManager_.initialize(market_.address, lpToken_.address)).wait();
+        await (await liquidityManager_.initialize(await market_.getAddress(), await lpToken_.getAddress())).wait();
     }
 
     // add operator
     console.log(`adding operator role for LiquidityManager to market..`);
-    await (await market_.setOperator(liquidityManager_.address, true)).wait();
+    await (await market_.setOperator(await liquidityManager_.getAddress(), true)).wait();
 
     // set minter role
     console.log(`set minter role of lp token for LiquidityManager..`);
-    await (await lpToken_.grantRole(MINTER_ROLE, liquidityManager_.address)).wait();
+    await (await lpToken_.grantRole(MINTER_ROLE, await liquidityManager_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.LiquidityManager.name, "prod"];

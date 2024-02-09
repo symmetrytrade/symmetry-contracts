@@ -38,7 +38,7 @@ describe("Funding", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
@@ -52,12 +52,12 @@ describe("Funding", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
-        await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
 
         await (
             await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized(0.2)])
@@ -87,7 +87,9 @@ describe("Funding", () => {
     it("open ETH long, keep it for 1 day", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(10000), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(10000), hre.ethers.ZeroHash)
+        ).wait();
 
         // open eth long, 50000 notional
         await (

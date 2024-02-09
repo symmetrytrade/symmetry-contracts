@@ -10,7 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
     const couponStaking = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
-    await (await couponStaking.initialize(deployer, coupon.address)).wait();
+    await (await couponStaking.initialize(deployer, await coupon.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.CouponStaking.name, "prod"];

@@ -42,7 +42,7 @@ describe("Liquidity", () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);
@@ -62,7 +62,7 @@ describe("Liquidity", () => {
     it("deposit&remove at zero skew", async () => {
         // deposit
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
         const amount = hre.ethers.BigNumber.from(usdcOf(100000));
         const minLp = hre.ethers.BigNumber.from(98000).mul(UNIT);
         await expect(
@@ -73,7 +73,7 @@ describe("Liquidity", () => {
             .withArgs(await account1.getAddress(), amount, 0, normalized(98000), minLp);
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
         expect(await lpToken_.totalSupply()).to.deep.eq(minLp);
-        expect(await USDC_.balanceOf(market_.address)).to.deep.eq(amount);
+        expect(await USDC_.balanceOf(await market_.getAddress())).to.deep.eq(amount);
         let globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(98000));
         expect(globalStatus.netOpenInterest).to.deep.eq(0);
@@ -114,7 +114,9 @@ describe("Liquidity", () => {
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
 
         // trade
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(1500), hre.ethers.ZeroHash)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
+        ).wait();
         await (
             await positionManager_.submitOrder([
                 WETH,
