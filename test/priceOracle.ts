@@ -67,7 +67,7 @@ describe("PriceOracle", () => {
                     value: 10,
                 })
             ).wait();
-            const gasFee = receipt.gasUsed * receipt.effectiveGasPrice;
+            const gasFee = receipt.gasUsed * receipt.gasPrice;
             const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
             // check fee cost
             expect(balanceBefore - balanceAfter).to.deep.eq(gasFee + 10n);
