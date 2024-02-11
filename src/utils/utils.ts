@@ -1,7 +1,35 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import "hardhat-deploy";
-import { ethers } from "ethers";
+import { ContractFactory, ContractRunner, ethers } from "ethers";
 import { BigNumber } from "bignumber.js";
+import {
+    PriceOracle__factory,
+    Market__factory,
+    MarketSettings__factory,
+    LiquidityManager__factory,
+    PositionManager__factory,
+    LPToken__factory,
+    PerpTracker__factory,
+    FeeTracker__factory,
+    VolumeTracker__factory,
+    MarginTracker__factory,
+    VotingEscrow__factory,
+    SYM__factory,
+    TradingFeeCoupon__factory,
+    LiquidityGauge__factory,
+    VotingEscrowCallbackRelayer__factory,
+    SYMRate__factory,
+    TimelockController__factory,
+    NFTDescriptor__factory,
+    DebtInterestRateModel__factory,
+    TokenMinter__factory,
+    CouponStaking__factory,
+    FaucetToken__factory,
+    FaucetWETH__factory,
+    ChainlinkMock__factory,
+    PythMock__factory,
+} from "../../typechain-types";
+import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
 
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
@@ -80,69 +108,91 @@ export function marginConfigKey(token: string, key: string) {
     );
 }
 
-interface ContractMeta {
-    name: string;
-    contract: string;
-}
-
 // name: name to deploy in hre
-// contract: contract name
-const CONTRACTS: { [key: string]: ContractMeta } = {
-    PriceOracle: { name: "PriceOracle", contract: "PriceOracle" },
-    Market: { name: "Market", contract: "Market" },
-    MarketSettings: { name: "MarketSettings", contract: "MarketSettings" },
+// factory: contract factory
+const CONTRACTS = {
+    PriceOracle: { name: "PriceOracle", factory: PriceOracle__factory },
+    Market: { name: "Market", factory: Market__factory },
+    MarketSettings: { name: "MarketSettings", factory: MarketSettings__factory },
     LiquidityManager: {
         name: "LiquidityManager",
-        contract: "LiquidityManager",
+        factory: LiquidityManager__factory,
     },
     PositionManager: {
         name: "PositionManager",
-        contract: "PositionManager",
+        factory: PositionManager__factory,
     },
-    LPToken: { name: "LPToken", contract: "LPToken" },
-    PerpTracker: { name: "PerpTracker", contract: "PerpTracker" },
-    FeeTracker: { name: "FeeTracker", contract: "FeeTracker" },
-    VolumeTracker: { name: "VolumeTracker", contract: "VolumeTracker" },
-    MarginTracker: { name: "MarginTracker", contract: "MarginTracker" },
-    VotingEscrow: { name: "VotingEscrow", contract: "VotingEscrow" },
-    SYM: { name: "SYM", contract: "SYM" },
+    LPToken: { name: "LPToken", factory: LPToken__factory },
+    PerpTracker: { name: "PerpTracker", factory: PerpTracker__factory },
+    FeeTracker: { name: "FeeTracker", factory: FeeTracker__factory },
+    VolumeTracker: { name: "VolumeTracker", factory: VolumeTracker__factory },
+    MarginTracker: { name: "MarginTracker", factory: MarginTracker__factory },
+    VotingEscrow: { name: "VotingEscrow", factory: VotingEscrow__factory },
+    SYM: { name: "SYM", factory: SYM__factory },
     TradingFeeCoupon: {
         name: "TradingFeeCoupon",
-        contract: "TradingFeeCoupon",
+        factory: TradingFeeCoupon__factory,
     },
-    LiquidityGauge: { name: "LiquidityGauge", contract: "LiquidityGauge" },
+    LiquidityGauge: { name: "LiquidityGauge", factory: LiquidityGauge__factory },
     VotingEscrowCallbackRelayer: {
         name: "VotingEscrowCallbackRelayer",
-        contract: "VotingEscrowCallbackRelayer",
+        factory: VotingEscrowCallbackRelayer__factory,
     },
-    SYMRate: { name: "SYMRate", contract: "SYMRate" },
-    Timelock: { name: "Timelock", contract: "TimelockController" },
-    NFTDescriptor: { name: "NFTDescriptor", contract: "NFTDescriptor" },
-    DebtInterestRateModel: { name: "DebtInterestRateModel", contract: "DebtInterestRateModel" },
-    TokenMinter: { name: "TokenMinter", contract: "TokenMinter" },
-    CouponStaking: { name: "CouponStaking", contract: "CouponStaking" },
+    SYMRate: { name: "SYMRate", factory: SYMRate__factory },
+    Timelock: { name: "Timelock", factory: TimelockController__factory },
+    NFTDescriptor: { name: "NFTDescriptor", factory: NFTDescriptor__factory },
+    DebtInterestRateModel: { name: "DebtInterestRateModel", factory: DebtInterestRateModel__factory },
+    TokenMinter: { name: "TokenMinter", factory: TokenMinter__factory },
+    CouponStaking: { name: "CouponStaking", factory: CouponStaking__factory },
     // for test env
-    USDC: { name: "USDC", contract: "FaucetToken" },
-    WETH: { name: "WETH", contract: "FaucetWETH" },
-    WBTC: { name: "WBTC", contract: "FaucetToken" },
+    USDC: { name: "USDC", factory: FaucetToken__factory },
+    WETH: { name: "WETH", factory: FaucetWETH__factory },
+    WBTC: { name: "WBTC", factory: FaucetToken__factory },
     ChainlinkAggregatorSequencer: {
         name: "ChainlinkAggregatorSequencer",
-        contract: "ChainlinkMock",
+        factory: ChainlinkMock__factory,
     },
     ChainlinkAggregatorUSDC: {
         name: "ChainlinkAggregatorUSDC",
-        contract: "ChainlinkMock",
+        factory: ChainlinkMock__factory,
     },
     ChainlinkAggregatorWETH: {
         name: "ChainlinkAggregatorWETH",
-        contract: "ChainlinkMock",
+        factory: ChainlinkMock__factory,
     },
     ChainlinkAggregatorWBTC: {
         name: "ChainlinkAggregatorWBTC",
-        contract: "ChainlinkMock",
+        factory: ChainlinkMock__factory,
     },
-    Pyth: { name: "Pyth", contract: "PythMock" },
-};
+    Pyth: { name: "Pyth", factory: PythMock__factory },
+} as const;
+
+interface TypechainFactory {
+    new (...args: ConstructorParameters<typeof ContractFactory>): ContractFactory;
+    connect: (address: string, runner?: ContractRunner | null) => unknown;
+}
+
+interface ContractMeta {
+    name: string;
+    factory: TypechainFactory;
+}
+
+// Ensure at compile time that all values in `CONTRACTS` conform to the `ContractMeta` interface
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta>> = CONTRACTS;
+
+async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta, args: unknown[] = []) {
+    const { deployments, getNamedAccounts } = hre;
+    const { deployer } = await getNamedAccounts();
+    const { deploy } = deployments;
+    // deploy implementation
+    await deploy(`${contract.name}`, {
+        from: deployer,
+        contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
+        args: args,
+        log: true,
+    });
+}
 
 async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: ContractMeta, args: unknown[] = []) {
     const { deployments, getNamedAccounts } = hre;
@@ -151,7 +201,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     // deploy implementation
     await deploy(`${contract.name}Impl`, {
         from: deployer,
-        contract: contract.contract,
+        contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
         args: args,
         log: true,
     });
@@ -182,7 +232,7 @@ async function getProxyContract(
     if (typeof signer === "string") {
         signer = await hre.ethers.getSigner(signer);
     }
-    return hre.ethers.getContractAt(contract.contract, address, signer);
+    return contract.factory.connect(address, signer);
 }
 
 export async function transact(contract: ethers.Contract, methodName: string, params: unknown[], execute: boolean) {
@@ -196,4 +246,4 @@ export async function transact(contract: ethers.Contract, methodName: string, pa
     }
 }
 
-export { deployInBeaconProxy, getProxyContract, CONTRACTS };
+export { deployDirectly, deployInBeaconProxy, getProxyContract, CONTRACTS };

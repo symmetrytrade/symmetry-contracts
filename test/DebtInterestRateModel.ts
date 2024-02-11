@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, div_D, getProxyContract, mul_D, normalized } from "../src/utils/utils";
+import { CONTRACTS, UNIT, deployDirectly, div_D, getProxyContract, mul_D, normalized } from "../src/utils/utils";
 import { DAY, HOUR } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -24,7 +24,6 @@ describe("Debt", () => {
 
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        const { deploy } = deployments;
         market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
         const config = getConfig(hre.network.name);
         vertexDebtRatio = BigInt(config.marketGeneralConfig.vertexDebtRatio);
@@ -34,12 +33,7 @@ describe("Debt", () => {
         // deploy self-controlled interest rate model contract
         interestRateModel_ = await getProxyContract(hre, CONTRACTS.DebtInterestRateModel, account1);
 
-        await deploy(CONTRACTS.DebtInterestRateModel.name, {
-            from: deployer,
-            contract: CONTRACTS.DebtInterestRateModel.contract,
-            args: [],
-            log: true,
-        });
+        await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
         interestRateModel_ = await hre.ethers.getContract(CONTRACTS.DebtInterestRateModel.name);
         await (await interestRateModel_.initialize(await market_.getAddress(), deployer)).wait();
         totalDebt = BigInt(normalized(123456789.1234567));

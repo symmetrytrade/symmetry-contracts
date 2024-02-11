@@ -1,18 +1,12 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, getProxyContract } from "../utils/utils";
+import { CONTRACTS, deployDirectly, getProxyContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre;
+    const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
 
-    await deploy(CONTRACTS.VotingEscrowCallbackRelayer.name, {
-        from: deployer,
-        contract: CONTRACTS.VotingEscrowCallbackRelayer.contract,
-        args: [],
-        log: true,
-    });
+    await deployDirectly(hre, CONTRACTS.VotingEscrowCallbackRelayer);
 
     const relayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
     const liquidityGauge_ = await getProxyContract(hre, CONTRACTS.LiquidityGauge, deployer);

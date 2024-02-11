@@ -1,20 +1,14 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS } from "../utils/utils";
+import { CONTRACTS, deployDirectly } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre;
+    const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
     const config = getConfig(hre.network.name);
 
-    await deploy(CONTRACTS.SYMRate.name, {
-        from: deployer,
-        contract: CONTRACTS.SYMRate.contract,
-        args: [],
-        log: true,
-    });
+    await deployDirectly(hre, CONTRACTS.SYMRate);
 
     const symRate_ = await hre.ethers.getContract(CONTRACTS.SYMRate.name, deployer);
 
