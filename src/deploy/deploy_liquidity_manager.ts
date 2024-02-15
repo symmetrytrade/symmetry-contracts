@@ -8,11 +8,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.LiquidityManager);
 
-    const liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, deployer);
+    const liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager);
 
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityManager.name}..`);
-    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
     const lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
     if (!(await liquidityManager_.initialized())) {
         await (await liquidityManager_.initialize(await market_.getAddress(), await lpToken_.getAddress())).wait();

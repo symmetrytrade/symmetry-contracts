@@ -236,9 +236,12 @@ async function deployInBeaconProxy(
 async function getTypedContract<T>(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<T>,
-    signer: ethers.Signer | string
+    signer?: ethers.Signer | string
 ) {
     const address = await (await hre.ethers.getContract(contract.name)).getAddress();
+    if (signer === undefined) {
+        signer = (await hre.getNamedAccounts()).deployer;
+    }
     if (typeof signer === "string") {
         signer = await hre.ethers.getSigner(signer);
     }

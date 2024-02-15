@@ -4,13 +4,11 @@ import { CONTRACTS, deployInBeaconProxy, getTypedContract } from "../utils/utils
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
     const config = getConfig(hre.network.name);
 
     await deployInBeaconProxy(hre, CONTRACTS.VotingEscrow);
 
-    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, deployer);
+    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow);
 
     // initialize
     console.log(`initializing ${CONTRACTS.VotingEscrow.name}..`);

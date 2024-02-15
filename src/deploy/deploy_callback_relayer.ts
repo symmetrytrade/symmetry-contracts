@@ -9,10 +9,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deployDirectly(hre, CONTRACTS.VotingEscrowCallbackRelayer);
 
     const relayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
-    const liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, deployer);
+    const liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge);
     await (await relayer_.addCallbackHandle(await liquidityGauge_.getAddress())).wait();
 
-    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, deployer);
+    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow);
     await (await votingEscrow_.setCallbackRelayer(await relayer_.getAddress())).wait();
 };
 

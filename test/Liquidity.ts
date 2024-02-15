@@ -49,7 +49,7 @@ describe("Liquidity", () => {
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
         liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
         positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
-        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
         config = getConfig(hre.network.name);
 
         await (

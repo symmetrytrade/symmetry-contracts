@@ -5,12 +5,9 @@ import { getConfig } from "../config";
 import { tokens } from "../utils/test_utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-
     await deployInBeaconProxy(hre, CONTRACTS.PriceOracle);
 
-    const oracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, deployer);
+    const oracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle);
 
     // initialize
     const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();

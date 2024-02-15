@@ -10,11 +10,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.LiquidityGauge);
 
-    const liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, deployer);
+    const liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge);
 
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityGauge.name}..`);
-    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, deployer);
+    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow);
     const lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
     const symRate_ = await hre.ethers.getContract(CONTRACTS.SYMRate.name, deployer);
     const SYM_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);

@@ -44,7 +44,7 @@ task("access:admin", "grant default admin role to timelock")
             const name = CONTRACTS[key].name;
             let contract;
             if (proxied.has(name)) {
-                contract = await getTypedContract(hre, CONTRACTS[key], deployer);
+                contract = await getTypedContract(hre, CONTRACTS[key]);
             } else {
                 try {
                     contract = await hre.ethers.getContract(name, deployer);
@@ -79,7 +79,7 @@ task("access:pauser", "grant pauser role to multisig")
             const name = CONTRACTS[key].name;
             let contract;
             if (proxied.has(name)) {
-                contract = await getTypedContract(hre, CONTRACTS[key], deployer);
+                contract = await getTypedContract(hre, CONTRACTS[key]);
             } else {
                 try {
                     contract = await hre.ethers.getContract(name, deployer);
@@ -112,7 +112,7 @@ task("revoke:admin", "revoke admin role").setAction(async (taskArgs, hre) => {
         const name = CONTRACTS[key].name;
         let contract;
         if (proxied.has(name)) {
-            contract = await getTypedContract(hre, CONTRACTS[key], deployer);
+            contract = await getTypedContract(hre, CONTRACTS[key]);
         } else {
             try {
                 contract = await hre.ethers.getContract(name, deployer);

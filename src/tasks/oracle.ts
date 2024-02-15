@@ -7,10 +7,7 @@ task("oracle:price", "get price")
     .addParam("token", "token address", undefined, types.string, false)
     .addParam("pyth", "must use pyth or not", false, types.boolean, true)
     .setAction(async (taskArgs, hre) => {
-        const { getNamedAccounts } = hre;
-        const { deployer } = await getNamedAccounts();
-
-        const oracle = await getTypedContract(hre, CONTRACTS.PriceOracle, deployer);
+        const oracle = await getTypedContract(hre, CONTRACTS.PriceOracle);
         let price;
         if (taskArgs.pyth) {
             price = new BigNumber((await oracle.getOffchainPrice(taskArgs.token, 0)).toString())

@@ -4,17 +4,15 @@ import { CONTRACTS, deployInBeaconProxy, getTypedContract, mustGetKey } from "..
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
     const config = getConfig(hre.network.name);
 
     await deployInBeaconProxy(hre, CONTRACTS.PerpTracker);
 
-    const perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, deployer);
+    const perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker);
 
     // initialize
     console.log(`initializing ${CONTRACTS.PerpTracker.name}..`);
-    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
 
     if (!(await perpTracker_.initialized())) {
         await (await perpTracker_.initialize(await market_.getAddress())).wait();

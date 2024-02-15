@@ -8,7 +8,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.NFTDescriptor);
 
-    const descriptor = await getTypedContract(hre, CONTRACTS.NFTDescriptor, deployer);
+    const descriptor = await getTypedContract(hre, CONTRACTS.NFTDescriptor);
     await (await descriptor.initialize(deployer)).wait();
 };
 

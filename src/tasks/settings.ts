@@ -5,10 +5,7 @@ import { getConfig } from "../config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = true) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-
-    const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
+    const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
 
     let keys = [];
     let values = [];

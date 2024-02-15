@@ -4,12 +4,9 @@ import { CONTRACTS, deployInBeaconProxy, getTypedContract } from "../utils/utils
 import { updateSettings } from "../tasks/settings";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-
     await deployInBeaconProxy(hre, CONTRACTS.MarketSettings);
 
-    const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
+    const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
 
     // initialize
     console.log(`initializing ${CONTRACTS.MarketSettings.name}..`);

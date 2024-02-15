@@ -10,12 +10,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.VolumeTracker);
 
-    const volumeTracker_ = await getTypedContract(hre, CONTRACTS.VolumeTracker, deployer);
+    const volumeTracker_ = await getTypedContract(hre, CONTRACTS.VolumeTracker);
 
     // initialize
     console.log(`initializing ${CONTRACTS.VolumeTracker.name}..`);
-    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
-    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await volumeTracker_.initialized())) {
         await (await volumeTracker_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
     }

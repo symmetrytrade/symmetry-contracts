@@ -24,7 +24,7 @@ describe("Debt", () => {
 
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+        market_ = await getTypedContract(hre, CONTRACTS.Market);
         const config = getConfig(hre.network.name);
         vertexDebtRatio = BigInt(config.marketGeneralConfig.vertexDebtRatio);
         vertexInterestRate = BigInt(config.marketGeneralConfig.vertexInterestRate);

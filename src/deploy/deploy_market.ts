@@ -4,13 +4,11 @@ import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getTypedContract } from "
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
     const config = getConfig(hre.network.name);
 
     await deployInBeaconProxy(hre, CONTRACTS.Market);
 
-    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
 
     // initialize
     console.log(`initializing ${CONTRACTS.Market.name}..`);
@@ -26,7 +24,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
-    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     await (await market_.setCoupon(await coupon_.getAddress())).wait();
 
     // add spender role of coupon

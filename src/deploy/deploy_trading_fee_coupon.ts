@@ -3,13 +3,10 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CONTRACTS, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-
     await deployInBeaconProxy(hre, CONTRACTS.TradingFeeCoupon);
 
     console.log(`initializing ${CONTRACTS.TradingFeeCoupon.name}..`);
-    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await coupon_.initialized())) {
         await (await coupon_.initialize("Symmetry Trading Coupon NFT", "SYM-COUPON")).wait();
     }

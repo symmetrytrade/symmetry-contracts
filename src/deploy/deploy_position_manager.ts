@@ -3,17 +3,14 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CONTRACTS, MINTER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-
     await deployInBeaconProxy(hre, CONTRACTS.PositionManager);
 
-    const positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, deployer);
+    const positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager);
 
     // initialize
     console.log(`initializing ${CONTRACTS.PositionManager.name}..`);
-    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
-    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await positionManager_.initialized())) {
         await (await positionManager_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
     }
