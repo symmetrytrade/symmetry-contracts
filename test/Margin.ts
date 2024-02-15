@@ -42,10 +42,10 @@ describe("Margin", () => {
     let interestRateModel_: ethers.Contract;
     let WETH: string;
     let USDC_: ethers.Contract;
-    let debtRatio: ethers.BigNumber;
-    let lp: ethers.BigNumber;
-    let userMargin: ethers.BigNumber;
-    let baseMargin: ethers.BigNumber;
+    let debtRatio: bigint;
+    let lp: bigint;
+    let userMargin: bigint;
+    let baseMargin: bigint;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
@@ -56,7 +56,7 @@ describe("Margin", () => {
         keeper = (await hre.ethers.getSigners())[6];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         WBTC_ = await hre.ethers.getContract("WBTC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
@@ -73,13 +73,13 @@ describe("Margin", () => {
                 await USDC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), usdcOf(100000000))
             ).wait();
             await (
-                await USDC_.connect((await hre.ethers.getSigners())[i]).approve(market_.address, MAX_UINT256)
+                await USDC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256)
             ).wait();
             await (
                 await WBTC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), normalized(1000))
             ).wait();
             await (
-                await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(market_.address, MAX_UINT256)
+                await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256)
             ).wait();
         }
 
@@ -90,31 +90,20 @@ describe("Margin", () => {
         await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
 
         // set fee and slippage to zero for convenience
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000])).wait();
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFinancingFeeRate")], [0])
-        ).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("perpTradingFee")], [0])).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [1000000])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [normalized(0)])
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
         ).wait();
         // set debt interest rate to 0%
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minInterestRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxInterestRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0])).wait();
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("vertexInterestRate")], [0])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
-                [normalized(1000)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(1000)])
         ).wait();
         await setPythAutoRefresh(hre);
     });
@@ -122,7 +111,7 @@ describe("Margin", () => {
     it("trade and generate negative margin", async () => {
         // deposit BTC
         await (
-            await positionManager_.depositMargin(WBTC_.address, normalized(5), hre.ethers.constants.HashZero)
+            await positionManager_.depositMargin(await WBTC_.getAddress(), normalized(5), hre.ethers.ZeroHash)
         ).wait();
         // check margin
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
@@ -143,7 +132,7 @@ describe("Margin", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
@@ -169,15 +158,17 @@ describe("Margin", () => {
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 500 * 200));
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(500 * 200));
         expect(globalStatus.netSkew).to.deep.eq(normalized(500 * 200));
-        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(0);
+        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), await USDC_.getAddress())).to.deep.eq(0);
         expect(await marginTracker_.totalDebt()).to.deep.eq(0);
         // set keeper fee to 1 usdc
-        await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [usdcOf(1)]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
-        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, await WBTC_.getAddress()]);
         const totalDebt = await marginTracker_.totalDebt();
         expect(totalDebt).to.deep.eq(usdcOf(200 * 500));
-        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), USDC_.address)).to.deep.eq(usdcOf(1));
+        expect(await marginTracker_.userCollaterals(await keeper.getAddress(), await USDC_.getAddress())).to.deep.eq(
+            usdcOf(1)
+        );
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 500 * 200 - 1));
@@ -195,50 +186,47 @@ describe("Margin", () => {
         userMargin = status.currentMargin;
         // check interest rate model
         expect(await interestRateModel_.totalDebt()).to.deep.eq(totalDebt);
-        debtRatio = totalDebt
-            .mul(1e12)
-            .mul(UNIT)
-            .div(globalStatus.lpNetValue.add(normalized(1)).sub(globalStatus.netSkew));
+        debtRatio = (totalDebt * 10n ** 12n * UNIT) / (globalStatus.lpNetValue + UNIT - globalStatus.netSkew);
         expect(await interestRateModel_.debtRatio()).to.deep.eq(debtRatio);
     });
     it("pay debt, deposit USDC", async () => {
         // set debt interest rate to 0%
         await (
             await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("minInterestRate")],
+                [hre.ethers.encodeBytes32String("minInterestRate")],
                 [config.marketGeneralConfig.minInterestRate]
             )
         ).wait();
         await (
             await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxInterestRate")],
+                [hre.ethers.encodeBytes32String("maxInterestRate")],
                 [config.marketGeneralConfig.maxInterestRate]
             )
         ).wait();
         await (
             await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("vertexInterestRate")],
+                [hre.ethers.encodeBytes32String("vertexInterestRate")],
                 [config.marketGeneralConfig.vertexInterestRate]
             )
         ).wait();
 
-        await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("minKeeperFee")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [0]);
         await increaseNextBlockTimestamp(HOUR);
         await helpers.mine();
         const interest = await interestRateModel_.nextInterest();
         // check lp
         let globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(lp.add(interest.mul(1e12)));
+        expect(globalStatus.lpNetValue).to.deep.eq(lp + interest * 10n ** 12n);
         lp = globalStatus.lpNetValue;
         expect(globalStatus.netOpenInterest).to.deep.eq(normalized(500 * 200));
         expect(globalStatus.netSkew).to.deep.eq(normalized(500 * 200));
         // check account1
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.deep.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = ethers.BigNumber.from(normalized(-500 * 200)).sub(interest.mul(1e12));
+        baseMargin = BigInt(normalized(-500 * 200)) - interest * 10n ** 12n;
         expect(margin.baseMargin).to.deep.eq(baseMargin);
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin.sub(mul_D(interest.mul(1e12), ethers.BigNumber.from(normalized(1.2))));
+        userMargin = userMargin - mul_D(interest * 10n ** 12n, BigInt(normalized(1.2)));
         expect(status.currentMargin).to.deep.eq(userMargin);
         // accDebt
         expect(await marginTracker_.accDebt()).to.deep.eq(0);
@@ -246,7 +234,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userAccDebts(await account1.getAddress())).to.deep.eq(0);
         // settle debt
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, WBTC_.address]);
+        await market_.connect(keeper).settle(await account1.getAddress(), [WETH, await WBTC_.getAddress()]);
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
@@ -263,12 +251,14 @@ describe("Margin", () => {
             await marginTracker_.userAccDebts(await account1.getAddress())
         );
         expect(await marginTracker_.unsettledInterest()).to.deep.eq(0);
-        let totalDebt = ethers.BigNumber.from(usdcOf(500 * 200)).add(interest);
+        let totalDebt = BigInt(usdcOf(500 * 200)) + interest;
         expect(await marginTracker_.totalDebt()).to.deep.eq(totalDebt);
         expect(await interestRateModel_.totalDebt()).to.deep.eq(totalDebt);
         // deposit USDC
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await (await positionManager_.depositMargin(USDC_.address, usdcOf(5000), hre.ethers.constants.HashZero)).wait();
+        await (
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(5000), hre.ethers.ZeroHash)
+        ).wait();
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.deep.eq(lp);
@@ -277,16 +267,16 @@ describe("Margin", () => {
         // check account1
         margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.deep.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = baseMargin.add(normalized(5000));
+        baseMargin = baseMargin + BigInt(normalized(5000));
         expect(margin.baseMargin).to.deep.eq(baseMargin);
         status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin.add(normalized(5000 * 1.2));
+        userMargin = userMargin + BigInt(normalized(5000 * 1.2));
         expect(status.currentMargin).to.deep.eq(userMargin);
         // debt
         expect(await marginTracker_.accDebt()).to.deep.eq(
             await marginTracker_.userAccDebts(await account1.getAddress())
         );
-        totalDebt = totalDebt.sub(usdcOf(5000));
+        totalDebt = totalDebt - BigInt(usdcOf(5000));
         expect(await marginTracker_.unsettledInterest()).to.deep.eq(0);
         expect(await marginTracker_.totalDebt()).to.deep.eq(totalDebt);
         expect(await interestRateModel_.totalDebt()).to.deep.eq(totalDebt);
@@ -320,31 +310,33 @@ describe("Margin", () => {
         // check account1
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.deep.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = baseMargin.sub(normalized(350)).sub(normalized(1000));
+        baseMargin = baseMargin - BigInt(normalized(350)) - BigInt(normalized(1000));
         expect(margin.baseMargin).to.deep.eq(baseMargin);
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin.sub(normalized((350 + 1000) * 1.2));
+        userMargin = userMargin - BigInt(normalized((350 + 1000) * 1.2));
         expect(status.currentMargin).to.deep.eq(userMargin);
         // liquidate collaterals
         const liquidatorBTC = await WBTC_.balanceOf(await liquidator.getAddress());
         const liquidatorUSDC = await USDC_.balanceOf(await liquidator.getAddress());
-        const marketUSDC = await USDC_.balanceOf(market_.address);
-        const marketBTC = await WBTC_.balanceOf(market_.address);
+        const marketUSDC = await USDC_.balanceOf(await market_.getAddress());
+        const marketBTC = await WBTC_.balanceOf(await market_.getAddress());
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        const amount = usdcOf(50000 * 0.99);
-        const loss = baseMargin.div(1e12).add(amount).mul(-1);
-        await expect(marginTracker_.connect(liquidator).liquidate(await account1.getAddress(), WBTC_.address, amount))
+        const amount = BigInt(usdcOf(50000 * 0.99));
+        const loss = -(baseMargin / 10n ** 12n + amount);
+        await expect(
+            marginTracker_.connect(liquidator).liquidate(await account1.getAddress(), await WBTC_.getAddress(), amount)
+        )
             .to.emit(marginTracker_, "Liquidated")
-            .withArgs(await account1.getAddress(), WBTC_.address, normalized(5), amount, 0, 0, loss)
+            .withArgs(await account1.getAddress(), await WBTC_.getAddress(), normalized(5), amount, 0, 0, loss)
             .to.emit(marginTracker_, "DeficitLoss")
-            .withArgs(await account1.getAddress(), loss, insurance, loss.sub(insurance));
-        expect(await WBTC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorBTC.add(normalized(5)));
-        expect(await USDC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorUSDC.sub(amount));
-        expect(await USDC_.balanceOf(market_.address)).to.deep.eq(marketUSDC.add(amount));
-        expect(await WBTC_.balanceOf(market_.address)).to.deep.eq(marketBTC.sub(normalized(5)));
+            .withArgs(await account1.getAddress(), loss, insurance, loss - insurance);
+        expect(await WBTC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorBTC + BigInt(normalized(5)));
+        expect(await USDC_.balanceOf(await liquidator.getAddress())).to.deep.eq(liquidatorUSDC - amount);
+        expect(await USDC_.balanceOf(await market_.getAddress())).to.deep.eq(marketUSDC + amount);
+        expect(await WBTC_.balanceOf(await market_.getAddress())).to.deep.eq(marketBTC - BigInt(normalized(5)));
         // check lp
         globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(lp.sub(loss.sub(insurance).mul(1e12)));
+        expect(globalStatus.lpNetValue).to.deep.eq(lp - (loss - insurance) * 10n ** 12n);
         expect(globalStatus.netOpenInterest).to.deep.eq(0);
         expect(globalStatus.netSkew).to.deep.eq(0);
         // insurance
@@ -364,7 +356,7 @@ describe("Margin", () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit WETH
         await (
-            await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.constants.HashZero, {
+            await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.ZeroHash, {
                 value: normalized(1),
             })
         ).wait();
@@ -376,6 +368,6 @@ describe("Margin", () => {
         await (await positionManager_.withdrawMarginETH(normalized(1), { gasPrice: 0 })).wait();
         expect(await marginTracker_.userCollaterals(await account2.getAddress(), WETH)).to.deep.eq(0);
         const balanceAfter = await hre.ethers.provider.getBalance(account2.getAddress());
-        expect(balanceAfter.sub(balanceBefore)).to.deep.eq(normalized(1));
+        expect(balanceAfter - balanceBefore).to.deep.eq(normalized(1));
     });
 });

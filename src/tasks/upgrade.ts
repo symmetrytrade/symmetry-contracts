@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import "@openzeppelin/hardhat-upgrades";
 import { task, types } from "hardhat/config";
 import { getProxyInfo } from "./access";
@@ -17,7 +16,7 @@ task("upgrade", "upgrade contract")
 
         /*
         const newImpl = await hre.ethers.getContractFactory(taskArgs.artifact);
-        await hre.upgrades.validateUpgrade(beacon.address, newImpl, {
+        await hre.upgrades.validateUpgrade(await beacon.getAddress(), newImpl, {
             unsafeAllow: ["constructor"],
         });
         */
@@ -37,7 +36,7 @@ task("upgrade:validate", "validate upgrade")
     .addParam("old", "name of the old contract", undefined, types.string, false)
     .addParam("new", "name of the new contract", undefined, types.string, false)
     .setAction(async (taskArgs, hre) => {
-        const oldAddr = (await hre.ethers.getContract(`${taskArgs.old}Impl`)).address;
+        const oldAddr = await (await hre.ethers.getContract(`${taskArgs.old}Impl`)).getAddress();
         const newImpl = await hre.ethers.getContractFactory(taskArgs.new);
         await hre.upgrades.validateUpgrade(oldAddr, newImpl, {
             unsafeAllow: ["constructor"],
@@ -48,7 +47,7 @@ task("upgrade:validate", "validate upgrade")
 task("upgrade:forceImport", "import contracts")
     .addParam("name", "name of the contract", undefined, types.string, false)
     .setAction(async (taskArgs, hre) => {
-        const addr = (await hre.ethers.getContract(`${taskArgs.name}Impl`)).address;
+        const addr = await (await hre.ethers.getContract(`${taskArgs.name}Impl`)).getAddress();
         const factory = await hre.ethers.getContractFactory(taskArgs.name);
         await hre.upgrades.forceImport(addr, factory, { kind: "beacon" });
     });
@@ -56,7 +55,7 @@ task("upgrade:forceImport", "import contracts")
 task("upgrade:forceImportAll", "import contracts").setAction(async (_taskArgs, hre) => {
     const proxied = await getProxyInfo(hre);
     for (const name of Array.from(proxied)) {
-        const addr = (await hre.ethers.getContract(`${name}Impl`)).address;
+        const addr = await (await hre.ethers.getContract(`${name}Impl`)).getAddress();
         const factory = await hre.ethers.getContractFactory(`${name}`);
         try {
             await hre.upgrades.forceImport(addr, factory, { kind: "beacon" });

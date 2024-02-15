@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, getProxyContract, marginConfigKey, mustGetKey, perpConfigKey, transact } from "../utils/utils";
 import { getConfig } from "../config";
@@ -16,10 +15,10 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     // set general config
     const config = getConfig(hre.network.name);
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-        const key = hre.ethers.utils.formatBytes32String(term);
-        const value = hre.ethers.BigNumber.from(rawValue);
+        const key = hre.ethers.encodeBytes32String(term);
+        const value = BigInt(rawValue);
         const curVal = await settings_.getIntVals(key);
-        if (!curVal.eq(value)) {
+        if (curVal !== value) {
             console.log(`updating ${term} to ${value.toString()}`);
             keys.push(key);
             values.push(value);
@@ -35,12 +34,12 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)
-                : (await hre.ethers.getContract(market)).address;
+                : await (await hre.ethers.getContract(market)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = perpConfigKey(token, k);
-            const value = hre.ethers.BigNumber.from(v);
+            const value = BigInt(v);
             const curVal = await settings_.getIntVals(key);
-            if (!curVal.eq(value)) {
+            if (curVal !== value) {
                 console.log(`updating ${k} of ${market} market to ${value.toString()}`);
                 keys.push(key);
                 values.push(value);
@@ -58,12 +57,12 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, collateral)
-                : (await hre.ethers.getContract(collateral)).address;
+                : await (await hre.ethers.getContract(collateral)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = marginConfigKey(token, k);
-            const value = hre.ethers.BigNumber.from(v);
+            const value = BigInt(v);
             const curVal = await settings_.getIntVals(key);
-            if (!curVal.eq(value)) {
+            if (curVal !== value) {
                 console.log(`updating ${k} of ${collateral} collateral to ${value.toString()}`);
                 keys.push(key);
                 values.push(value);

@@ -4,7 +4,6 @@ import { CONTRACTS, UNIT, getProxyContract, normalized, perpDomainKey } from "..
 import { ethers } from "ethers";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import BigNumber from "bignumber.js";
 
 describe("PerpTracker", () => {
     let perpTracker_: ethers.Contract;
@@ -15,8 +14,8 @@ describe("PerpTracker", () => {
         await deployments.fixture();
         const { deployer } = await hre.getNamedAccounts();
         perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
-        WETH = (await hre.ethers.getContract("WETH")).address;
-        WBTC = (await hre.ethers.getContract("WBTC")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
+        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
         // set market to deployer for test
         await (await perpTracker_.setMarket(deployer)).wait();
     });
@@ -31,7 +30,7 @@ describe("PerpTracker", () => {
     ) {
         const oraclePrice = normalized(2000);
         const kLP = normalized(10000 * 2000);
-        const fillPrice = await perpTracker_.callStatic.swapOnAMM([WETH, skew, size, oraclePrice, kLP]);
+        const fillPrice = await perpTracker_.swapOnAMM.staticCall([WETH, skew, size, oraclePrice, kLP]);
         assertDiffWithin(fillPrice, expectedFillPrice, "2000");
         await (await perpTracker_.swapOnAMM([WETH, skew, size, oraclePrice, kLP])).wait();
         const priceInfo = await perpTracker_.getPriceInfo(WETH);
@@ -41,12 +40,12 @@ describe("PerpTracker", () => {
         await helpers.mine();
     }
 
-    function assertDiffWithin(x: ethers.BigNumber, y: string, maxDiff: string) {
-        expect(new BigNumber(x.toString()).minus(y).abs().lte(maxDiff)).eq(true);
+    function assertDiffWithin(x: ethers.BigNumberish, y: ethers.BigNumberish, maxDiff: ethers.BigNumberish) {
+        expect(BigInt(x) - BigInt(y)).to.be.within(-BigInt(maxDiff), BigInt(maxDiff));
     }
 
     function div(x: number, y: number) {
-        return ethers.BigNumber.from(x).mul(UNIT).div(y).toString();
+        return ((BigInt(x) * UNIT) / BigInt(y)).toString();
     }
 
     it("swapOnAMM", async () => {

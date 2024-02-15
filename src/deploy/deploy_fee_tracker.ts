@@ -20,12 +20,17 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await feeTracker_.initialized())) {
         await (
-            await feeTracker_.initialize(market_.address, perpTracker_.address, coupon_.address, votingEscrow_.address)
+            await feeTracker_.initialize(
+                await market_.getAddress(),
+                await perpTracker_.getAddress(),
+                await coupon_.getAddress(),
+                await votingEscrow_.getAddress()
+            )
         ).wait();
     }
 
     // set feeTracker for market
-    await (await market_.setFeeTracker(feeTracker_.address)).wait();
+    await (await market_.setFeeTracker(await feeTracker_.getAddress())).wait();
 
     // set fee tiers
     const tiers = [];
@@ -36,7 +41,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // set coupon staking
     const couponStaking_ = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
-    await (await feeTracker_.setCouponStaking(couponStaking_.address)).wait();
+    await (await feeTracker_.setCouponStaking(await couponStaking_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.FeeTracker.name, "prod"];

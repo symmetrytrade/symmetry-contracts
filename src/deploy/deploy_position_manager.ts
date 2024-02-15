@@ -15,15 +15,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
     const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await positionManager_.initialized())) {
-        await (await positionManager_.initialize(market_.address, coupon_.address)).wait();
+        await (await positionManager_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
     }
 
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
-    await (await market_.setOperator(positionManager_.address, true)).wait();
+    await (await market_.setOperator(await positionManager_.getAddress(), true)).wait();
 
     // add minter role
-    await (await coupon_.grantRole(MINTER_ROLE, positionManager_.address)).wait();
+    await (await coupon_.grantRole(MINTER_ROLE, await positionManager_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.PositionManager.name, "prod"];

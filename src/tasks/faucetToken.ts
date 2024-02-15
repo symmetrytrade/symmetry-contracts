@@ -1,5 +1,4 @@
 import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
 import { task, types } from "hardhat/config";
 
 task("faucet:deploy", "deploy faucet token")

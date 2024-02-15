@@ -1,5 +1,4 @@
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import "@nomiclabs/hardhat-ethers";
 import "hardhat-deploy";
 import { ethers } from "ethers";
 import { BigNumber } from "bignumber.js";
@@ -8,13 +7,13 @@ import { BigNumber } from "bignumber.js";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
 const BEACON_PROXY = "BeaconProxy";
 export const DEFAULT_ADMIN_ROLE = "0x0000000000000000000000000000000000000000000000000000000000000000";
-export const MINTER_ROLE = ethers.utils.id("MINTER_ROLE");
-export const PAUSER_ROLE = ethers.utils.id("PAUSER_ROLE");
-export const SPENDER_ROLE = ethers.utils.id("SPENDER_ROLE");
-export const VESTING_ROLE = ethers.utils.id("VESTING_ROLE");
-export const PERP_DOMAIN = ethers.utils.formatBytes32String("perpDomain");
-export const MARGIN_DOMAIN = ethers.utils.formatBytes32String("marginDomain");
-export const UNIT = "1000000000000000000";
+export const MINTER_ROLE = ethers.id("MINTER_ROLE");
+export const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
+export const SPENDER_ROLE = ethers.id("SPENDER_ROLE");
+export const VESTING_ROLE = ethers.id("VESTING_ROLE");
+export const PERP_DOMAIN = ethers.encodeBytes32String("perpDomain");
+export const MARGIN_DOMAIN = ethers.encodeBytes32String("marginDomain");
+export const UNIT = 10n ** 18n;
 export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
@@ -28,16 +27,17 @@ export function validateError(e: unknown, msg: string) {
     }
 }
 
-export function mul_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x.mul(y).div(UNIT);
+export function mul_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    return (BigInt(x) * BigInt(y)) / UNIT;
 }
 
-export function div_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x.mul(UNIT).div(y);
+export function div_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    return (BigInt(x) * UNIT) / BigInt(y);
 }
 
-export function diff_D(x: ethers.BigNumber, y: ethers.BigNumber) {
-    return x > y ? x.sub(y) : y.sub(x);
+export function diff_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+    const diff = BigInt(x) - BigInt(y);
+    return diff >= 0 ? diff : -diff;
 }
 
 export function tokenOf(x: number, decimals: number) {
@@ -45,7 +45,7 @@ export function tokenOf(x: number, decimals: number) {
 }
 
 export function normalized(x: number) {
-    return new BigNumber(x).multipliedBy(UNIT).toString(10);
+    return new BigNumber(x).multipliedBy(Number(UNIT)).toString(10);
 }
 
 export function usdcOf(x: number) {
@@ -59,24 +59,24 @@ export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
 }
 
 export function perpDomainKey(market: string) {
-    return ethers.utils.solidityKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
 }
 
 export function marginDomainKey(token: string) {
-    return ethers.utils.solidityKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
 }
 
 export function perpConfigKey(market: string, key: string) {
-    return ethers.utils.solidityKeccak256(
+    return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
-        [perpDomainKey(market), ethers.utils.formatBytes32String(key)]
+        [perpDomainKey(market), ethers.encodeBytes32String(key)]
     );
 }
 
 export function marginConfigKey(token: string, key: string) {
-    return ethers.utils.solidityKeccak256(
+    return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
-        [marginDomainKey(token), ethers.utils.formatBytes32String(key)]
+        [marginDomainKey(token), ethers.encodeBytes32String(key)]
     );
 }
 
@@ -160,7 +160,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     await deploy(`${contract.name}Beacon`, {
         from: deployer,
         contract: UPGRADEABLE_BEACON,
-        args: [implementation.address],
+        args: [await implementation.getAddress()],
         log: true,
     });
     const beacon = await hre.ethers.getContract(`${contract.name}Beacon`);
@@ -168,7 +168,7 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     await deploy(contract.name, {
         from: deployer,
         contract: BEACON_PROXY,
-        args: [beacon.address, []],
+        args: [await beacon.getAddress(), []],
         log: true,
     });
 }
@@ -178,7 +178,10 @@ async function getProxyContract(
     contract: ContractMeta,
     signer: ethers.Signer | string
 ) {
-    const address = (await hre.ethers.getContract(contract.name)).address;
+    const address = await (await hre.ethers.getContract(contract.name)).getAddress();
+    if (typeof signer === "string") {
+        signer = await hre.ethers.getSigner(signer);
+    }
     return hre.ethers.getContractAt(contract.contract, address, signer);
 }
 
@@ -186,7 +189,7 @@ export async function transact(contract: ethers.Contract, methodName: string, pa
     if (execute) {
         await (await contract[methodName](...params)).wait();
     } else {
-        console.log(`to: ${contract.address}`);
+        console.log(`to: ${await contract.getAddress()}`);
         console.log(`func: ${contract.interface.getFunction(methodName).format()}`);
         console.log(`params: ${JSON.stringify(params)}`);
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);

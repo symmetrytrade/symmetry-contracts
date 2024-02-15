@@ -22,21 +22,21 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (!(await liquidityGauge_.initialized())) {
         await (
             await liquidityGauge_.initialize(
-                votingEscrow_.address,
-                lpToken_.address,
-                symRate_.address,
-                SYM_.address,
+                await votingEscrow_.getAddress(),
+                await lpToken_.getAddress(),
+                await symRate_.getAddress(),
+                await SYM_.getAddress(),
                 startTime
             )
         ).wait();
     }
 
     // add minter role of SYM
-    await (await SYM_.grantRole(MINTER_ROLE, liquidityGauge_.address)).wait();
+    await (await SYM_.grantRole(MINTER_ROLE, await liquidityGauge_.getAddress())).wait();
     // add vesting role of veSYM
-    await (await votingEscrow_.grantRole(VESTING_ROLE, liquidityGauge_.address)).wait();
+    await (await votingEscrow_.grantRole(VESTING_ROLE, await liquidityGauge_.getAddress())).wait();
     // set liquidity gauge for lp token
-    await (await lpToken_.setLiquidityGauge(liquidityGauge_.address)).wait();
+    await (await lpToken_.setLiquidityGauge(await liquidityGauge_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.LiquidityGauge.name, "prod"];

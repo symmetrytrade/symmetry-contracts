@@ -48,7 +48,7 @@ describe("Incentives", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = (await hre.ethers.getContract("WETH")).address;
+        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
         market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
         marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
@@ -66,11 +66,11 @@ describe("Incentives", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(market_.address, MAX_UINT256)).wait();
-        await (await lpToken_.approve(liquidityGauge_.address, MAX_UINT256)).wait();
+        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await (await lpToken_.approve(await liquidityGauge_.getAddress(), MAX_UINT256)).wait();
 
-        await (await USDC_.connect(account2).approve(market_.address, MAX_UINT256)).wait();
-        await (await USDC_.connect(deployer).approve(market_.address, MAX_UINT256)).wait();
+        await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await (await USDC_.connect(deployer).approve(await market_.getAddress(), MAX_UINT256)).wait();
 
         await (await liquidityManager_.addLiquidity(usdcOf(1e10), 0, await account1.getAddress(), false)).wait();
 
@@ -80,28 +80,21 @@ describe("Incentives", () => {
         await (await liquidityGauge_.connect(account1).withdraw(normalized(1000))).wait();
 
         // set financing&funding fee rate to zero
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFundingVelocity")], [0])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("maxFinancingFeeRate")], [0])
-        ).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0])).wait();
         // for convenience of following test, set divergence to 200%
         await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("maxPriceDivergence")],
-                [normalized(2)]
-            )
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)])
         ).wait();
         await (
-            await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("pythMaxAge")], [normalized(10000)])
+            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)])
         ).wait();
         // set slippage to zero
-        await (await marketSettings_.setIntVals([hre.ethers.utils.formatBytes32String("liquidityRange")], [0])).wait();
+        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
         // set veSYM incentive ratio to 10%
         await (
             await marketSettings_.setIntVals(
-                [hre.ethers.utils.formatBytes32String("veSYMFeeIncentiveRatio")],
+                [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
                 [normalized(0.1)]
             )
         ).wait();
@@ -110,16 +103,16 @@ describe("Incentives", () => {
         await (await sym_.grantRole(MINTER_ROLE, await deployer.getAddress())).wait();
         await (await sym_.mint(await account1.getAddress(), normalized(100000))).wait();
         await (await sym_.mint(await account2.getAddress(), normalized(100000))).wait();
-        await (await sym_.connect(account1).approve(votingEscrow_.address, normalized(100000))).wait();
-        await (await sym_.connect(account2).approve(votingEscrow_.address, normalized(100000))).wait();
+        await (await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(100000))).wait();
+        await (await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(100000))).wait();
 
-        await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
+        await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
         await (await votingEscrow_.connect(account1).createLock(normalized(1), 0, maxTime, true)).wait();
         await (await votingEscrow_.connect(account1).stake(normalized(1))).wait();
         await (await votingEscrow_.connect(account2).createLock(normalized(100), 0, maxTime, true)).wait();
         await (await votingEscrow_.connect(account2).stake(normalized(100))).wait();
 
-        await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + WEEK));
+        await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
 
         await setPythAutoRefresh(hre);
     });
@@ -135,7 +128,7 @@ describe("Incentives", () => {
                 false,
             ])
         ).wait();
-        const orderId = (await positionManager_.orderCnt()).sub(1);
+        const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, []))
             .to.emit(market_, "Traded")
@@ -150,13 +143,13 @@ describe("Incentives", () => {
             );
     }
 
-    async function getClaimable(account: string, from: number, to: number) {
-        let toClaim = ethers.BigNumber.from(0);
+    async function getClaimable(account: string, from: bigint, to: bigint) {
+        let toClaim = 0n;
         for (let curWeek = from; curWeek <= to; curWeek += WEEK) {
             const incentives = await feeTracker_.tradingFeeIncentives(curWeek);
             const totalSupply = await votingEscrow_.totalSupplyAt(curWeek);
             const balance1 = await votingEscrow_.balanceOfAt(account, curWeek);
-            toClaim = toClaim.add(incentives.mul(balance1).div(totalSupply));
+            toClaim = toClaim + (incentives * balance1) / totalSupply;
             /*
             console.log(
                 `# offchain week ${curWeek / 604800}, locked balance = ${await votingEscrow_.lockedBalanceOfAt(
@@ -179,17 +172,17 @@ describe("Incentives", () => {
         positionManager_ = positionManager_.connect(deployer);
         // deposit margins
         await (
-            await positionManager_.depositMargin(USDC_.address, usdcOf(1000000), hre.ethers.constants.HashZero)
+            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000000), hre.ethers.ZeroHash)
         ).wait();
         await trade();
         const week1 = startOfWeek(await helpers.time.latest());
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);
         await helpers.mine(1);
         const toClaim = await getClaimable(await account1.getAddress(), week1, week1);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
         expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week1 + WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week1 + 2 * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week1 + 2n * WEEK);
     });
     it("week 2-60", async () => {
         /*=== week 2-60 ===*/
@@ -208,34 +201,34 @@ describe("Incentives", () => {
             curWeek += WEEK;
         }
         // account1 claim week 2-22(inclusive)
-        let toClaim = await getClaimable(await account1.getAddress(), week2, week2 + 20 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        let toClaim = await getClaimable(await account1.getAddress(), week2, week2 + 20n * WEEK);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 21 * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 21 * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 21n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 21n * WEEK);
         // account1 claim week 23-42(inclusive)
-        toClaim = await getClaimable(await account1.getAddress(), week2 + 21 * WEEK, week2 + 40 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        toClaim = await getClaimable(await account1.getAddress(), week2 + 21n * WEEK, week2 + 40n * WEEK);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 41 * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 41 * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 41n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 41n * WEEK);
         // account1 claim week 42-60(inclusive)
-        toClaim = await getClaimable(await account1.getAddress(), week2 + 41 * WEEK, week2 + 58 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account1.getAddress())).to.deep.eq(toClaim);
+        toClaim = await getClaimable(await account1.getAddress(), week2 + 41n * WEEK, week2 + 58n * WEEK);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account1.getAddress())).wait();
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 59 * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 59n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
         // account2 claim week 1-50(inclusive)
-        toClaim = await getClaimable(await account2.getAddress(), week2 - WEEK, week2 + 48 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account2.getAddress())).to.deep.eq(toClaim);
+        toClaim = await getClaimable(await account2.getAddress(), week2 - WEEK, week2 + 48n * WEEK);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account2.getAddress())).wait();
-        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 49 * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 49n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
         // account2 claim week 51-60(inclusive)
-        toClaim = await getClaimable(await account2.getAddress(), week2 + 49 * WEEK, week2 + 58 * WEEK);
-        expect(await feeTracker_.callStatic.claimIncentives(await account2.getAddress())).to.deep.eq(toClaim);
+        toClaim = await getClaimable(await account2.getAddress(), week2 + 49n * WEEK, week2 + 58n * WEEK);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
         await (await feeTracker_.claimIncentives(await account2.getAddress())).wait();
-        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 59 * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60 * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 59n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
     });
 });

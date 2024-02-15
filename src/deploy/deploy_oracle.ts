@@ -13,7 +13,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const oracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, deployer);
 
     // initialize
-    const marketSettings = (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).address;
+    const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();
     console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
     if (!(await oracle_.initialized())) {
         await (await oracle_.initialize(marketSettings)).wait();
@@ -24,15 +24,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const sequencerUptimeFeed = config.chainlink?.sequencerUptimeFeed
         ? config.chainlink?.sequencerUptimeFeed
-        : (await hre.ethers.getContract(CONTRACTS.ChainlinkAggregatorSequencer.name)).address;
+        : await (await hre.ethers.getContract(CONTRACTS.ChainlinkAggregatorSequencer.name)).getAddress();
     console.log(`set chainlink ${hre.network.name} uptime feed..`);
     await (await oracle_.setChainlinkSequencerUptimeFeed(sequencerUptimeFeed, config.gracePeriodTime)).wait();
 
     console.log(`set chainlink aggregators..`);
     if (hre.network.name === "hardhat") {
         for (const token of tokens) {
-            const tokenAddress = (await hre.ethers.getContract(token.symbol)).address;
-            const aggregator = (await hre.ethers.getContract(`ChainlinkAggregator${token.symbol}`)).address;
+            const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
+            const aggregator = await (await hre.ethers.getContract(`ChainlinkAggregator${token.symbol}`)).getAddress();
             await (await oracle_.setChainlinkAggregators([tokenAddress], [aggregator])).wait();
         }
     } else if (config.chainlink?.aggregators) {
@@ -54,14 +54,16 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // set pyth
-    const pyth = config.pyth?.priceFeed ? config.pyth?.priceFeed : (await hre.ethers.getContract(`Pyth`)).address;
+    const pyth = config.pyth?.priceFeed
+        ? config.pyth?.priceFeed
+        : await (await hre.ethers.getContract(`Pyth`)).getAddress();
     console.log(`set pyth pricefeed..`);
     await (await oracle_.setPythOracle(pyth)).wait();
 
     console.log(`set pyth asset ids..`);
     if (hre.network.name == "hardhat") {
         for (const token of tokens) {
-            const tokenAddress = (await hre.ethers.getContract(token.symbol)).address;
+            const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             await (await oracle_.setPythIds([tokenAddress], [token.pythId])).wait();
         }
     } else if (config.pyth?.assetIds) {

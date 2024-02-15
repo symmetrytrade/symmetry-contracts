@@ -17,28 +17,32 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
     const interestRateModel_ = await getProxyContract(hre, CONTRACTS.DebtInterestRateModel, deployer);
     if (!(await marginTracker_.initialized())) {
-        await (await marginTracker_.initialize(market_.address, interestRateModel_.address)).wait();
+        await (
+            await marginTracker_.initialize(await market_.getAddress(), await interestRateModel_.getAddress())
+        ).wait();
     }
 
     // set marginTracker for market
-    await (await market_.setMarginTracker(marginTracker_.address)).wait();
+    await (await market_.setMarginTracker(await marginTracker_.getAddress())).wait();
 
     // initialize interest rate model
     console.log(`initializing ${CONTRACTS.DebtInterestRateModel.name}..`);
     if (!(await interestRateModel_.initialized())) {
-        await (await interestRateModel_.initialize(market_.address, marginTracker_.address)).wait();
+        await (
+            await interestRateModel_.initialize(await market_.getAddress(), await marginTracker_.getAddress())
+        ).wait();
     }
 
     // set operator role
     console.log(`adding operator role for LiquidityManager to market..`);
-    await (await market_.setOperator(marginTracker_.address, true)).wait();
+    await (await market_.setOperator(await marginTracker_.getAddress(), true)).wait();
 
     // add tokens
     for (const [collateral] of Object.entries(config.marginConfig)) {
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, collateral)
-                : (await hre.ethers.getContract(collateral)).address;
+                : await (await hre.ethers.getContract(collateral)).getAddress();
         await (await marginTracker_.addCollateralToken(token)).wait();
     }
 };

@@ -17,11 +17,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
     const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await volumeTracker_.initialized())) {
-        await (await volumeTracker_.initialize(market_.address, coupon_.address)).wait();
+        await (await volumeTracker_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
     }
 
     // set volumeTracker for market
-    await (await market_.setVolumeTracker(volumeTracker_.address)).wait();
+    await (await market_.setVolumeTracker(await volumeTracker_.getAddress())).wait();
 
     // set lucky number announcer
     const announcer = config.otherConfig.luckyNumberAnnouncer ? config.otherConfig.luckyNumberAnnouncer : deployer;
@@ -35,7 +35,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await volumeTracker_.setRebateTiers(tiers)).wait();
 
     // add minter role of coupon
-    await (await coupon_.grantRole(MINTER_ROLE, volumeTracker_.address)).wait();
+    await (await coupon_.grantRole(MINTER_ROLE, await volumeTracker_.getAddress())).wait();
 };
 
 deploy.tags = [CONTRACTS.VolumeTracker.name, "prod"];

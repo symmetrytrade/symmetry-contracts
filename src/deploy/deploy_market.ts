@@ -16,21 +16,21 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`initializing ${CONTRACTS.Market.name}..`);
     const baseToken = config.addresses?.USDC
         ? config.addresses.USDC
-        : (await hre.ethers.getContract(CONTRACTS.USDC.name)).address;
+        : await (await hre.ethers.getContract(CONTRACTS.USDC.name)).getAddress();
     const WETH = config.addresses?.WETH
         ? config.addresses.WETH
-        : (await hre.ethers.getContract(CONTRACTS.WETH.name)).address;
-    const priceOracle = (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).address;
-    const marketSettings = (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).address;
+        : await (await hre.ethers.getContract(CONTRACTS.WETH.name)).getAddress();
+    const priceOracle = await (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).getAddress();
+    const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();
     if (!(await market_.initialized())) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
     const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
-    await (await market_.setCoupon(coupon_.address)).wait();
+    await (await market_.setCoupon(await coupon_.getAddress())).wait();
 
     // add spender role of coupon
-    await (await coupon_.grantRole(SPENDER_ROLE, market_.address)).wait();
+    await (await coupon_.grantRole(SPENDER_ROLE, await market_.getAddress())).wait();
 
     // set treasury
     await (await market_.setTreasury(config.otherConfig.treasuryAddr)).wait();
