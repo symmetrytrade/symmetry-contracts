@@ -167,21 +167,27 @@ const CONTRACTS = {
     Pyth: { name: "Pyth", factory: PythMock__factory },
 } as const;
 
-interface TypechainFactory {
+interface TypechainFactory<T> {
     new (...args: ConstructorParameters<typeof ContractFactory>): ContractFactory;
-    connect: (address: string, runner?: ContractRunner | null) => unknown;
+    connect: (address: string, runner?: ContractRunner | null) => T;
 }
 
-interface ContractMeta {
+interface ContractMeta<T> {
     name: string;
-    factory: TypechainFactory;
+    factory: TypechainFactory<T>;
 }
+
+type GetContractTypeFromContractMeta<F> = F extends ContractMeta<infer C> ? C : never;
+
+type AnyContractType = GetContractTypeFromContractMeta<(typeof CONTRACTS)[keyof typeof CONTRACTS]>;
+
+type AnyContractMeta = ContractMeta<AnyContractType>;
 
 // Ensure at compile time that all values in `CONTRACTS` conform to the `ContractMeta` interface
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta>> = CONTRACTS;
+const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<unknown>>> = CONTRACTS;
 
-async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta, args: unknown[] = []) {
+async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta<unknown>, args: unknown[] = []) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
@@ -194,7 +200,11 @@ async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: Contract
     });
 }
 
-async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: ContractMeta, args: unknown[] = []) {
+async function deployInBeaconProxy(
+    hre: HardhatRuntimeEnvironment,
+    contract: ContractMeta<unknown>,
+    args: unknown[] = []
+) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
@@ -223,9 +233,9 @@ async function deployInBeaconProxy(hre: HardhatRuntimeEnvironment, contract: Con
     });
 }
 
-async function getProxyContract(
+async function getProxyContract<T>(
     hre: HardhatRuntimeEnvironment,
-    contract: ContractMeta,
+    contract: ContractMeta<T>,
     signer: ethers.Signer | string
 ) {
     const address = await (await hre.ethers.getContract(contract.name)).getAddress();
