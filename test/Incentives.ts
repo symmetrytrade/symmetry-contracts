@@ -11,6 +11,18 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    FeeTracker,
+    LPToken,
+    LiquidityGauge,
+    LiquidityManager,
+    Market,
+    MarketSettings,
+    PositionManager,
+    SYM,
+    VotingEscrow,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -30,17 +42,17 @@ describe("Incentives", () => {
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let liquidityGauge_: ethers.Contract;
-    let lpToken_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let sym_: ethers.Contract;
+    let market_: Market;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let liquidityGauge_: LiquidityGauge;
+    let lpToken_: LPToken;
+    let marketSettings_: MarketSettings;
+    let votingEscrow_: VotingEscrow;
+    let sym_: SYM;
     let WETH: string;
-    let USDC_: ethers.Contract;
-    let feeTracker_: ethers.Contract;
+    let USDC_: FaucetToken;
+    let feeTracker_: FeeTracker;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];

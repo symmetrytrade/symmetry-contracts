@@ -14,6 +14,21 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    CouponStaking,
+    FaucetToken,
+    FeeTracker,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PositionManager,
+    PriceOracle,
+    SYM,
+    TradingFeeCoupon,
+    VolumeTracker,
+    VotingEscrow,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -33,20 +48,20 @@ describe("Coupon", () => {
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
-    let volumeTracker_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let coupon_: ethers.Contract;
-    let sym_: ethers.Contract;
+    let market_: Market;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
+    let volumeTracker_: VolumeTracker;
+    let votingEscrow_: VotingEscrow;
+    let coupon_: TradingFeeCoupon;
+    let sym_: SYM;
     let WETH: string;
-    let USDC_: ethers.Contract;
-    let feeTracker_: ethers.Contract;
-    let couponStaking_: ethers.Contract;
+    let USDC_: FaucetToken;
+    let feeTracker_: FeeTracker;
+    let couponStaking_: CouponStaking;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];

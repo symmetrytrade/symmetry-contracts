@@ -5,17 +5,18 @@ import { WEEK, increaseNextBlockTimestamp, setPythAutoRefresh, startOfWeek } fro
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import { LPToken, LiquidityGauge, SYM, VotingEscrow, VotingEscrowCallbackRelayer } from "../typechain-types";
 
 describe("tokenomics", () => {
     let account1: ethers.Signer;
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let lpToken_: ethers.Contract;
-    let liquidityGauge_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let callbackRelayer_: ethers.Contract;
-    let sym_: ethers.Contract;
+    let lpToken_: LPToken;
+    let liquidityGauge_: LiquidityGauge;
+    let votingEscrow_: VotingEscrow;
+    let callbackRelayer_: VotingEscrowCallbackRelayer;
+    let sym_: SYM;
     let maxTime: bigint;
 
     async function userVestBalanceAt(account: ethers.Signer, ts: ethers.BigNumberish) {

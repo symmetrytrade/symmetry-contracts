@@ -10,6 +10,16 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PerpTracker,
+    PositionManager,
+    PriceOracle,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -28,16 +38,16 @@ describe("Market", () => {
     let account1: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
+    let market_: Market;
+    let perpTracker_: PerpTracker;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
     let WETH: string;
     let WBTC: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];

@@ -11,6 +11,16 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    DebtInterestRateModel,
+    FaucetToken,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PositionManager,
+    PriceOracle,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -32,16 +42,16 @@ describe("Margin", () => {
     let deployer: ethers.Signer;
     let keeper: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let WBTC_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
-    let interestRateModel_: ethers.Contract;
+    let market_: Market;
+    let WBTC_: FaucetToken;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
+    let interestRateModel_: DebtInterestRateModel;
     let WETH: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
     let debtRatio: bigint;
     let lp: bigint;
     let userMargin: bigint;

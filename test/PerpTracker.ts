@@ -4,9 +4,10 @@ import { CONTRACTS, UNIT, getTypedContract, normalized, perpDomainKey } from "..
 import { ethers } from "ethers";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { PerpTracker } from "../typechain-types";
 
 describe("PerpTracker", () => {
-    let perpTracker_: ethers.Contract;
+    let perpTracker_: PerpTracker;
     let WETH: string;
     let WBTC: string;
 

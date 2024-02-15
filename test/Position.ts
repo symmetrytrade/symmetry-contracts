@@ -10,6 +10,15 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PerpTracker,
+    PositionManager,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -38,15 +47,15 @@ describe("Position", () => {
     let account3: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
+    let market_: Market;
+    let perpTracker_: PerpTracker;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marginTracker_: MarginTracker;
+    let marketSettings_: MarketSettings;
     let WETH: string;
     let WBTC: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     async function checkOrders(account: string, ids: number[]) {

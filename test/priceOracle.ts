@@ -11,6 +11,7 @@ import {
 import { ethers } from "ethers";
 import BigNumber from "bignumber.js";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { PriceOracle } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -26,7 +27,7 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("PriceOracle", () => {
-    let priceOracle_: ethers.Contract;
+    let priceOracle_: PriceOracle;
     let account1: ethers.Signer;
 
     before(async () => {

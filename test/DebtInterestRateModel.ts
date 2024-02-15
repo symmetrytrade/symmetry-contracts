@@ -5,11 +5,12 @@ import { DAY, HOUR } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { getConfig } from "../src/config";
+import { DebtInterestRateModel, Market } from "../typechain-types";
 
 describe("Debt", () => {
     let account1: ethers.Signer;
-    let market_: ethers.Contract;
-    let interestRateModel_: ethers.Contract;
+    let market_: Market;
+    let interestRateModel_: DebtInterestRateModel;
     let totalDebt: bigint;
     let debtRatio: bigint;
     let vertexDebtRatio: bigint;

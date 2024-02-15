@@ -5,6 +5,14 @@ import { DAY, increaseNextBlockTimestamp, setPythAutoRefresh, setupPrices } from
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LiquidityManager,
+    Market,
+    MarketSettings,
+    PerpTracker,
+    PositionManager,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -24,13 +32,13 @@ describe("Funding", () => {
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
+    let market_: Market;
+    let perpTracker_: PerpTracker;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
     let WETH: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];

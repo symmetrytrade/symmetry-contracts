@@ -3,9 +3,10 @@ import { expect } from "chai";
 import { CONTRACTS, getTypedContract, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import { MarketSettings } from "../typechain-types";
 
 describe("MarketSettings", () => {
-    let marketSettings_: ethers.Contract;
+    let marketSettings_: MarketSettings;
     let config: NetworkConfigs;
 
     before(async () => {
