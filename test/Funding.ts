@@ -38,8 +38,8 @@ describe("Funding", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);

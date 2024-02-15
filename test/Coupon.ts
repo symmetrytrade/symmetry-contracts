@@ -54,8 +54,8 @@ describe("Coupon", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
@@ -67,7 +67,7 @@ describe("Coupon", () => {
         votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
         coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
         couponStaking_ = await getTypedContract(hre, CONTRACTS.CouponStaking);
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
+        sym_ = await getTypedContract(hre, CONTRACTS.SYM);
         config = getConfig(hre.network.name);
 
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();

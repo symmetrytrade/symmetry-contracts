@@ -14,12 +14,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`initializing ${CONTRACTS.Market.name}..`);
     const baseToken = config.addresses?.USDC
         ? config.addresses.USDC
-        : await (await hre.ethers.getContract(CONTRACTS.USDC.name)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.USDC)).getAddress();
     const WETH = config.addresses?.WETH
         ? config.addresses.WETH
-        : await (await hre.ethers.getContract(CONTRACTS.WETH.name)).getAddress();
-    const priceOracle = await (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).getAddress();
-    const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+    const priceOracle = await (await getTypedContract(hre, CONTRACTS.PriceOracle)).getAddress();
+    const marketSettings = await (await getTypedContract(hre, CONTRACTS.MarketSettings)).getAddress();
     if (!(await market_.initialized())) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }

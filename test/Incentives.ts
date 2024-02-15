@@ -48,17 +48,17 @@ describe("Incentives", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
-        lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, account1);
+        lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken, account1);
         liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
         liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, account1);
         positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
         feeTracker_ = await getTypedContract(hre, CONTRACTS.FeeTracker, account1);
         votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
+        sym_ = await getTypedContract(hre, CONTRACTS.SYM);
         config = getConfig(hre.network.name);
 
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(1e11))).wait();

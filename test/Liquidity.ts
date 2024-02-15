@@ -42,8 +42,8 @@ describe("Liquidity", () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken, account1);
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);

@@ -4,8 +4,6 @@ import { CONTRACTS, MINTER_ROLE, VESTING_ROLE, deployInBeaconProxy, getTypedCont
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
     const config = getConfig(hre.network.name);
 
     await deployInBeaconProxy(hre, CONTRACTS.LiquidityGauge);
@@ -15,9 +13,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityGauge.name}..`);
     const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow);
-    const lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
-    const symRate_ = await hre.ethers.getContract(CONTRACTS.SYMRate.name, deployer);
-    const SYM_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
+    const lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken);
+    const symRate_ = await getTypedContract(hre, CONTRACTS.SYMRate);
+    const SYM_ = await getTypedContract(hre, CONTRACTS.SYM);
     const startTime = config.otherConfig.liquidityGaugeStartTime || Math.floor(Date.now() / 1000);
     if (!(await liquidityGauge_.initialized())) {
         await (

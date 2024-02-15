@@ -56,9 +56,9 @@ describe("Margin", () => {
         keeper = (await hre.ethers.getSigners())[6];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
-        WBTC_ = await hre.ethers.getContract("WBTC", deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
+        WBTC_ = await getTypedContract(hre, CONTRACTS.WBTC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);

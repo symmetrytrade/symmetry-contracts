@@ -10,7 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const oracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle);
 
     // initialize
-    const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();
+    const marketSettings = await (await getTypedContract(hre, CONTRACTS.MarketSettings)).getAddress();
     console.log(`initializing ${CONTRACTS.PriceOracle.name}..`);
     if (!(await oracle_.initialized())) {
         await (await oracle_.initialize(marketSettings)).wait();
@@ -21,7 +21,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const sequencerUptimeFeed = config.chainlink?.sequencerUptimeFeed
         ? config.chainlink?.sequencerUptimeFeed
-        : await (await hre.ethers.getContract(CONTRACTS.ChainlinkAggregatorSequencer.name)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer)).getAddress();
     console.log(`set chainlink ${hre.network.name} uptime feed..`);
     await (await oracle_.setChainlinkSequencerUptimeFeed(sequencerUptimeFeed, config.gracePeriodTime)).wait();
 
@@ -53,7 +53,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // set pyth
     const pyth = config.pyth?.priceFeed
         ? config.pyth?.priceFeed
-        : await (await hre.ethers.getContract(`Pyth`)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.Pyth)).getAddress();
     console.log(`set pyth pricefeed..`);
     await (await oracle_.setPythOracle(pyth)).wait();
 

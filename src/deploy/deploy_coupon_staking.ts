@@ -8,7 +8,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.CouponStaking, [0, 10000000]);
 
-    const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
+    const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     const couponStaking = await getTypedContract(hre, CONTRACTS.CouponStaking);
     await (await couponStaking.initialize(deployer, await coupon.getAddress())).wait();
 };

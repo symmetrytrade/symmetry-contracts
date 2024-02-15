@@ -35,7 +35,7 @@ task("couponStaking:deploy", "deploy coupon staking")
 
         await deployInBeaconProxy(hre, CONTRACTS.CouponStaking, [taskArgs.start, taskArgs.end]);
 
-        const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
+        const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
         const couponStaking = await getTypedContract(hre, CONTRACTS.CouponStaking);
         await (await couponStaking.initialize(taskArgs.timelock, await coupon.getAddress())).wait();
 

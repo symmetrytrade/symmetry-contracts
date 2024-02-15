@@ -34,7 +34,7 @@ describe("Debt", () => {
         interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel, account1);
 
         await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
-        interestRateModel_ = await hre.ethers.getContract(CONTRACTS.DebtInterestRateModel.name);
+        interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel);
         await (await interestRateModel_.initialize(await market_.getAddress(), deployer)).wait();
         totalDebt = BigInt(normalized(123456789.1234567));
         debtRatio = BigInt(normalized(0.1)); // 10%

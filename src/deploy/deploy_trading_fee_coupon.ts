@@ -11,7 +11,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await (await coupon_.initialize("Symmetry Trading Coupon NFT", "SYM-COUPON")).wait();
     }
 
-    const descriptor_ = await hre.ethers.getContract(CONTRACTS.NFTDescriptor.name);
+    const descriptor_ = await getTypedContract(hre, CONTRACTS.NFTDescriptor);
     // set descriptor
     await (await coupon_.setDescriptor(await descriptor_.getAddress())).wait();
 };

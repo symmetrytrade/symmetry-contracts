@@ -35,9 +35,9 @@ describe("tokenomics", () => {
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
-        callbackRelayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
-        lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
+        callbackRelayer_ = await getTypedContract(hre, CONTRACTS.VotingEscrowCallbackRelayer);
+        lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken);
+        sym_ = await getTypedContract(hre, CONTRACTS.SYM);
         liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, account1);
         votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
         config = getConfig(hre.network.name);

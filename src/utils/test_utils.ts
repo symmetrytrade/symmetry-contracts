@@ -67,7 +67,7 @@ export const tokens = [
         pythId: hardhat.ethers.encodeBytes32String("WBTC"),
         expo: -8,
     },
-];
+] as const;
 
 export function getPythInfo(symbol: string) {
     for (const token of tokens) {
@@ -99,7 +99,7 @@ export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPric
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         updateData.push(data);
     }
-    const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name);
+    const pyth_ = await getTypedContract(hre, CONTRACTS.Pyth);
     const fee = await pyth_.getUpdateFee(updateData);
     return {
         updateData: updateData,
@@ -108,7 +108,7 @@ export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPric
 }
 
 export async function setPythAutoRefresh(hre: HardhatRuntimeEnvironment) {
-    const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name);
+    const pyth_ = await getTypedContract(hre, CONTRACTS.Pyth);
     await (await pyth_.setAutoRefresh(true)).wait();
 }
 
@@ -121,7 +121,7 @@ export async function setupPrices(
     for (const [key, value] of Object.entries(chainlinkPrices)) {
         await updateChainlinkPrice(hre, key, value, sender);
     }
-    const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name, sender);
+    const pyth_ = await getTypedContract(hre, CONTRACTS.Pyth, sender);
     const priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, sender);
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
