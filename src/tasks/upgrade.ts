@@ -27,9 +27,9 @@ task("upgrade", "upgrade contract")
             args: [],
             log: true,
         });
-        console.log(`new implementation deployed: ${await result.getAddress()}`);
+        console.log(`new implementation deployed: ${result.address}`);
 
-        await transact(beacon, "upgradeTo", [await result.getAddress()], taskArgs.execute);
+        await transact(beacon, "upgradeTo", [result.address], taskArgs.execute);
     });
 
 task("upgrade:validate", "validate upgrade")
