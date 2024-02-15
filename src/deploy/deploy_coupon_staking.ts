@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
@@ -9,7 +9,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deployInBeaconProxy(hre, CONTRACTS.CouponStaking, [0, 10000000]);
 
     const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
-    const couponStaking = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
+    const couponStaking = await getTypedContract(hre, CONTRACTS.CouponStaking, deployer);
     await (await couponStaking.initialize(deployer, await coupon.getAddress())).wait();
 };
 

@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, UNIT, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
@@ -68,12 +68,12 @@ describe("Position", () => {
         WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
-        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
+        marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
         config = getConfig(hre.network.name);
 
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();

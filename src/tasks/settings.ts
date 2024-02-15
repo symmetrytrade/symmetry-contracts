@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, getProxyContract, marginConfigKey, mustGetKey, perpConfigKey, transact } from "../utils/utils";
+import { CONTRACTS, getTypedContract, marginConfigKey, mustGetKey, perpConfigKey, transact } from "../utils/utils";
 import { getConfig } from "../config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -8,7 +8,7 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
 
-    const settings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
+    const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
 
     let keys = [];
     let values = [];

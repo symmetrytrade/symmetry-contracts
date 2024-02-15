@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, getProxyContract } from "../utils/utils";
+import { CONTRACTS, getTypedContract } from "../utils/utils";
 import BigNumber from "bignumber.js";
 
 task("oracle:price", "get price")
@@ -10,7 +10,7 @@ task("oracle:price", "get price")
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
-        const oracle = await getProxyContract(hre, CONTRACTS.PriceOracle, deployer);
+        const oracle = await getTypedContract(hre, CONTRACTS.PriceOracle, deployer);
         let price;
         if (taskArgs.pyth) {
             price = new BigNumber((await oracle.getOffchainPrice(taskArgs.token, 0)).toString())

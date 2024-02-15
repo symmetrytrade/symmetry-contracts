@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, MINTER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, MINTER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -10,12 +10,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.VolumeTracker);
 
-    const volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, deployer);
+    const volumeTracker_ = await getTypedContract(hre, CONTRACTS.VolumeTracker, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.VolumeTracker.name}..`);
-    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     if (!(await volumeTracker_.initialized())) {
         await (await volumeTracker_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
     }

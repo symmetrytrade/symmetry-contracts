@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, MINTER_ROLE, VESTING_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, MINTER_ROLE, VESTING_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -10,11 +10,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.LiquidityGauge);
 
-    const liquidityGauge_ = await getProxyContract(hre, CONTRACTS.LiquidityGauge, deployer);
+    const liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.LiquidityGauge.name}..`);
-    const votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, deployer);
+    const votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, deployer);
     const lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
     const symRate_ = await hre.ethers.getContract(CONTRACTS.SYMRate.name, deployer);
     const SYM_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);

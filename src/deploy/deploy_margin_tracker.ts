@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getProxyContract, mustGetKey } from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getTypedContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -10,12 +10,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.MarginTracker);
 
-    const marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, deployer);
+    const marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.MarginTracker.name}..`);
-    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
-    const interestRateModel_ = await getProxyContract(hre, CONTRACTS.DebtInterestRateModel, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
+    const interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel, deployer);
     if (!(await marginTracker_.initialized())) {
         await (
             await marginTracker_.initialize(await market_.getAddress(), await interestRateModel_.getAddress())

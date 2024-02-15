@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getProxyContract, mustGetKey } from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getTypedContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 import { tokens } from "../utils/test_utils";
 
@@ -10,7 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.PriceOracle);
 
-    const oracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, deployer);
+    const oracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, deployer);
 
     // initialize
     const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();

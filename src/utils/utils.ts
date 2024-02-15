@@ -233,7 +233,7 @@ async function deployInBeaconProxy(
     });
 }
 
-async function getProxyContract<T>(
+async function getTypedContract<T>(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<T>,
     signer: ethers.Signer | string
@@ -256,4 +256,4 @@ export async function transact(contract: ethers.Contract, methodName: string, pa
     }
 }
 
-export { deployDirectly, deployInBeaconProxy, getProxyContract, CONTRACTS };
+export { deployDirectly, deployInBeaconProxy, getTypedContract, CONTRACTS };

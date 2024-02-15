@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, DEFAULT_ADMIN_ROLE, PAUSER_ROLE, getProxyContract, validateError } from "../utils/utils";
+import { CONTRACTS, DEFAULT_ADMIN_ROLE, PAUSER_ROLE, getTypedContract, validateError } from "../utils/utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
@@ -44,7 +44,7 @@ task("access:admin", "grant default admin role to timelock")
             const name = CONTRACTS[key].name;
             let contract;
             if (proxied.has(name)) {
-                contract = await getProxyContract(hre, CONTRACTS[key], deployer);
+                contract = await getTypedContract(hre, CONTRACTS[key], deployer);
             } else {
                 try {
                     contract = await hre.ethers.getContract(name, deployer);
@@ -79,7 +79,7 @@ task("access:pauser", "grant pauser role to multisig")
             const name = CONTRACTS[key].name;
             let contract;
             if (proxied.has(name)) {
-                contract = await getProxyContract(hre, CONTRACTS[key], deployer);
+                contract = await getTypedContract(hre, CONTRACTS[key], deployer);
             } else {
                 try {
                     contract = await hre.ethers.getContract(name, deployer);
@@ -112,7 +112,7 @@ task("revoke:admin", "revoke admin role").setAction(async (taskArgs, hre) => {
         const name = CONTRACTS[key].name;
         let contract;
         if (proxied.has(name)) {
-            contract = await getProxyContract(hre, CONTRACTS[key], deployer);
+            contract = await getTypedContract(hre, CONTRACTS[key], deployer);
         } else {
             try {
                 contract = await hre.ethers.getContract(name, deployer);

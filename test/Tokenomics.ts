@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MINTER_ROLE, getProxyContract, normalized } from "../src/utils/utils";
+import { CONTRACTS, MINTER_ROLE, getTypedContract, normalized } from "../src/utils/utils";
 import { WEEK, increaseNextBlockTimestamp, setPythAutoRefresh, startOfWeek } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -38,8 +38,8 @@ describe("tokenomics", () => {
         callbackRelayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
         lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
         sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
-        liquidityGauge_ = await getProxyContract(hre, CONTRACTS.LiquidityGauge, account1);
-        votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
+        liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, account1);
+        votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
         config = getConfig(hre.network.name);
         maxTime = BigInt(config.otherConfig.lockMaxTime);
 

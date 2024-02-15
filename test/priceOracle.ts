@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getProxyContract } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getTypedContract } from "../src/utils/utils";
 import {
     chainlinkAggregators,
     latestBlockTimestamp,
@@ -32,7 +32,7 @@ describe("PriceOracle", () => {
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
     });
 
     it("chainlink sequencer", async () => {

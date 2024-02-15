@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, DEFAULT_ADMIN_ROLE, MINTER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, DEFAULT_ADMIN_ROLE, MINTER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 
 task("descriptor:deploy", "deploy NFT descriptor")
     .addParam("timelock", "timelock address", undefined, types.string, false)
@@ -10,10 +10,10 @@ task("descriptor:deploy", "deploy NFT descriptor")
 
         await deployInBeaconProxy(hre, CONTRACTS.NFTDescriptor);
 
-        const descriptor = await getProxyContract(hre, CONTRACTS.NFTDescriptor, deployer);
+        const descriptor = await getTypedContract(hre, CONTRACTS.NFTDescriptor, deployer);
         await (await descriptor.initialize(taskArgs.timelock)).wait();
 
-        const coupon = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+        const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
             await (await coupon.setDescriptor(await descriptor.getAddress())).wait();
         } else {
@@ -36,10 +36,10 @@ task("couponStaking:deploy", "deploy coupon staking")
         await deployInBeaconProxy(hre, CONTRACTS.CouponStaking, [taskArgs.start, taskArgs.end]);
 
         const coupon = await hre.ethers.getContract(CONTRACTS.TradingFeeCoupon.name);
-        const couponStaking = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
+        const couponStaking = await getTypedContract(hre, CONTRACTS.CouponStaking, deployer);
         await (await couponStaking.initialize(taskArgs.timelock, await coupon.getAddress())).wait();
 
-        const feeTracker_ = await getProxyContract(hre, CONTRACTS.FeeTracker, deployer);
+        const feeTracker_ = await getTypedContract(hre, CONTRACTS.FeeTracker, deployer);
         if (await feeTracker_.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
             await (await feeTracker_.setCouponStaking(await couponStaking.getAddress())).wait();
         }
@@ -53,10 +53,10 @@ task("minter:deploy", "deploy token minter")
 
         await deployInBeaconProxy(hre, CONTRACTS.TokenMinter);
 
-        const tokenMinter = await getProxyContract(hre, CONTRACTS.TokenMinter, deployer);
+        const tokenMinter = await getTypedContract(hre, CONTRACTS.TokenMinter, deployer);
         await (await tokenMinter.initialize(taskArgs.timelock)).wait();
 
-        const coupon = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+        const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
             await (await coupon.grantRole(MINTER_ROLE, await tokenMinter.getAddress())).wait();
         } else {

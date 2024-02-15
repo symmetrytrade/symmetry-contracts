@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getProxyContract, normalized, perpDomainKey } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getTypedContract, normalized, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
@@ -13,7 +13,7 @@ describe("PerpTracker", () => {
     before(async () => {
         await deployments.fixture();
         const { deployer } = await hre.getNamedAccounts();
-        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
+        perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, deployer);
         WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
         // set market to deployer for test

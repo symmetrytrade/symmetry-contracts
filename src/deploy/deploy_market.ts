@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -10,7 +10,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.Market);
 
-    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market, deployer);
 
     // initialize
     console.log(`initializing ${CONTRACTS.Market.name}..`);
@@ -26,7 +26,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
-    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
     await (await market_.setCoupon(await coupon_.getAddress())).wait();
 
     // add spender role of coupon

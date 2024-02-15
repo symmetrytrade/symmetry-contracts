@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     DAY,
     WEEK,
@@ -56,17 +56,17 @@ describe("Coupon", () => {
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH = await (await hre.ethers.getContract("WETH")).getAddress();
         USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
-        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, deployer);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
-        feeTracker_ = await getProxyContract(hre, CONTRACTS.FeeTracker, account1);
-        volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, account1);
-        votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
-        coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
-        couponStaking_ = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, deployer);
+        marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, deployer);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
+        feeTracker_ = await getTypedContract(hre, CONTRACTS.FeeTracker, account1);
+        volumeTracker_ = await getTypedContract(hre, CONTRACTS.VolumeTracker, account1);
+        votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
+        coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+        couponStaking_ = await getTypedContract(hre, CONTRACTS.CouponStaking, deployer);
         sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
         config = getConfig(hre.network.name);
 

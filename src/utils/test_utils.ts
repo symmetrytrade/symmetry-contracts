@@ -2,7 +2,7 @@ import BigNumber from "bignumber.js";
 import hardhat from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers } from "ethers";
-import { CONTRACTS, getProxyContract } from "./utils";
+import { CONTRACTS, getTypedContract } from "./utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 const abiCoder = hardhat.ethers.AbiCoder.defaultAbiCoder();
@@ -122,7 +122,7 @@ export async function setupPrices(
         await updateChainlinkPrice(hre, key, value, sender);
     }
     const pyth_ = await hre.ethers.getContract(CONTRACTS.Pyth.name, sender);
-    const priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, sender);
+    const priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, sender);
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
         const price = new BigNumber(value).multipliedBy(10 ** -info.expo).toString(10);
