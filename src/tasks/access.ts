@@ -12,7 +12,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { AccessControl, AccessControlEnumerable, UpgradeableBeacon } from "../../typechain-types";
 
 export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
-    const proxied = new Set();
+    const proxied = new Set<string>();
     for (const contractMeta of Object.values(CONTRACTS)) {
         const name = contractMeta.name;
         try {
@@ -27,7 +27,7 @@ export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
 
 task("access:upgrade", "transfer beacon ownership to timelock")
     .addParam("timelock", "timelock address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { timelock: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
         const proxied = await getProxyInfo(hre);
@@ -42,7 +42,7 @@ task("access:upgrade", "transfer beacon ownership to timelock")
 
 task("access:admin", "grant default admin role to timelock")
     .addParam("timelock", "timelock address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { timelock: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
         for (const contractMeta of Object.values(CONTRACTS)) {
@@ -69,7 +69,7 @@ task("access:admin", "grant default admin role to timelock")
 
 task("access:pauser", "grant pauser role to multisig")
     .addParam("multisig", "multisig address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { multisig: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
         for (const contractMeta of Object.values(CONTRACTS)) {

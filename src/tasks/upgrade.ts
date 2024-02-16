@@ -8,7 +8,7 @@ task("upgrade", "upgrade contract")
     .addParam("name", "name of the proxy contract", undefined, types.string, false)
     .addParam("artifact", "name of the implementation contract", undefined, types.string, false)
     .addParam("execute", "settle transaction on chain", false, types.boolean, true)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { name: string; artifact: string; execute: boolean }, hre) => {
         const { deployments, getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
         const { deploy } = deployments;
@@ -35,9 +35,9 @@ task("upgrade", "upgrade contract")
 task("upgrade:validate", "validate upgrade")
     .addParam("old", "name of the old contract", undefined, types.string, false)
     .addParam("new", "name of the new contract", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { old: string; new: string }, hre) => {
         const oldAddr = await (await hre.ethers.getContract(`${taskArgs.old}Impl`)).getAddress();
-        const newImpl = await hre.ethers.getContractFactory(taskArgs.new as string);
+        const newImpl = await hre.ethers.getContractFactory(taskArgs.new);
         await hre.upgrades.validateUpgrade(oldAddr, newImpl, {
             unsafeAllow: ["constructor"],
             kind: "beacon",
@@ -46,9 +46,9 @@ task("upgrade:validate", "validate upgrade")
 
 task("upgrade:forceImport", "import contracts")
     .addParam("name", "name of the contract", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { name: string }, hre) => {
         const addr = await (await hre.ethers.getContract(`${taskArgs.name}Impl`)).getAddress();
-        const factory = await hre.ethers.getContractFactory(taskArgs.name as string);
+        const factory = await hre.ethers.getContractFactory(taskArgs.name);
         await hre.upgrades.forceImport(addr, factory, { kind: "beacon" });
     });
 

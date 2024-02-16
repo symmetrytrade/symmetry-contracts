@@ -3,7 +3,7 @@ import { task, types } from "hardhat/config";
 
 task("codesize", "show codesize of the contracts")
     .addParam("contractname", "contract name", undefined, types.string, true)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { contractname: string }, hre) => {
         const contracts = await hre.artifacts.getAllFullyQualifiedNames();
         const ans = [];
         for (const contract of contracts) {

@@ -5,7 +5,7 @@ import { ADDR0, CONTRACTS, deployDirectly } from "../utils/utils";
 task("timelock:deploy", "deploy timelock contract")
     .addParam("delay", "min delay", undefined, types.int, false)
     .addParam("safe", "gnosis safe address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { delay: number; safe: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 

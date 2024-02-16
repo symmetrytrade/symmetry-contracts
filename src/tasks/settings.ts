@@ -78,6 +78,6 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
 
 task("settings:update", "update settings")
     .addParam("execute", "send transaction or not", false, types.boolean, true)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { execute: boolean }, hre) => {
         await updateSettings(hre, taskArgs.execute);
     });

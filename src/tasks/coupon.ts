@@ -4,7 +4,7 @@ import { CONTRACTS, DEFAULT_ADMIN_ROLE, MINTER_ROLE, deployInBeaconProxy, getTyp
 
 task("descriptor:deploy", "deploy NFT descriptor")
     .addParam("timelock", "timelock address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { timelock: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
@@ -29,7 +29,7 @@ task("couponStaking:deploy", "deploy coupon staking")
     .addParam("timelock", "timelock address", undefined, types.string, false)
     .addParam("start", "start time", undefined, types.int, false)
     .addParam("end", "end time", undefined, types.int, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { timelock: string; start: number; end: number }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
@@ -47,7 +47,7 @@ task("couponStaking:deploy", "deploy coupon staking")
 
 task("minter:deploy", "deploy token minter")
     .addParam("timelock", "timelock address", undefined, types.string, false)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { timelock: string }, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
 
