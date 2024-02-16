@@ -17,6 +17,8 @@ module.exports = {
         sourceType: "module",
     },
     plugins: ["@typescript-eslint", "no-only-tests"],
-    rules: {},
+    rules: {
+        eqeqeq: "error",
+    },
     ignorePatterns: [".eslintrc.js"],
 };

@@ -33,7 +33,7 @@ task("access:upgrade", "transfer beacon ownership to timelock")
         const proxied = await getProxyInfo(hre);
         for (const name of Array.from(proxied)) {
             const beacon: UpgradeableBeacon = await hre.ethers.getContract(`${name}Beacon`, deployer);
-            if ((await beacon.owner()) == deployer) {
+            if ((await beacon.owner()).toLowerCase() === deployer.toLowerCase()) {
                 console.log(`transfer ownership of ${name}Beacon..`);
                 await (await beacon.transferOwnership(taskArgs.timelock)).wait();
             }

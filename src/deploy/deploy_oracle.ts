@@ -58,7 +58,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await oracle_.setPythOracle(pyth)).wait();
 
     console.log(`set pyth asset ids..`);
-    if (hre.network.name == "hardhat") {
+    if (hre.network.name === "hardhat") {
         for (const token of tokens) {
             const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             await (await oracle_.setPythIds([tokenAddress], [token.pythId])).wait();
@@ -70,7 +70,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         for (const [token, id] of Object.entries(assetIds)) {
             tokens.push(mustGetKey(config.addresses, token));
             ids.push(id);
-            if (tokens.length == 5) {
+            if (tokens.length === 5) {
                 await (await oracle_.setPythIds(tokens, ids)).wait();
                 tokens = [];
                 ids = [];
