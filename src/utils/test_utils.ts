@@ -35,6 +35,7 @@ export function printValues(name: string, e: object) {
 }
 
 export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber()))!.timestamp;
 }
 

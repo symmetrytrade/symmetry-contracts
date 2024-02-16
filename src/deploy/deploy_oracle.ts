@@ -19,9 +19,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // set chainlink
     const config = getConfig(hre.network.name);
 
-    const sequencerUptimeFeed = config.chainlink?.sequencerUptimeFeed
-        ? config.chainlink?.sequencerUptimeFeed
-        : await (await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer)).getAddress();
+    const sequencerUptimeFeed =
+        config.chainlink?.sequencerUptimeFeed ??
+        (await (await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer)).getAddress());
     console.log(`set chainlink ${hre.network.name} uptime feed..`);
     await (await oracle_.setChainlinkSequencerUptimeFeed(sequencerUptimeFeed, config.gracePeriodTime)).wait();
 
@@ -51,9 +51,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // set pyth
-    const pyth = config.pyth?.priceFeed
-        ? config.pyth?.priceFeed
-        : await (await getTypedContract(hre, CONTRACTS.Pyth)).getAddress();
+    const pyth = config.pyth?.priceFeed ?? (await (await getTypedContract(hre, CONTRACTS.Pyth)).getAddress());
     console.log(`set pyth pricefeed..`);
     await (await oracle_.setPythOracle(pyth)).wait();
 

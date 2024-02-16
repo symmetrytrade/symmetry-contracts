@@ -68,6 +68,7 @@ describe("PriceOracle", () => {
                     value: 10,
                 })
             ).wait();
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const gasFee = receipt!.gasUsed * receipt!.gasPrice;
             const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
             // check fee cost

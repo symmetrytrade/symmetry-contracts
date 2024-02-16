@@ -190,7 +190,7 @@ async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: Contract
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     // deploy implementation
-    await deployments.deploy(`${contract.name}`, {
+    await deployments.deploy(contract.name, {
         from: deployer,
         contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
         args: args,

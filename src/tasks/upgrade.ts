@@ -55,7 +55,7 @@ task("upgrade:forceImportAll", "import contracts").setAction(async (_taskArgs, h
     const proxied = await getProxyInfo(hre);
     for (const name of Array.from(proxied)) {
         const addr = await (await hre.ethers.getContract(`${name}Impl`)).getAddress();
-        const factory = await hre.ethers.getContractFactory(`${name}`);
+        const factory = await hre.ethers.getContractFactory(name);
         try {
             await hre.upgrades.forceImport(addr, factory, { kind: "beacon" });
             console.log(`force imported ${name}.`);
