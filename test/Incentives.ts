@@ -131,14 +131,14 @@ describe("Incentives", () => {
 
     async function trade() {
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1001),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1001),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s

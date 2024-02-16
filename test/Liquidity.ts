@@ -121,14 +121,14 @@ describe("Liquidity", () => {
             await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
         ).wait();
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(1),
-                normalized(1550),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(1),
+                acceptablePrice: normalized(1550),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

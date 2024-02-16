@@ -28,11 +28,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await volumeTracker_.setLuckyNumberAnnouncer(announcer)).wait();
 
     // set tiers
-    const tiers = [];
-    for (const tier of config.otherConfig.tradingFeeRebateTiers) {
-        tiers.push([tier.requirement, tier.rebateRatio]);
-    }
-    await (await volumeTracker_.setRebateTiers(tiers)).wait();
+    await (await volumeTracker_.setRebateTiers(config.otherConfig.tradingFeeRebateTiers)).wait();
 
     // add minter role of coupon
     await (await coupon_.grantRole(MINTER_ROLE, await volumeTracker_.getAddress())).wait();

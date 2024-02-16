@@ -31,11 +31,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await market_.setFeeTracker(await feeTracker_.getAddress())).wait();
 
     // set fee tiers
-    const tiers = [];
-    for (const tier of config.otherConfig.tradingFeeTiers) {
-        tiers.push([tier.portion, tier.discount]);
-    }
-    await (await feeTracker_.setTradingFeeTiers(tiers)).wait();
+    await (await feeTracker_.setTradingFeeTiers(config.otherConfig.tradingFeeTiers)).wait();
 
     // set coupon staking
     const couponStaking_ = await getTypedContract(hre, CONTRACTS.CouponStaking);

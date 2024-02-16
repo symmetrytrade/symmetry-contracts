@@ -101,14 +101,14 @@ describe("Funding", () => {
 
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1000),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -139,14 +139,14 @@ describe("Funding", () => {
         await increaseNextBlockTimestamp(1);
         // open eth short, 100000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(-100),
-                normalized(1000),
-                usdcOf(1),
-                evmTime + 2n * DAY,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(-100),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(1),
+                expiry: evmTime + 2n * DAY,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

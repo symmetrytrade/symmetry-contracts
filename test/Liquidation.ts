@@ -114,14 +114,14 @@ describe("Liquidation", () => {
 
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -131,14 +131,14 @@ describe("Liquidation", () => {
 
         // open btc long, 100 notional
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(0.01),
-                normalized(10000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(0.01),
+                acceptablePrice: normalized(10000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -198,14 +198,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -271,14 +271,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -344,14 +344,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

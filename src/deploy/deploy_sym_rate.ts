@@ -12,8 +12,10 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const rates = [];
     for (const rate of config.otherConfig.symRate) {
-        const startTime = rate.startTime || Math.floor(Date.now() / 1000);
-        rates.push([startTime, rate.rate]);
+        rates.push({
+            ...rate,
+            startTime: rate.startTime || Math.floor(Date.now() / 1000),
+        });
     }
     await (await symRate_.changeRate(rates)).wait();
 };

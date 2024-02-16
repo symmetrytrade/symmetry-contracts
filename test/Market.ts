@@ -133,14 +133,14 @@ describe("Market", () => {
         expect(status.currentMargin).to.deep.eq(normalized(1470));
 
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1550),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1550),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -189,14 +189,14 @@ describe("Market", () => {
     it("trade BTC short revert", async () => {
         await increaseNextBlockTimestamp(5); // 5s
         await expect(
-            positionManager_.submitOrder([
-                WBTC,
-                normalized(-2),
-                normalized(15000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(-2),
+                acceptablePrice: normalized(15000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).to.be.revertedWith("PositionManager: leverage ratio too large");
         const orderId = await positionManager_.orderCnt();
 
@@ -218,14 +218,14 @@ describe("Market", () => {
     it("trade BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(-0.5),
-                normalized(15000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(-0.5),
+                acceptablePrice: normalized(15000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -275,14 +275,14 @@ describe("Market", () => {
     it("close BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(0.5),
-                normalized(25000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                true,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(0.5),
+                acceptablePrice: normalized(25000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: true,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

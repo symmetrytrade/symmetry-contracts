@@ -133,14 +133,14 @@ describe("Margin", () => {
         expect(status.positionNotional).to.deep.eq(0);
         // open eth long, 200000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(200),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(200),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

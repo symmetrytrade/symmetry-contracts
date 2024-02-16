@@ -160,14 +160,14 @@ describe("Coupon", () => {
 
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1001),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1001),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -214,14 +214,14 @@ describe("Coupon", () => {
         await increaseNextBlockTimestamp(DAY);
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1001),
-                usdcOf(1),
-                BigInt(await helpers.time.latest()) + DAY + 100n,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1001),
+                keeperFee: usdcOf(1),
+                expiry: BigInt(await helpers.time.latest()) + DAY + 100n,
+                reduceOnly: false,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -292,14 +292,14 @@ describe("Coupon", () => {
     it("trade with coupon", async () => {
         // open eth long, 1000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(1),
-                normalized(1010),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(1),
+                acceptablePrice: normalized(1010),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -321,14 +321,14 @@ describe("Coupon", () => {
 
         // close eth long, 1000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(-1),
-                normalized(999),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                true,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(-1),
+                acceptablePrice: normalized(999),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: true,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 
