@@ -38,7 +38,6 @@ describe("Liquidation", () => {
     let account2: ethers.Signer;
     let account3: ethers.Signer;
     let account4: ethers.Signer;
-    let deployer: ethers.Signer;
     let liquidator: ethers.Signer;
     let config: NetworkConfigs;
     let market_: Market;
@@ -53,7 +52,6 @@ describe("Liquidation", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         account3 = (await hre.ethers.getSigners())[3];

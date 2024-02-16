@@ -39,7 +39,6 @@ describe("Margin", () => {
     let account1: ethers.Signer;
     let account2: ethers.Signer;
     let liquidator: ethers.Signer;
-    let deployer: ethers.Signer;
     let keeper: ethers.Signer;
     let config: NetworkConfigs;
     let market_: Market;
@@ -59,7 +58,6 @@ describe("Margin", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         liquidator = (await hre.ethers.getSigners())[2];

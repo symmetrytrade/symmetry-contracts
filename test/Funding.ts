@@ -30,7 +30,6 @@ const pythPrices: { [key: string]: number } = {
 describe("Funding", () => {
     let account1: ethers.Signer;
     let account2: ethers.Signer;
-    let deployer: ethers.Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let perpTracker_: PerpTracker;
@@ -41,7 +40,6 @@ describe("Funding", () => {
     let USDC_: FaucetToken;
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();

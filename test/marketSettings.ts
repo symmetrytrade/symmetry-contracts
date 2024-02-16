@@ -1,7 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
 import { CONTRACTS, getTypedContract, perpDomainKey } from "../src/utils/utils";
-import { ethers } from "ethers";
 import { NetworkConfigs, getConfig } from "../src/config";
 import { MarketSettings } from "../typechain-types";
 
