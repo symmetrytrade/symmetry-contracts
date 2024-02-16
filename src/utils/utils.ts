@@ -48,10 +48,10 @@ export const ADDR0 = "0x0000000000000000000000000000000000000000";
 export function validateError(e: unknown, msg: string) {
     if (e instanceof Error) {
         if (!e.toString().includes(msg)) {
-            throw Error(`unexpected error: ${e}`);
+            throw Error(`unexpected error: ${String(e)}`);
         }
     } else {
-        throw Error(`unexpected error: ${e}`);
+        throw Error(`unexpected error: ${String(e)}`);
     }
 }
 
@@ -80,8 +80,7 @@ export function usdcOf(x: number) {
     return new BigNumber(x).multipliedBy(1e6).toString(10);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function mustGetKey(obj: { [x: string]: any } | undefined, key: string) {
+export function mustGetKey<T>(obj: { [x: string]: T } | undefined, key: string) {
     if (!obj || !(key in obj)) throw new Error(`key ${key} non-exist`);
     return obj[key];
 }
@@ -190,9 +189,8 @@ const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<unknown>>> = CO
 async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta<unknown>, args: unknown[] = []) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
     // deploy implementation
-    await deploy(`${contract.name}`, {
+    await deployments.deploy(`${contract.name}`, {
         from: deployer,
         contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
         args: args,
@@ -207,9 +205,8 @@ async function deployInBeaconProxy(
 ) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
     // deploy implementation
-    await deploy(`${contract.name}Impl`, {
+    await deployments.deploy(`${contract.name}Impl`, {
         from: deployer,
         contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
         args: args,
@@ -217,7 +214,7 @@ async function deployInBeaconProxy(
     });
     const implementation = await hre.ethers.getContract(`${contract.name}Impl`);
     // deploy beacon
-    await deploy(`${contract.name}Beacon`, {
+    await deployments.deploy(`${contract.name}Beacon`, {
         from: deployer,
         contract: UPGRADEABLE_BEACON,
         args: [await implementation.getAddress()],
@@ -225,7 +222,7 @@ async function deployInBeaconProxy(
     });
     const beacon = await hre.ethers.getContract(`${contract.name}Beacon`);
     // deploy proxy
-    await deploy(contract.name, {
+    await deployments.deploy(contract.name, {
         from: deployer,
         contract: BEACON_PROXY,
         args: [await beacon.getAddress(), []],
@@ -250,7 +247,7 @@ async function getTypedContract<T>(
 
 export async function transact(contract: ethers.BaseContract, methodName: string, params: unknown[], execute: boolean) {
     if (execute) {
-        await (await contract.getFunction(methodName)(...params)).wait();
+        await (await contract.getFunction(methodName).send(...params)).wait();
     } else {
         console.log(`to: ${await contract.getAddress()}`);
         console.log(`func: ${contract.interface.getFunction(methodName)?.format()}`);

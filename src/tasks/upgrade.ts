@@ -11,7 +11,6 @@ task("upgrade", "upgrade contract")
     .setAction(async (taskArgs: { name: string; artifact: string; execute: boolean }, hre) => {
         const { deployments, getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        const { deploy } = deployments;
         const beacon = await hre.ethers.getContract(`${taskArgs.name}Beacon`, deployer);
 
         /*
@@ -21,7 +20,7 @@ task("upgrade", "upgrade contract")
         });
         */
 
-        const result = await deploy(`${taskArgs.name}Impl`, {
+        const result = await deployments.deploy(`${taskArgs.name}Impl`, {
             from: deployer,
             contract: taskArgs.artifact,
             args: [],

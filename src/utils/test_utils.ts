@@ -4,6 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers } from "ethers";
 import { CONTRACTS, getTypedContract } from "./utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { ChainlinkMock } from "../../typechain-types";
 
 const abiCoder = hardhat.ethers.AbiCoder.defaultAbiCoder();
 
@@ -28,13 +29,13 @@ export function printValues(name: string, e: object) {
     console.log(`\n==== ${name} begin ====`);
     for (const [k, v] of Object.entries(e)) {
         if (k >= "0" && k <= "9") continue;
-        console.log(`${k}: ${v.toString()}`);
+        console.log(`${k}: ${String(v)}`);
     }
     console.log(`==== ${name} end  ====\n`);
 }
 
 export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
-    return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber())).timestamp;
+    return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber()))!.timestamp;
 }
 
 export function pythDataEncode(id: string, price: string, expo: number, publishTime: number) {
@@ -83,7 +84,7 @@ export async function updateChainlinkPrice(
     sender: ethers.Signer
 ) {
     const name = `ChainlinkAggregator${symbol}`;
-    const aggregator_ = await hre.ethers.getContract(name, sender);
+    const aggregator_: ChainlinkMock = await hre.ethers.getContract(name, sender);
     const decimals = await aggregator_.decimals();
     const updateTime = await helpers.time.latest();
     await increaseNextBlockTimestamp(1);
