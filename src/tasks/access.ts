@@ -1,13 +1,20 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, DEFAULT_ADMIN_ROLE, PAUSER_ROLE, getTypedContract, validateError } from "../utils/utils";
+import {
+    AnyContractMeta,
+    CONTRACTS,
+    DEFAULT_ADMIN_ROLE,
+    PAUSER_ROLE,
+    getTypedContract,
+    validateError,
+} from "../utils/utils";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { AccessControl, AccessControlEnumerable, UpgradeableBeacon } from "../../typechain-types";
 
 export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
     const proxied = new Set();
-    const contracts = Object.keys(CONTRACTS);
-    for (const key of contracts) {
-        const name = CONTRACTS[key].name;
+    for (const contractMeta of Object.values(CONTRACTS)) {
+        const name = contractMeta.name;
         try {
             await hre.ethers.getContract(`${name}Beacon`);
             proxied.add(name);
@@ -25,7 +32,7 @@ task("access:upgrade", "transfer beacon ownership to timelock")
         const { deployer } = await getNamedAccounts();
         const proxied = await getProxyInfo(hre);
         for (const name of Array.from(proxied)) {
-            const beacon = await hre.ethers.getContract(`${name}Beacon`, deployer);
+            const beacon: UpgradeableBeacon = await hre.ethers.getContract(`${name}Beacon`, deployer);
             if ((await beacon.owner()) == deployer) {
                 console.log(`transfer ownership of ${name}Beacon..`);
                 await (await beacon.transferOwnership(taskArgs.timelock)).wait();
@@ -38,25 +45,17 @@ task("access:admin", "grant default admin role to timelock")
     .setAction(async (taskArgs, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        const proxied = await getProxyInfo(hre);
-        const contracts = Object.keys(CONTRACTS);
-        for (const key of contracts) {
-            const name = CONTRACTS[key].name;
-            let contract;
-            if (proxied.has(name)) {
-                contract = await getTypedContract(hre, CONTRACTS[key]);
-            } else {
-                try {
-                    contract = await hre.ethers.getContract(name, deployer);
-                } catch (e) {
-                    validateError(e, "No Contract deployed with name");
+        for (const contractMeta of Object.values(CONTRACTS)) {
+            const name = contractMeta.name;
+            let contract: AccessControl;
+            try {
+                const anyContract = await getTypedContract(hre, contractMeta as AnyContractMeta);
+                if (!anyContract.interface.hasFunction("DEFAULT_ADMIN_ROLE")) {
                     continue;
                 }
-            }
-            try {
-                contract.interface.getFunction("DEFAULT_ADMIN_ROLE");
+                contract = anyContract as AccessControl;
             } catch (e) {
-                validateError(e, "no matching function");
+                validateError(e, "No Contract deployed with name");
                 continue;
             }
             if (await contract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
@@ -73,25 +72,17 @@ task("access:pauser", "grant pauser role to multisig")
     .setAction(async (taskArgs, hre) => {
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        const proxied = await getProxyInfo(hre);
-        const contracts = Object.keys(CONTRACTS);
-        for (const key of contracts) {
-            const name = CONTRACTS[key].name;
-            let contract;
-            if (proxied.has(name)) {
-                contract = await getTypedContract(hre, CONTRACTS[key]);
-            } else {
-                try {
-                    contract = await hre.ethers.getContract(name, deployer);
-                } catch (e) {
-                    validateError(e, "No Contract deployed with name");
+        for (const contractMeta of Object.values(CONTRACTS)) {
+            const name = contractMeta.name;
+            let contract: AccessControl;
+            try {
+                const anyContract = await getTypedContract(hre, contractMeta as AnyContractMeta);
+                if (!anyContract.interface.hasFunction("PAUSER_ROLE")) {
                     continue;
                 }
-            }
-            try {
-                contract.interface.getFunction("PAUSER_ROLE");
+                contract = anyContract as AccessControl;
             } catch (e) {
-                validateError(e, "no matching function");
+                validateError(e, "No Contract deployed with name");
                 continue;
             }
             if (await contract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
@@ -103,32 +94,24 @@ task("access:pauser", "grant pauser role to multisig")
         }
     });
 
-task("revoke:admin", "revoke admin role").setAction(async (taskArgs, hre) => {
+task("revoke:admin", "revoke admin role").setAction(async (_taskArgs, hre) => {
     const { getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
-    const proxied = await getProxyInfo(hre);
-    const contracts = Object.keys(CONTRACTS);
-    for (const key of contracts) {
-        const name = CONTRACTS[key].name;
-        let contract;
-        if (proxied.has(name)) {
-            contract = await getTypedContract(hre, CONTRACTS[key]);
-        } else {
-            try {
-                contract = await hre.ethers.getContract(name, deployer);
-            } catch (e) {
-                validateError(e, "No Contract deployed with name");
+    for (const contractMeta of Object.values(CONTRACTS)) {
+        const name = contractMeta.name;
+        let contract: AccessControlEnumerable;
+        try {
+            const anyContract = await getTypedContract(hre, contractMeta as AnyContractMeta);
+            if (!anyContract.interface.hasFunction("DEFAULT_ADMIN_ROLE")) {
                 continue;
             }
-        }
-        try {
-            contract.interface.getFunction("DEFAULT_ADMIN_ROLE");
+            contract = anyContract as AccessControlEnumerable;
         } catch (e) {
-            validateError(e, "no matching function");
+            validateError(e, "No Contract deployed with name");
             continue;
         }
         if (await contract.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-            if ((await contract.getRoleMemberCount(DEFAULT_ADMIN_ROLE)) == 1) {
+            if ((await contract.getRoleMemberCount(DEFAULT_ADMIN_ROLE)) === 1n) {
                 console.log(`deployer is the only admin of ${name}, skip.`);
                 continue;
             }

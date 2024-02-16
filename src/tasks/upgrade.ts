@@ -37,7 +37,7 @@ task("upgrade:validate", "validate upgrade")
     .addParam("new", "name of the new contract", undefined, types.string, false)
     .setAction(async (taskArgs, hre) => {
         const oldAddr = await (await hre.ethers.getContract(`${taskArgs.old}Impl`)).getAddress();
-        const newImpl = await hre.ethers.getContractFactory(taskArgs.new);
+        const newImpl = await hre.ethers.getContractFactory(taskArgs.new as string);
         await hre.upgrades.validateUpgrade(oldAddr, newImpl, {
             unsafeAllow: ["constructor"],
             kind: "beacon",
@@ -48,7 +48,7 @@ task("upgrade:forceImport", "import contracts")
     .addParam("name", "name of the contract", undefined, types.string, false)
     .setAction(async (taskArgs, hre) => {
         const addr = await (await hre.ethers.getContract(`${taskArgs.name}Impl`)).getAddress();
-        const factory = await hre.ethers.getContractFactory(taskArgs.name);
+        const factory = await hre.ethers.getContractFactory(taskArgs.name as string);
         await hre.upgrades.forceImport(addr, factory, { kind: "beacon" });
     });
 

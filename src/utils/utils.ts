@@ -248,15 +248,15 @@ async function getTypedContract<T>(
     return contract.factory.connect(address, signer);
 }
 
-export async function transact(contract: ethers.Contract, methodName: string, params: unknown[], execute: boolean) {
+export async function transact(contract: ethers.BaseContract, methodName: string, params: unknown[], execute: boolean) {
     if (execute) {
-        await (await contract[methodName](...params)).wait();
+        await (await contract.getFunction(methodName)(...params)).wait();
     } else {
         console.log(`to: ${await contract.getAddress()}`);
-        console.log(`func: ${contract.interface.getFunction(methodName).format()}`);
+        console.log(`func: ${contract.interface.getFunction(methodName)?.format()}`);
         console.log(`params: ${JSON.stringify(params)}`);
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);
     }
 }
 
-export { deployDirectly, deployInBeaconProxy, getTypedContract, CONTRACTS };
+export { AnyContractMeta, deployDirectly, deployInBeaconProxy, getTypedContract, CONTRACTS };
