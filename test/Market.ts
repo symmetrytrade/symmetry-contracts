@@ -64,18 +64,16 @@ describe("Market", () => {
         marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, account1);
         config = getConfig(hre.network.name);
 
-        await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
+        await USDC_.transfer(await account1.getAddress(), usdcOf(100000000));
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
         const amount = BigInt(usdcOf(1000000));
         const minLp = 980000n * UNIT;
-        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
+        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
     });
 
     it("getPrice", async () => {
@@ -103,9 +101,7 @@ describe("Market", () => {
         await setupPrices(hre, {}, { WETH: 1500 }, account1);
 
         // for convenience of following test, set divergence to 200%
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)])
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
         await setPythAutoRefresh(hre);
     });
 
@@ -124,22 +120,18 @@ describe("Market", () => {
     });
 
     it("trade ETH long", async () => {
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash);
         let status = await market_.accountMarginStatus(await account1.getAddress());
         expect(status.currentMargin).to.deep.eq(normalized(1470));
 
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(10),
-                acceptablePrice: normalized(1550),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(10),
+            acceptablePrice: normalized(1550),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -215,16 +207,14 @@ describe("Market", () => {
     });
     it("trade BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
-        await (
-            await positionManager_.submitOrder({
-                token: WBTC,
-                size: normalized(-0.5),
-                acceptablePrice: normalized(15000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WBTC,
+            size: normalized(-0.5),
+            acceptablePrice: normalized(15000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -272,16 +262,14 @@ describe("Market", () => {
 
     it("close BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
-        await (
-            await positionManager_.submitOrder({
-                token: WBTC,
-                size: normalized(0.5),
-                acceptablePrice: normalized(25000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: true,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WBTC,
+            size: normalized(0.5),
+            acceptablePrice: normalized(25000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: true,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s

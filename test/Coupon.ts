@@ -85,63 +85,50 @@ describe("Coupon", () => {
         sym_ = await getTypedContract(hre, CONTRACTS.SYM);
         config = getConfig(hre.network.name);
 
-        await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
-        await (await USDC_.transfer(await account2.getAddress(), usdcOf(100000000))).wait();
+        await USDC_.transfer(await account1.getAddress(), usdcOf(100000000));
+        await USDC_.transfer(await account2.getAddress(), usdcOf(100000000));
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
-        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
+        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 
-        await (await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256);
 
         // set financing&funding fee rate to zero
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0])).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
         // for convenience of following test, set divergence to 200%
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)])
-        ).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)])
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)]);
         // set slippage to zero
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
-                [normalized(0.1)]
-            )
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized(0.1)]);
         // set liquidation coupon ratio to 10%
-        await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.encodeBytes32String("liquidationPenaltyRatio")],
-                [normalized(0.009)]
-            )
-        ).wait();
-        await (
-            await marketSettings_.setIntVals(
-                [hre.ethers.encodeBytes32String("liquidationCouponRatio")],
-                [normalized(0.001)]
-            )
-        ).wait();
+        await marketSettings_.setIntVals(
+            [hre.ethers.encodeBytes32String("liquidationPenaltyRatio")],
+            [normalized(0.009)]
+        );
+        await marketSettings_.setIntVals(
+            [hre.ethers.encodeBytes32String("liquidationCouponRatio")],
+            [normalized(0.001)]
+        );
         // set debt interest rate to 0%
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0])).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0]);
         // allocate sym
         const maxTime = config.otherConfig.lockMaxTime;
-        await (await sym_.grantRole(MINTER_ROLE, await deployer.getAddress())).wait();
-        await (await sym_.mint(await account1.getAddress(), normalized(2))).wait();
-        await (await sym_.mint(await account2.getAddress(), normalized(998))).wait();
-        await (await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(2))).wait();
-        await (await votingEscrow_.connect(account1).createLock(normalized(2), 0, maxTime, true)).wait();
-        await (await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(998))).wait();
-        await (await votingEscrow_.connect(account2).createLock(normalized(998), 0, maxTime, true)).wait();
+        await sym_.grantRole(MINTER_ROLE, await deployer.getAddress());
+        await sym_.mint(await account1.getAddress(), normalized(2));
+        await sym_.mint(await account2.getAddress(), normalized(998));
+        await sym_.connect(account1).approve(await votingEscrow_.getAddress(), normalized(2));
+        await votingEscrow_.connect(account1).createLock(normalized(2), 0, maxTime, true);
+        await sym_.connect(account2).approve(await votingEscrow_.getAddress(), normalized(998));
+        await votingEscrow_.connect(account2).createLock(normalized(998), 0, maxTime, true);
 
         await helpers.time.setNextBlockTimestamp(startOfWeek((await helpers.time.latest()) + maxTime));
 
@@ -154,21 +141,17 @@ describe("Coupon", () => {
     it("trade with tiered trading fee discount", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(10000), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(10000), hre.ethers.ZeroHash);
 
         // open eth long, 50000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(50),
-                acceptablePrice: normalized(1001),
-                keeperFee: usdcOf(1),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(50),
+            acceptablePrice: normalized(1001),
+            keeperFee: usdcOf(1),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -213,16 +196,14 @@ describe("Coupon", () => {
 
         await increaseNextBlockTimestamp(DAY);
         // open eth long, 50000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(50),
-                acceptablePrice: normalized(1001),
-                keeperFee: usdcOf(1),
-                expiry: BigInt(await helpers.time.latest()) + DAY + 100n,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(50),
+            acceptablePrice: normalized(1001),
+            keeperFee: usdcOf(1),
+            expiry: BigInt(await helpers.time.latest()) + DAY + 100n,
+            reduceOnly: false,
+        });
         orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -272,9 +253,9 @@ describe("Coupon", () => {
 
         expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(0);
 
-        await (await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
+        await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY);
         await helpers.mine(3);
-        await (await volumeTracker_.drawLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY)).wait();
+        await volumeTracker_.drawLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY);
         await expect(volumeTracker_.claimWeeklyTradingFeeCoupon([BigInt(await helpers.time.latest()) - WEEK]))
             .to.emit(coupon_, "Minted")
             .withArgs(0, await account1.getAddress(), normalized(1));
@@ -285,22 +266,20 @@ describe("Coupon", () => {
 
         //console.log(await coupon_.tokenURI(0));
 
-        await (await coupon_.connect(account1).applyCoupons([0])).wait();
+        await coupon_.connect(account1).applyCoupons([0]);
         await expect(coupon_.ownerOf(0)).to.be.revertedWith("ERC721: invalid token ID");
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(1));
     });
     it("trade with coupon", async () => {
         // open eth long, 1000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(1),
-                acceptablePrice: normalized(1010),
-                keeperFee: usdcOf(1),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(1),
+            acceptablePrice: normalized(1010),
+            keeperFee: usdcOf(1),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -320,16 +299,14 @@ describe("Coupon", () => {
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(0.05));
 
         // close eth long, 1000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(-1),
-                acceptablePrice: normalized(999),
-                keeperFee: usdcOf(1),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: true,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(-1),
+            acceptablePrice: normalized(999),
+            keeperFee: usdcOf(1),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: true,
+        });
         orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -349,11 +326,9 @@ describe("Coupon", () => {
     });
     it("liquidate and mint coupon", async () => {
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 918 });
-        await (
-            await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
-                value: pythUpdateData.fee,
-            })
-        ).wait();
+        await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
 
         await increaseNextBlockTimestamp(1);
         const evmTime = BigInt(await helpers.time.latest()) + 1n;
@@ -376,7 +351,7 @@ describe("Coupon", () => {
             .withArgs(await account1.getAddress(), normalized(91800), normalized(826.2), usdcOf(826.2))
             .to.emit(coupon_, "PreMint")
             .withArgs(1, await account1.getAddress(), normalized(91), evmTime + WEEK);
-        await (await coupon_.connect(account1).mintAndApply(1)).wait();
+        await coupon_.connect(account1).mintAndApply(1);
         await expect(coupon_.ownerOf(1)).to.be.revertedWith("ERC721: invalid token ID");
         expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(91));
         expect(await coupon_.tokenCount()).to.deep.eq(2);
@@ -387,19 +362,19 @@ describe("Coupon", () => {
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: not issued"
         );
-        await (await volumeTracker_.issueLuckyNumber(await helpers.time.latest())).wait();
+        await volumeTracker_.issueLuckyNumber(await helpers.time.latest());
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: hash unavailable"
         );
         await helpers.mine(5);
-        await (await volumeTracker_.drawLuckyNumber(await helpers.time.latest())).wait();
+        await volumeTracker_.drawLuckyNumber(await helpers.time.latest());
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: drawed"
         );
 
         await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
         await helpers.mine();
-        await (await volumeTracker_.issueLuckyNumber(await helpers.time.latest())).wait();
+        await volumeTracker_.issueLuckyNumber(await helpers.time.latest());
         await expect(
             volumeTracker_.drawLuckyNumberByAnnouncer(
                 await helpers.time.latest(),
@@ -421,14 +396,12 @@ describe("Coupon", () => {
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: hash unavailable"
         );
-        await (
-            await volumeTracker_.drawLuckyNumberByAnnouncer(
-                await helpers.time.latest(),
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash
-            )
-        ).wait();
+        await volumeTracker_.drawLuckyNumberByAnnouncer(
+            await helpers.time.latest(),
+            hre.ethers.ZeroHash,
+            hre.ethers.ZeroHash,
+            hre.ethers.ZeroHash
+        );
         const t = startOfDay(await helpers.time.latest()) - DAY;
         expect(await volumeTracker_.luckyNumber(t)).to.deep.eq(
             "0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22"

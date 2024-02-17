@@ -38,7 +38,7 @@ describe("PriceOracle", () => {
 
     it("chainlink sequencer", async () => {
         const aggregator_ = await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer, account1);
-        await (await aggregator_.feed(1, await helpers.time.latest())).wait();
+        await aggregator_.feed(1, await helpers.time.latest());
         await expect(
             priceOracle_.getLatestChainlinkPrice(await (await getTypedContract(hre, CONTRACTS.USDC)).getAddress())
         ).to.be.revertedWith("PriceOracle: Sequencer is down");

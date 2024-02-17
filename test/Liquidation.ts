@@ -70,85 +70,69 @@ describe("Liquidation", () => {
         config = getConfig(hre.network.name);
 
         for (let i = 1; i <= 4; ++i) {
-            await (
-                await USDC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), usdcOf(100000000))
-            ).wait();
-            await (
-                await USDC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256)
-            ).wait();
+            await USDC_.transfer(await (await hre.ethers.getSigners())[i].getAddress(), usdcOf(100000000));
+            await USDC_.connect((await hre.ethers.getSigners())[i]).approve(await market_.getAddress(), MAX_UINT256);
         }
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
-        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
+        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 
         // set fee and slippage to zero for convenience
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000])).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set debt interest rate to 0%
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0])).wait();
-        await (await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0])).wait();
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(1000)])
-        ).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(1000)]);
         await setPythAutoRefresh(hre);
     });
 
     it("liquidate and pay fee & penalty", async () => {
         // deposit margins
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash);
 
         // open eth long, 10000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(10),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(10),
+            acceptablePrice: normalized(1000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
-        await (await positionManager_.executeOrder(orderId, [])).wait();
+        await positionManager_.executeOrder(orderId, []);
 
         // open btc long, 100 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WBTC,
-                size: normalized(0.01),
-                acceptablePrice: normalized(10000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WBTC,
+            size: normalized(0.01),
+            acceptablePrice: normalized(10000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
-        await (await positionManager_.executeOrder(orderId, [])).wait();
+        await positionManager_.executeOrder(orderId, []);
 
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 918 });
-        await (
-            await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
-                value: pythUpdateData.fee,
-            })
-        ).wait();
+        await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
 
         // liquidate
         await expect(positionManager_.connect(liquidator).liquidatePosition(await account1.getAddress(), WETH, []))
@@ -188,36 +172,28 @@ describe("Liquidation", () => {
     it("liquidate and pay fee, insufficient to pay all penalty", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(10),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(10),
+            acceptablePrice: normalized(1000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
-        await (
-            await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee })
-        ).wait();
+        await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee });
 
         pythUpdateData = await getPythUpdateData(hre, { WETH: 910 });
-        await (
-            await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
-                value: pythUpdateData.fee,
-            })
-        ).wait();
+        await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
 
         // liquidate
         await expect(positionManager_.connect(liquidator).liquidatePosition(await account2.getAddress(), WETH, []))
@@ -261,36 +237,28 @@ describe("Liquidation", () => {
     it("liquidate but insufficient to pay fee and penalty", async () => {
         positionManager_ = positionManager_.connect(account3);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(10),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(10),
+            acceptablePrice: normalized(1000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
-        await (
-            await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee })
-        ).wait();
+        await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee });
 
         pythUpdateData = await getPythUpdateData(hre, { WETH: 901 });
-        await (
-            await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
-                value: pythUpdateData.fee,
-            })
-        ).wait();
+        await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
 
         // liquidate
         await expect(positionManager_.connect(liquidator).liquidatePosition(await account3.getAddress(), WETH, []))
@@ -334,36 +302,28 @@ describe("Liquidation", () => {
     it("liquidate and generate deficit loss", async () => {
         positionManager_ = positionManager_.connect(account4);
         // deposit margins
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash)
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1000), hre.ethers.ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(10),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(10),
+            acceptablePrice: normalized(1000),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
-        await (
-            await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee })
-        ).wait();
+        await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee });
 
         pythUpdateData = await getPythUpdateData(hre, { WETH: 900, USDC: 0.8 });
-        await (
-            await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
-                value: pythUpdateData.fee,
-            })
-        ).wait();
+        await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
 
         // liquidate
         await expect(positionManager_.connect(liquidator).liquidatePosition(await account4.getAddress(), WETH, []))

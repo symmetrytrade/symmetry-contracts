@@ -59,17 +59,15 @@ describe("Liquidity", () => {
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
         config = getConfig(hre.network.name);
 
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
-        ).wait();
-        await (await USDC_.transfer(await account1.getAddress(), usdcOf(10000000))).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await USDC_.transfer(await account1.getAddress(), usdcOf(10000000));
         await setPythAutoRefresh(hre);
     });
 
     it("deposit&remove at zero skew", async () => {
         // deposit
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
         const amount = BigInt(usdcOf(100000));
         const minLp = 98000n * UNIT;
         await expect(
@@ -111,23 +109,19 @@ describe("Liquidity", () => {
         // first deposit
         const amount = BigInt(usdcOf(100000));
         const minLp = 98000n * UNIT;
-        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
+        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
 
         // trade
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
-        ).wait();
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(1),
-                acceptablePrice: normalized(1550),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash);
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(1),
+            acceptablePrice: normalized(1550),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s

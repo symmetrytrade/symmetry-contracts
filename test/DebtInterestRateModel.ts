@@ -35,11 +35,11 @@ describe("Debt", () => {
 
         await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
         interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel);
-        await (await interestRateModel_.initialize(await market_.getAddress(), deployer)).wait();
+        await interestRateModel_.initialize(await market_.getAddress(), deployer);
         totalDebt = BigInt(normalized(123456789.1234567));
         debtRatio = BigInt(normalized(0.1)); // 10%
-        await (await interestRateModel_.update(totalDebt, debtRatio)).wait();
-        await (await interestRateModel_.updateMaxInterestRate()).wait();
+        await interestRateModel_.update(totalDebt, debtRatio);
+        await interestRateModel_.updateMaxInterestRate();
         updatedAt = BigInt(await helpers.time.latest());
     });
     it("debt ratio < vertex debt ratio", async () => {
@@ -57,10 +57,10 @@ describe("Debt", () => {
         const deltaT = 10n * DAY;
         const nextInterest = mul_D(totalDebt * deltaT, interestRate) / (365n * DAY);
         expect(await interestRateModel_.nextInterest()).to.deep.eq(nextInterest);
-        await (await interestRateModel_.updateMaxInterestRate()).wait();
+        await interestRateModel_.updateMaxInterestRate();
         updatedAt = BigInt(await helpers.time.latest());
         debtRatio = BigInt(normalized(0.5));
-        await (await interestRateModel_.update(totalDebt, debtRatio)).wait();
+        await interestRateModel_.update(totalDebt, debtRatio);
     });
 
     it("debt ratio > vertex debt ratio", async () => {
@@ -81,7 +81,7 @@ describe("Debt", () => {
             const nextInterest = mul_D(totalDebt * deltaT, IR_M) / (365n * DAY);
             expect(await interestRateModel_.nextInterest()).to.deep.eq(nextInterest);
             await helpers.time.setNextBlockTimestamp(updatedAt + deltaT);
-            await (await interestRateModel_.updateMaxInterestRate()).wait();
+            await interestRateModel_.updateMaxInterestRate();
             maxInterestRate = (maxInterestRate * (12n + n)) / 12n;
             expect(await interestRateModel_.maxInterestRate()).to.deep.eq(maxInterestRate);
             updatedAt = BigInt(await helpers.time.latest());
