@@ -59,10 +59,10 @@ describe("Position", () => {
 
     async function checkOrders(account: string, ids: ethers.BigNumberish[]) {
         const orders = await positionManager_.getUserOrders(account, 0);
-        expect(orders.length).to.deep.eq(ids.length);
+        expect(orders.length).to.eq(ids.length);
         for (let i = 0; i < ids.length; ++i) {
-            expect(orders[i].index).to.deep.eq(i);
-            expect(orders[i].id).to.deep.eq(BigInt(ids[i]));
+            expect(orders[i].index).to.eq(i);
+            expect(orders[i].id).to.eq(BigInt(ids[i]));
         }
     }
 
@@ -125,7 +125,7 @@ describe("Position", () => {
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
         });
-        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(normalized(701000));
+        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.eq(normalized(701000));
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -161,24 +161,20 @@ describe("Position", () => {
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.be.revertedWith(
             "PositionManager: position size exceeds limit"
         );
-        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(
-            normalized(701000 * 3)
-        );
+        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.eq(normalized(701000 * 3));
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         const b0 = await marginTracker_.userCollaterals(await deployer.getAddress(), await USDC_.getAddress());
         await positionManager_.connect(deployer).cancelOrder(0);
         const b1 = await marginTracker_.userCollaterals(await deployer.getAddress(), await USDC_.getAddress());
         // keeper fee
-        expect(b1 - b0).to.deep.eq(usdcOf(1));
-        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(
-            normalized(701000 * 2)
-        );
+        expect(b1 - b0).to.eq(usdcOf(1));
+        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.eq(normalized(701000 * 2));
         await checkOrders(await account1.getAddress(), [2, 1]);
         await positionManager_.connect(deployer).cancelOrder(1);
         await checkOrders(await account1.getAddress(), [2]);
         await positionManager_.connect(deployer).cancelOrder(2);
         await checkOrders(await account1.getAddress(), []);
-        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.deep.eq(0);
+        expect(await positionManager_.pendingOrderNotional(await account1.getAddress())).to.eq(0);
     });
     it("account1 open eth long", async () => {
         // trade eth long
@@ -207,22 +203,22 @@ describe("Position", () => {
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WETH);
         let feeInfo = await perpTracker_.getFeeInfo(WETH);
-        expect(tokenInfo.lpNetValue).to.deep.eq(normalized(1000000));
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(600000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(600000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
-        expect(feeInfo.accShortFinancingFee).to.deep.eq(0);
+        expect(tokenInfo.lpNetValue).to.eq(normalized(1000000));
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
+        expect(tokenInfo.skew).to.eq(normalized(600000));
+        expect(feeInfo.accLongFinancingFee).to.eq(0);
+        expect(feeInfo.accShortFinancingFee).to.eq(0);
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
         await market_.updateInfoWithPrice(WETH, []);
 
         tokenInfo = await perpTracker_.getTokenInfo(WETH);
         feeInfo = await perpTracker_.getFeeInfo(WETH);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000000041666666666400000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(600000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(600000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq("69444444444000");
-        expect(feeInfo.accShortFinancingFee).to.deep.eq(0);
+        expect(tokenInfo.lpNetValue).to.eq("1000000041666666666400000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
+        expect(tokenInfo.skew).to.eq(normalized(600000));
+        expect(feeInfo.accLongFinancingFee).to.eq("69444444444000");
+        expect(feeInfo.accShortFinancingFee).to.eq(0);
 
         // check btc financing fee
         await increaseNextBlockTimestamp(1); // 1s
@@ -230,11 +226,11 @@ describe("Position", () => {
 
         tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000000083333321179800000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(600000));
-        expect(tokenInfo.skew).to.deep.eq(0);
-        expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
-        expect(feeInfo.accShortFinancingFee).to.deep.eq(0);
+        expect(tokenInfo.lpNetValue).to.eq("1000000083333321179800000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
+        expect(tokenInfo.skew).to.eq(0);
+        expect(feeInfo.accLongFinancingFee).to.eq(0);
+        expect(feeInfo.accShortFinancingFee).to.eq(0);
     });
 
     it("exceed hard limit", async () => {
@@ -285,22 +281,22 @@ describe("Position", () => {
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         let feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000005916664953124800000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(800000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(-200000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
-        expect(feeInfo.accShortFinancingFee).to.deep.eq(0);
+        expect(tokenInfo.lpNetValue).to.eq("1000005916664953124800000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
+        expect(tokenInfo.skew).to.eq(normalized(-200000));
+        expect(feeInfo.accLongFinancingFee).to.eq(0);
+        expect(feeInfo.accShortFinancingFee).to.eq(0);
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
         await market_.updateInfoWithPrice(WBTC, []);
 
         tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000005972220195218400000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(800000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(-200000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
-        expect(feeInfo.accShortFinancingFee).to.deep.eq("694429379010000");
+        expect(tokenInfo.lpNetValue).to.eq("1000005972220195218400000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
+        expect(tokenInfo.skew).to.eq(normalized(-200000));
+        expect(feeInfo.accLongFinancingFee).to.eq(0);
+        expect(feeInfo.accShortFinancingFee).to.eq("694429379010000");
 
         // check eth financing fee
         await increaseNextBlockTimestamp(1); // 1s
@@ -308,11 +304,11 @@ describe("Position", () => {
 
         tokenInfo = await perpTracker_.getTokenInfo(WETH);
         feeInfo = await perpTracker_.getFeeInfo(WETH);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000006027775434483400000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(800000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(600000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq("9999997103587000");
-        expect(feeInfo.accShortFinancingFee).to.deep.eq(0);
+        expect(tokenInfo.lpNetValue).to.eq("1000006027775434483400000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
+        expect(tokenInfo.skew).to.eq(normalized(600000));
+        expect(feeInfo.accLongFinancingFee).to.eq("9999997103587000");
+        expect(feeInfo.accShortFinancingFee).to.eq(0);
     });
     it("account1 open btc long", async () => {
         positionManager_ = positionManager_.connect(account1);
@@ -343,11 +339,11 @@ describe("Position", () => {
             );
         let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         let feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000015749782977950800000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(850000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(50000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq(0);
-        expect(feeInfo.accShortFinancingFee).to.deep.eq("49998905245700000");
+        expect(tokenInfo.lpNetValue).to.eq("1000015749782977950800000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(850000));
+        expect(tokenInfo.skew).to.eq(normalized(50000));
+        expect(feeInfo.accLongFinancingFee).to.eq(0);
+        expect(feeInfo.accShortFinancingFee).to.eq("49998905245700000");
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
 
@@ -355,22 +351,22 @@ describe("Position", () => {
 
         tokenInfo = await perpTracker_.getTokenInfo(WBTC);
         feeInfo = await perpTracker_.getFeeInfo(WBTC);
-        expect(tokenInfo.lpNetValue).to.deep.eq("1000015879843599230400000");
-        expect(tokenInfo.netOpenInterest).to.deep.eq(normalized(850000));
-        expect(tokenInfo.skew).to.deep.eq(normalized(50000));
-        expect(feeInfo.accLongFinancingFee).to.deep.eq("202535359240000");
-        expect(feeInfo.accShortFinancingFee).to.deep.eq("49998905245700000");
+        expect(tokenInfo.lpNetValue).to.eq("1000015879843599230400000");
+        expect(tokenInfo.netOpenInterest).to.eq(normalized(850000));
+        expect(tokenInfo.skew).to.eq(normalized(50000));
+        expect(feeInfo.accLongFinancingFee).to.eq("202535359240000");
+        expect(feeInfo.accShortFinancingFee).to.eq("49998905245700000");
 
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
-        expect(lpPosition.unsettled).to.deep.eq("999978104914000000");
+        expect(lpPosition.unsettled).to.eq("999978104914000000");
     });
     it("hard limit", async () => {
         const ethPosition = await perpTracker_.getNetPositionSize(WETH);
         const btcPosition = await perpTracker_.getNetPositionSize(WBTC);
-        expect(ethPosition[0]).to.deep.eq(normalized(600));
-        expect(ethPosition[1]).to.deep.eq(normalized(0));
-        expect(btcPosition[0]).to.deep.eq(normalized(25));
-        expect(btcPosition[1]).to.deep.eq(normalized(-20));
+        expect(ethPosition[0]).to.eq(normalized(600));
+        expect(ethPosition[1]).to.eq(normalized(0));
+        expect(btcPosition[0]).to.eq(normalized(25));
+        expect(btcPosition[1]).to.eq(normalized(-20));
 
         // account2 trade -655 eth and revert
         const to_cancel = [];
@@ -462,7 +458,7 @@ describe("Position", () => {
         const cur = await helpers.time.latest();
         await increaseNextBlockTimestamp(1); // 60s
         await positionManager_.submitCancelOrder(orderId);
-        expect((await positionManager_.orders(orderId)).data.expiry).to.deep.eq(
+        expect((await positionManager_.orders(orderId)).data.expiry).to.eq(
             cur + 1 + config.marketGeneralConfig.minOrderDelay
         );
 
@@ -470,7 +466,7 @@ describe("Position", () => {
 
         await positionManager_.submitCancelOrder(orderId);
 
-        expect((await positionManager_.orders(orderId)).status).to.deep.eq(OrderStatus.Cancelled);
+        expect((await positionManager_.orders(orderId)).status).to.eq(OrderStatus.Cancelled);
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.be.revertedWith(
             "PositionManager: not pending"
@@ -479,7 +475,7 @@ describe("Position", () => {
     it("withdraw margin", async () => {
         positionManager_ = positionManager_.connect(account2);
         const position = await perpTracker_.getPosition(await account2.getAddress(), WBTC);
-        expect(position[0]).to.deep.eq(normalized(-25));
+        expect(position[0]).to.eq(normalized(-25));
 
         await expect(positionManager_.withdrawMargin(await USDC_.getAddress(), usdcOf(990000))).to.be.revertedWith(
             "PositionManager: leverage ratio too large"
@@ -501,9 +497,9 @@ describe("Position", () => {
         await positionManager_.connect(deployer).executeOrder(orderId, []);
 
         let status = await market_.accountMarginStatus(await account2.getAddress());
-        expect(status.mtm).to.deep.eq("22650000000000000000");
-        expect(status.currentMargin).to.deep.eq("999994000022000000000000");
-        expect(status.positionNotional).to.deep.eq(normalized(100));
+        expect(status.mtm).to.eq("22650000000000000000");
+        expect(status.currentMargin).to.eq("999994000022000000000000");
+        expect(status.positionNotional).to.eq(normalized(100));
 
         // try withdraw
         await expect(positionManager_.withdrawMargin(await USDC_.getAddress(), usdcOf(999989))).to.be.revertedWith(
@@ -525,9 +521,9 @@ describe("Position", () => {
         await positionManager_.connect(deployer).executeOrder(orderId, []);
 
         status = await market_.accountMarginStatus(await account2.getAddress());
-        expect(status.mtm).to.deep.eq(0);
-        expect(status.currentMargin).to.deep.eq("90000022000000000000");
-        expect(status.positionNotional).to.deep.eq(0);
+        expect(status.mtm).to.eq(0);
+        expect(status.currentMargin).to.eq("90000022000000000000");
+        expect(status.positionNotional).to.eq(0);
 
         await positionManager_.withdrawMargin(await USDC_.getAddress(), "90000022");
     });
@@ -559,7 +555,7 @@ describe("Position", () => {
                 orderId
             );
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
-        expect(lpPosition.unsettled).to.deep.eq(0);
+        expect(lpPosition.unsettled).to.eq(0);
     });
     it("submit order", async () => {
         await liquidityManager_.addLiquidity(usdcOf(1000000), 0, await account1.getAddress(), false);
@@ -629,9 +625,9 @@ describe("Position", () => {
             await positionManager_.connect(deployer).cancelOrder(id);
         }
         const status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(normalized(220));
-        expect(status.currentMargin).to.deep.eq(normalized(998));
-        expect(status.positionNotional).to.deep.eq(normalized(10000));
+        expect(status.mtm).to.eq(normalized(220));
+        expect(status.currentMargin).to.eq(normalized(998));
+        expect(status.positionNotional).to.eq(normalized(10000));
     });
     it("execution fail: leverage exceed", async () => {
         await positionManager_.submitOrder({
@@ -649,12 +645,12 @@ describe("Position", () => {
             value: pythUpdateData.fee,
         });
         const order = await positionManager_.orders(orderId);
-        expect(order.status).to.deep.eq(OrderStatus.Failed);
+        expect(order.status).to.eq(OrderStatus.Failed);
 
         const status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(normalized(212));
-        expect(status.currentMargin).to.deep.eq(normalized(597));
-        expect(status.positionNotional).to.deep.eq(normalized(9600));
+        expect(status.mtm).to.eq(normalized(212));
+        expect(status.currentMargin).to.eq(normalized(597));
+        expect(status.positionNotional).to.eq(normalized(9600));
     });
     it("execution fail: liquidatable, reduce only", async () => {
         await positionManager_.submitOrder({
@@ -667,9 +663,9 @@ describe("Position", () => {
         });
         const reduceOnlyId = (await positionManager_.orderCnt()) - 1n;
         let status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(normalized(212));
-        expect(status.currentMargin).to.deep.eq(normalized(596));
-        expect(status.positionNotional).to.deep.eq(normalized(9600));
+        expect(status.mtm).to.eq(normalized(212));
+        expect(status.currentMargin).to.eq(normalized(596));
+        expect(status.positionNotional).to.eq(normalized(9600));
 
         await positionManager_.submitOrder({
             token: WETH,
@@ -686,27 +682,27 @@ describe("Position", () => {
             value: pythUpdateData.fee,
         });
         let order = await positionManager_.orders(orderId);
-        expect(order.status).to.deep.eq(OrderStatus.Failed);
+        expect(order.status).to.eq(OrderStatus.Failed);
 
         status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(normalized(202));
-        expect(status.currentMargin).to.deep.eq(normalized(95));
-        expect(status.positionNotional).to.deep.eq(normalized(9100));
+        expect(status.mtm).to.eq(normalized(202));
+        expect(status.currentMargin).to.eq(normalized(95));
+        expect(status.positionNotional).to.eq(normalized(9100));
         await checkOrders(await account3.getAddress(), [reduceOnlyId]);
 
         await positionManager_.liquidatePosition(await account3.getAddress(), WETH, []);
         status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(0);
-        expect(status.currentMargin).to.deep.eq(normalized(95 - 9100 * 0.01));
-        expect(status.positionNotional).to.deep.eq(0);
+        expect(status.mtm).to.eq(0);
+        expect(status.currentMargin).to.eq(normalized(95 - 9100 * 0.01));
+        expect(status.positionNotional).to.eq(0);
 
         await positionManager_.connect(deployer).executeOrder(reduceOnlyId, []);
         order = await positionManager_.orders(reduceOnlyId);
-        expect(order.status).to.deep.eq(OrderStatus.Failed);
+        expect(order.status).to.eq(OrderStatus.Failed);
 
         status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.mtm).to.deep.eq(0);
-        expect(status.currentMargin).to.deep.eq(normalized(95 - 9100 * 0.01));
-        expect(status.positionNotional).to.deep.eq(0);
+        expect(status.mtm).to.eq(0);
+        expect(status.currentMargin).to.eq(normalized(95 - 9100 * 0.01));
+        expect(status.positionNotional).to.eq(0);
     });
 });

@@ -93,7 +93,7 @@ describe("PerpTracker", () => {
 
     it("listed tokens", async () => {
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength).to.deep.eq(2);
+        expect(tokenLength).to.eq(2);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WBTC);
         expect(await perpTracker_.marketTokensList(1)).to.be.eq(WETH);
     });
@@ -101,7 +101,7 @@ describe("PerpTracker", () => {
     it("remove tokens", async () => {
         await perpTracker_.removeMarketToken(WBTC);
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength).to.deep.eq(1);
+        expect(tokenLength).to.eq(1);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH);
     });
 });

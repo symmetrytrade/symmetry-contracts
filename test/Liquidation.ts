@@ -151,22 +151,22 @@ describe("Liquidation", () => {
             .to.emit(positionManager_, "LiquidationPenalty")
             .withArgs(await account1.getAddress(), normalized(9180), normalized(91.8), usdcOf(91.8));
         const status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(56.07));
+        expect(status.currentMargin).to.eq(normalized(56.07));
         const userCollaterals = await marginTracker_.userCollaterals(
             await account1.getAddress(),
             await USDC_.getAddress()
         );
-        expect(userCollaterals).to.deep.eq(usdcOf(56.07));
+        expect(userCollaterals).to.eq(usdcOf(56.07));
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 820));
-        expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
+        expect(globalStatus.lpNetValue).to.eq(normalized(1000000 + 820));
+        expect(globalStatus.netOpenInterest).to.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(usdcOf(91.8));
+        expect(insurance).to.eq(usdcOf(91.8));
         const liquidatorBalance = await marginTracker_.userCollaterals(
             await liquidator.getAddress(),
             await USDC_.getAddress()
         );
-        expect(liquidatorBalance).to.deep.eq(usdcOf(32.13));
+        expect(liquidatorBalance).to.eq(usdcOf(32.13));
         expect(await positionManager_.isLiquidatable(await account1.getAddress())).to.eq(false);
     });
     it("liquidate and pay fee, insufficient to pay all penalty", async () => {
@@ -214,24 +214,24 @@ describe("Liquidation", () => {
             .to.emit(marginTracker_, "DeficitLoss")
             .withArgs(await account2.getAddress(), usdcOf(22.85), usdcOf(22.85), 0);
         const status = await market_.accountMarginStatus(await account2.getAddress());
-        expect(status.currentMargin).to.deep.eq(0);
+        expect(status.currentMargin).to.eq(0);
         const userCollaterals = await marginTracker_.userCollaterals(
             await account2.getAddress(),
             await USDC_.getAddress()
         );
-        expect(userCollaterals).to.deep.eq(0);
+        expect(userCollaterals).to.eq(0);
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(
+        expect(globalStatus.lpNetValue).to.eq(
             normalized(1001720) // 1000000 + 820 + 900
         );
-        expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
+        expect(globalStatus.netOpenInterest).to.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(usdcOf(159.95)); // 91.8 + 91 - 22.85
+        expect(insurance).to.eq(usdcOf(159.95)); // 91.8 + 91 - 22.85
         const liquidatorBalance = await marginTracker_.userCollaterals(
             await liquidator.getAddress(),
             await USDC_.getAddress()
         );
-        expect(liquidatorBalance).to.deep.eq(usdcOf(63.98)); // 32.13 + 31.85
+        expect(liquidatorBalance).to.eq(usdcOf(63.98)); // 32.13 + 31.85
         expect(await positionManager_.isLiquidatable(await account2.getAddress())).to.eq(false);
     });
     it("liquidate but insufficient to pay fee and penalty", async () => {
@@ -279,24 +279,24 @@ describe("Liquidation", () => {
             .to.emit(marginTracker_, "DeficitLoss")
             .withArgs(await account3.getAddress(), usdcOf(111.635), usdcOf(111.635), 0);
         const status = await market_.accountMarginStatus(await account3.getAddress());
-        expect(status.currentMargin).to.deep.eq(0);
+        expect(status.currentMargin).to.eq(0);
         const userCollaterals = await marginTracker_.userCollaterals(
             await account3.getAddress(),
             await USDC_.getAddress()
         );
-        expect(userCollaterals).to.deep.eq(0);
+        expect(userCollaterals).to.eq(0);
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(
+        expect(globalStatus.lpNetValue).to.eq(
             normalized(1002710) // 1000000 + 820 + 900 + 990
         );
-        expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
+        expect(globalStatus.netOpenInterest).to.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(usdcOf(138.415)); // 91.8 + 91 - 22.85 + 90.1 - 111.635
+        expect(insurance).to.eq(usdcOf(138.415)); // 91.8 + 91 - 22.85 + 90.1 - 111.635
         const liquidatorBalance = await marginTracker_.userCollaterals(
             await liquidator.getAddress(),
             await USDC_.getAddress()
         );
-        expect(liquidatorBalance).to.deep.eq(usdcOf(95.515)); // 32.13 + 31.85 + 31.535
+        expect(liquidatorBalance).to.eq(usdcOf(95.515)); // 32.13 + 31.85 + 31.535
         expect(await positionManager_.isLiquidatable(await account3.getAddress())).to.eq(false);
     });
     it("liquidate and generate deficit loss", async () => {
@@ -344,21 +344,21 @@ describe("Liquidation", () => {
             .to.emit(marginTracker_, "DeficitLoss")
             .withArgs(await account4.getAddress(), usdcOf(401.875), usdcOf(250.915), usdcOf(150.96));
         const status = await market_.accountMarginStatus(await account4.getAddress());
-        expect(status.currentMargin).to.deep.eq(0);
+        expect(status.currentMargin).to.eq(0);
         const userCollaterals = await marginTracker_.userCollaterals(await account4.getAddress(), USDC_.getAddress());
-        expect(userCollaterals).to.deep.eq(0);
+        expect(userCollaterals).to.eq(0);
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(
+        expect(globalStatus.lpNetValue).to.eq(
             normalized(803047.232) // (1000000 + 820 + 900 + 990) * 0.8 + 1000 - 150.96 * 0.8
         );
-        expect(globalStatus.netOpenInterest).to.deep.eq(normalized(100));
+        expect(globalStatus.netOpenInterest).to.eq(normalized(100));
         const insurance = await market_.insuranceBalance();
-        expect(insurance).to.deep.eq(0);
+        expect(insurance).to.eq(0);
         const liquidatorBalance = await marginTracker_.userCollaterals(
             await liquidator.getAddress(),
             USDC_.getAddress()
         );
-        expect(liquidatorBalance).to.deep.eq(usdcOf(134.89)); // 32.13 + 31.85 + 31.535 + 31.5 / 0.8
+        expect(liquidatorBalance).to.eq(usdcOf(134.89)); // 32.13 + 31.85 + 31.535 + 31.5 / 0.8
         expect(await positionManager_.isLiquidatable(await account4.getAddress())).to.eq(false);
     });
 });

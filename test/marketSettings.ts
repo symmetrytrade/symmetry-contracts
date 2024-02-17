@@ -20,7 +20,7 @@ describe("MarketSettings", () => {
         for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
             const key = hre.ethers.encodeBytes32String(term);
             const value = await marketSettings_.getIntVals(key);
-            expect(value).to.deep.eq(rawValue);
+            expect(value).to.eq(rawValue);
         }
     });
 
@@ -32,7 +32,7 @@ describe("MarketSettings", () => {
                     perpDomainKey(token),
                     hre.ethers.encodeBytes32String(k)
                 );
-                expect(value).to.deep.eq(v);
+                expect(value).to.eq(v);
             }
         }
     });

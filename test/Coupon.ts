@@ -134,8 +134,8 @@ describe("Coupon", () => {
 
         await setPythAutoRefresh(hre);
 
-        expect(await couponStaking_.DISCOUNT_START()).to.deep.eq(0);
-        expect(await couponStaking_.DISCOUNT_END()).to.deep.eq(10000000);
+        expect(await couponStaking_.DISCOUNT_START()).to.eq(0);
+        expect(await couponStaking_.DISCOUNT_END()).to.eq(10000000);
     });
 
     it("trade with tiered trading fee discount", async () => {
@@ -171,28 +171,24 @@ describe("Coupon", () => {
         const curWeek = startOfWeek(await helpers.time.latest());
         // check balances
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(10000 - 47.5 - 1));
+        expect(status.currentMargin).to.eq(normalized(10000 - 47.5 - 1));
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(normalized(1000000 + 42.75));
-        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.deep.eq(usdcOf(4.75));
-        expect(
-            await marginTracker_.userCollaterals(await feeTracker_.getAddress(), await USDC_.getAddress())
-        ).to.deep.eq(usdcOf(4.75));
+        expect(globalStatus.lpNetValue).to.eq(normalized(1000000 + 42.75));
+        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.eq(usdcOf(4.75));
+        expect(await marginTracker_.userCollaterals(await feeTracker_.getAddress(), await USDC_.getAddress())).to.eq(
+            usdcOf(4.75)
+        );
         // check volume
-        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.deep.eq(
-            normalized(50047.5)
-        );
-        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.deep.eq(
-            normalized(50047.5)
-        );
+        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.eq(normalized(50047.5));
+        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized(50047.5));
         let ts = startOfDay(await helpers.time.latest());
         for (let i = 0; i < 10; ++i) {
-            expect(await volumeTracker_.luckyCandidates(ts)).to.deep.eq(1);
-            expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.deep.eq(1);
+            expect(await volumeTracker_.luckyCandidates(ts)).to.eq(1);
+            expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.eq(1);
             ts += DAY;
         }
-        expect(await volumeTracker_.luckyCandidates(ts)).to.deep.eq(0);
-        expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.deep.eq(0);
+        expect(await volumeTracker_.luckyCandidates(ts)).to.eq(0);
+        expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.eq(0);
 
         await increaseNextBlockTimestamp(DAY);
         // open eth long, 50000 notional
@@ -221,25 +217,21 @@ describe("Coupon", () => {
             );
         // check volume
         curDay += DAY;
-        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.deep.eq(
-            normalized(100095)
-        );
-        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.deep.eq(
-            normalized(50047.5)
-        );
-        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay - DAY)).to.deep.eq(
+        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.eq(normalized(100095));
+        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized(50047.5));
+        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay - DAY)).to.eq(
             normalized(50047.5)
         );
         ts = curDay - DAY;
         for (let i = 0; i < 11; ++i) {
-            expect(await volumeTracker_.luckyCandidates(ts)).to.deep.eq(1);
-            expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.deep.eq(1);
+            expect(await volumeTracker_.luckyCandidates(ts)).to.eq(1);
+            expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.eq(1);
             ts += DAY;
         }
-        expect(await volumeTracker_.luckyCandidates(ts)).to.deep.eq(0);
-        expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.deep.eq(0);
+        expect(await volumeTracker_.luckyCandidates(ts)).to.eq(0);
+        expect(await volumeTracker_.userLuckyNumber(await account1.getAddress(), ts)).to.eq(0);
         status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.deep.eq(normalized(10000 - 95 - 2));
+        expect(status.currentMargin).to.eq(normalized(10000 - 95 - 2));
     });
     it("claim weekly trading coupon & veSYM incentive", async () => {
         await increaseNextBlockTimestamp(WEEK);
@@ -251,7 +243,7 @@ describe("Coupon", () => {
             "VolumeTracker: invalid date"
         );
 
-        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(0);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.eq(0);
 
         await volumeTracker_.issueLuckyNumber(startOfWeek(await helpers.time.latest()) - DAY);
         await helpers.mine(3);
@@ -261,14 +253,14 @@ describe("Coupon", () => {
             .withArgs(0, await account1.getAddress(), normalized(1));
     });
     it("apply coupon", async () => {
-        expect(await coupon_.ownerOf(0)).to.deep.eq(await account1.getAddress());
-        expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(0);
+        expect(await coupon_.ownerOf(0)).to.eq(await account1.getAddress());
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(0);
 
         //console.log(await coupon_.tokenURI(0));
 
         await coupon_.connect(account1).applyCoupons([0]);
         await expect(coupon_.ownerOf(0)).to.be.revertedWith("ERC721: invalid token ID");
-        expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(1));
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(normalized(1));
     });
     it("trade with coupon", async () => {
         // open eth long, 1000 notional
@@ -296,7 +288,7 @@ describe("Coupon", () => {
                 orderId
             );
 
-        expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(0.05));
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(normalized(0.05));
 
         // close eth long, 1000 notional
         await positionManager_.submitOrder({
@@ -322,7 +314,7 @@ describe("Coupon", () => {
                 normalized(0.05),
                 orderId
             );
-        expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(0);
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(0);
     });
     it("liquidate and mint coupon", async () => {
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 918 });
@@ -353,8 +345,8 @@ describe("Coupon", () => {
             .withArgs(1, await account1.getAddress(), normalized(91), evmTime + WEEK);
         await coupon_.connect(account1).mintAndApply(1);
         await expect(coupon_.ownerOf(1)).to.be.revertedWith("ERC721: invalid token ID");
-        expect(await coupon_.unspents(await account1.getAddress())).to.deep.eq(normalized(91));
-        expect(await coupon_.tokenCount()).to.deep.eq(2);
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(normalized(91));
+        expect(await coupon_.tokenCount()).to.eq(2);
     });
     it("lucky number", async () => {
         await helpers.time.setNextBlockTimestamp(startOfWeek(await helpers.time.latest()) + WEEK);
@@ -403,7 +395,7 @@ describe("Coupon", () => {
             hre.ethers.ZeroHash
         );
         const t = startOfDay(await helpers.time.latest()) - DAY;
-        expect(await volumeTracker_.luckyNumber(t)).to.deep.eq(
+        expect(await volumeTracker_.luckyNumber(t)).to.eq(
             "0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22"
         );
     });

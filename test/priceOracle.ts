@@ -50,8 +50,8 @@ describe("PriceOracle", () => {
             if (aggregator.name !== "Sequencer") {
                 const tokenAddress = await (await hre.ethers.getContract(aggregator.name)).getAddress();
                 const answer = await priceOracle_.getLatestChainlinkPrice(tokenAddress);
-                expect(answer[0]).to.deep.eq(1);
-                expect(answer[2]).to.deep.eq(BigInt(chainlinkPrices[aggregator.name]) * UNIT);
+                expect(answer[0]).to.eq(1);
+                expect(answer[2]).to.eq(BigInt(chainlinkPrices[aggregator.name]) * UNIT);
             }
         }
     });
@@ -72,12 +72,12 @@ describe("PriceOracle", () => {
             const gasFee = receipt!.gasUsed * receipt!.gasPrice;
             const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
             // check fee cost
-            expect(balanceBefore - balanceAfter).to.deep.eq(gasFee + 10n);
+            expect(balanceBefore - balanceAfter).to.eq(gasFee + 10n);
             // check answer
             const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             const answer = await priceOracle_.getPythPrice(tokenAddress);
-            expect(answer[0]).to.deep.eq(publishTime);
-            expect(answer[1]).to.deep.eq(new BigNumber(1e18).times(pythPrices[token.symbol]).toString(10));
+            expect(answer[0]).to.eq(publishTime);
+            expect(answer[1]).to.eq(new BigNumber(1e18).times(pythPrices[token.symbol]).toString(10));
         }
     });
 });

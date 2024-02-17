@@ -109,13 +109,13 @@ describe("Funding", () => {
                 orderId
             );
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(normalized(0.01));
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized(0.01));
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq(normalized(0.01));
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized(0.01));
         const fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.deep.eq(normalized(0.01));
-        expect(fs[1]).to.deep.eq(normalized(5));
+        expect(fs[0]).to.eq(normalized(0.01));
+        expect(fs[1]).to.eq(normalized(5));
     });
     it("open ETH short, filp the skew", async () => {
         const evmTime = BigInt(await helpers.time.latest());
@@ -145,21 +145,21 @@ describe("Funding", () => {
                 orderId
             );
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.deep.eq("-9990009990009990");
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq("-9990009990009990");
         let fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.deep.eq(normalized(0.02));
-        expect(fs[1]).to.deep.eq(normalized(20));
+        expect(fs[0]).to.eq(normalized(0.02));
+        expect(fs[1]).to.eq(normalized(20));
 
         await increaseNextBlockTimestamp(DAY);
 
         await helpers.mine(1);
         fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.deep.eq("19980019980020");
+        expect(fs[0]).to.eq("19980019980020");
 
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
         fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.deep.eq("-9980019980019979");
-        expect(fs[1]).to.deep.eq("25024980019980020000");
+        expect(fs[0]).to.eq("-9980019980019979");
+        expect(fs[1]).to.eq("25024980019980020000");
     });
 });

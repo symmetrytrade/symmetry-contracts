@@ -178,10 +178,10 @@ describe("Incentives", () => {
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);
         await helpers.mine(1);
         const toClaim = await getClaimable(await account1.getAddress(), week1, week1);
-        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account1.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week1 + WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week1 + 2n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.eq(week1 + WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week1 + 2n * WEEK);
     });
     it("week 2-60", async () => {
         /*=== week 2-60 ===*/
@@ -201,33 +201,33 @@ describe("Incentives", () => {
         }
         // account1 claim week 2-22(inclusive)
         let toClaim = await getClaimable(await account1.getAddress(), week2, week2 + 20n * WEEK);
-        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account1.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 21n * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 21n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.eq(week2 + 21n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week2 + 21n * WEEK);
         // account1 claim week 23-42(inclusive)
         toClaim = await getClaimable(await account1.getAddress(), week2 + 21n * WEEK, week2 + 40n * WEEK);
-        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account1.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 41n * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 41n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.eq(week2 + 41n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week2 + 41n * WEEK);
         // account1 claim week 42-60(inclusive)
         toClaim = await getClaimable(await account1.getAddress(), week2 + 41n * WEEK, week2 + 58n * WEEK);
-        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account1.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account1.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.deep.eq(week2 + 59n * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account1.getAddress())).to.eq(week2 + 59n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week2 + 60n * WEEK);
         // account2 claim week 1-50(inclusive)
         toClaim = await getClaimable(await account2.getAddress(), week2 - WEEK, week2 + 48n * WEEK);
-        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account2.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 49n * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.eq(week2 + 49n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week2 + 60n * WEEK);
         // account2 claim week 51-60(inclusive)
         toClaim = await getClaimable(await account2.getAddress(), week2 + 49n * WEEK, week2 + 58n * WEEK);
-        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.deep.eq(toClaim);
+        expect(await feeTracker_.claimIncentives.staticCall(await account2.getAddress())).to.eq(toClaim);
         await feeTracker_.claimIncentives(await account2.getAddress());
-        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.deep.eq(week2 + 59n * WEEK);
-        expect(await feeTracker_.incentiveWeekCursor()).to.deep.eq(week2 + 60n * WEEK);
+        expect(await feeTracker_.claimedWeekCursor(await account2.getAddress())).to.eq(week2 + 59n * WEEK);
+        expect(await feeTracker_.incentiveWeekCursor()).to.eq(week2 + 60n * WEEK);
     });
 });
