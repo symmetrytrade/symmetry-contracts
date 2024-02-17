@@ -1,6 +1,6 @@
 import { ArbGoerliTestnetConfig } from "./networks/ArbGoerli";
-import { ScrollSepoliaConfig } from "./networks/ScrollSepolia";
 import { ScrollConfig } from "./networks/Scroll";
+import { ScrollSepoliaConfig } from "./networks/ScrollSepolia";
 import { normalized, usdcOf } from "./utils/utils";
 
 interface ChainlinkConfig {

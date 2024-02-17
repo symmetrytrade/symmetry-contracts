@@ -1,8 +1,8 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getTypedContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 import { tokens } from "../utils/test_utils";
+import { CONTRACTS, deployInBeaconProxy, getTypedContract, mustGetKey } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deployInBeaconProxy(hre, CONTRACTS.PriceOracle);

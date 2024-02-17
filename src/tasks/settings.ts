@@ -1,8 +1,8 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, getTypedContract, marginConfigKey, mustGetKey, perpConfigKey, transact } from "../utils/utils";
-import { getConfig } from "../config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { getConfig } from "../config";
+import { CONTRACTS, getTypedContract, marginConfigKey, mustGetKey, perpConfigKey, transact } from "../utils/utils";
 
 export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = true) {
     const settings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);

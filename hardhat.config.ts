@@ -1,12 +1,12 @@
-import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
-import "@openzeppelin/hardhat-upgrades";
 import "@nomicfoundation/hardhat-toolbox";
+import "@openzeppelin/hardhat-upgrades";
+import "hardhat-abi-exporter";
 import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
-import "solidity-coverage";
 import "hardhat-interface-generator";
-import "hardhat-abi-exporter";
+import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
+import "solidity-coverage";
 
 // environment configs
 import dotenv from "dotenv";
@@ -21,15 +21,15 @@ const userConfig: HttpNetworkUserConfig = {
 };
 
 // tasks
+import "./src/tasks/access";
 import "./src/tasks/codesize";
-import "./src/tasks/upgrade";
-import "./src/tasks/timelock";
+import "./src/tasks/collateral";
+import "./src/tasks/coupon";
 import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
 import "./src/tasks/settings";
-import "./src/tasks/collateral";
-import "./src/tasks/access";
-import "./src/tasks/coupon";
+import "./src/tasks/timelock";
+import "./src/tasks/upgrade";
 
 const config: HardhatUserConfig = {
     paths: {

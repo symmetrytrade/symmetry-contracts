@@ -1,35 +1,35 @@
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import "hardhat-deploy";
-import { ContractFactory, ContractRunner, ethers } from "ethers";
+import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
 import { BigNumber } from "bignumber.js";
+import { ContractFactory, ContractRunner, ethers } from "ethers";
+import "hardhat-deploy";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
-    PriceOracle__factory,
-    Market__factory,
-    MarketSettings__factory,
-    LiquidityManager__factory,
-    PositionManager__factory,
-    LPToken__factory,
-    PerpTracker__factory,
-    FeeTracker__factory,
-    VolumeTracker__factory,
-    MarginTracker__factory,
-    VotingEscrow__factory,
-    SYM__factory,
-    TradingFeeCoupon__factory,
-    LiquidityGauge__factory,
-    VotingEscrowCallbackRelayer__factory,
-    SYMRate__factory,
-    TimelockController__factory,
-    NFTDescriptor__factory,
-    DebtInterestRateModel__factory,
-    TokenMinter__factory,
+    ChainlinkMock__factory,
     CouponStaking__factory,
+    DebtInterestRateModel__factory,
     FaucetToken__factory,
     FaucetWETH__factory,
-    ChainlinkMock__factory,
+    FeeTracker__factory,
+    LiquidityGauge__factory,
+    LiquidityManager__factory,
+    LPToken__factory,
+    MarginTracker__factory,
+    MarketSettings__factory,
+    Market__factory,
+    NFTDescriptor__factory,
+    PerpTracker__factory,
+    PositionManager__factory,
+    PriceOracle__factory,
     PythMock__factory,
+    SYMRate__factory,
+    SYM__factory,
+    TimelockController__factory,
+    TokenMinter__factory,
+    TradingFeeCoupon__factory,
+    VolumeTracker__factory,
+    VotingEscrowCallbackRelayer__factory,
+    VotingEscrow__factory,
 } from "../../typechain-types";
-import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
 
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";

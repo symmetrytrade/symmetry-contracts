@@ -1,6 +1,8 @@
-import hre, { deployments } from "hardhat";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import BigNumber from "bignumber.js";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getTypedContract } from "../src/utils/utils";
+import { ethers } from "ethers";
+import hre, { deployments } from "hardhat";
 import {
     chainlinkAggregators,
     latestBlockTimestamp,
@@ -8,9 +10,7 @@ import {
     tokens,
     updateChainlinkPrice,
 } from "../src/utils/test_utils";
-import { ethers } from "ethers";
-import BigNumber from "bignumber.js";
-import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { CONTRACTS, getTypedContract, UNIT } from "../src/utils/utils";
 import { PriceOracle } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
