@@ -1,6 +1,7 @@
 {
     "tabWidth": 4,
     "useTabs": false,
+    "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-solidity"],
     "overrides": [
         {
             "files": "*.sol",
