@@ -1,21 +1,22 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getProxyContract, normalized, perpDomainKey } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getTypedContract, normalized, perpDomainKey } from "../src/utils/utils";
 import { ethers } from "ethers";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { PerpTracker } from "../typechain-types";
 
 describe("PerpTracker", () => {
-    let perpTracker_: ethers.Contract;
+    let perpTracker_: PerpTracker;
     let WETH: string;
     let WBTC: string;
 
     before(async () => {
         await deployments.fixture();
         const { deployer } = await hre.getNamedAccounts();
-        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, deployer);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
+        perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
         // set market to deployer for test
         await (await perpTracker_.setMarket(deployer)).wait();
     });
@@ -30,9 +31,15 @@ describe("PerpTracker", () => {
     ) {
         const oraclePrice = normalized(2000);
         const kLP = normalized(10000 * 2000);
-        const fillPrice = await perpTracker_.swapOnAMM.staticCall([WETH, skew, size, oraclePrice, kLP]);
+        const fillPrice = await perpTracker_.swapOnAMM.staticCall({
+            token: WETH,
+            skew,
+            size,
+            oraclePrice,
+            lpNetValue: kLP,
+        });
         assertDiffWithin(fillPrice, expectedFillPrice, "2000");
-        await (await perpTracker_.swapOnAMM([WETH, skew, size, oraclePrice, kLP])).wait();
+        await (await perpTracker_.swapOnAMM({ token: WETH, skew, size, oraclePrice, lpNetValue: kLP })).wait();
         const priceInfo = await perpTracker_.getPriceInfo(WETH);
         assertDiffWithin(priceInfo.longByMidPrice, expectedLongByMidPrice, "1");
         assertDiffWithin(priceInfo.shortByMidPrice, expectedShortByMidPrice, "1");

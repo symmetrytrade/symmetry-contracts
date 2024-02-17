@@ -1,17 +1,17 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, getProxyContract, perpDomainKey } from "../src/utils/utils";
-import { ethers } from "ethers";
+import { CONTRACTS, getTypedContract, perpDomainKey } from "../src/utils/utils";
 import { NetworkConfigs, getConfig } from "../src/config";
+import { MarketSettings } from "../typechain-types";
 
 describe("MarketSettings", () => {
-    let marketSettings_: ethers.Contract;
+    let marketSettings_: MarketSettings;
     let config: NetworkConfigs;
 
     before(async () => {
         await deployments.fixture();
         const account1 = (await hre.ethers.getSigners())[1];
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings, account1);
         config = getConfig(hre.network.name);
     });
 

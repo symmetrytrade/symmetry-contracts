@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;
@@ -8,7 +8,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployInBeaconProxy(hre, CONTRACTS.NFTDescriptor);
 
-    const descriptor = await getProxyContract(hre, CONTRACTS.NFTDescriptor, deployer);
+    const descriptor = await getTypedContract(hre, CONTRACTS.NFTDescriptor);
     await (await descriptor.initialize(deployer)).wait();
 };
 

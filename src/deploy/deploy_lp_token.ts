@@ -1,18 +1,9 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS } from "../utils/utils";
+import { CONTRACTS, deployDirectly } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
-    const { deploy } = deployments;
-
-    await deploy(CONTRACTS.LPToken.name, {
-        from: deployer,
-        contract: CONTRACTS.LPToken.contract,
-        args: ["SYM LP Token", "symLP"],
-        log: true,
-    });
+    await deployDirectly(hre, CONTRACTS.LPToken, ["SYM LP Token", "symLP"]);
 };
 
 deploy.tags = [CONTRACTS.LPToken.name, "prod"];

@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, getProxyContract } from "../src/utils/utils";
+import { CONTRACTS, UNIT, getTypedContract } from "../src/utils/utils";
 import {
     chainlinkAggregators,
     latestBlockTimestamp,
@@ -11,6 +11,7 @@ import {
 import { ethers } from "ethers";
 import BigNumber from "bignumber.js";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { PriceOracle } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -26,20 +27,20 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("PriceOracle", () => {
-    let priceOracle_: ethers.Contract;
+    let priceOracle_: PriceOracle;
     let account1: ethers.Signer;
 
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
     });
 
     it("chainlink sequencer", async () => {
-        const aggregator_ = await hre.ethers.getContract("ChainlinkAggregatorSequencer", account1);
-        await (await aggregator_.feed(1, helpers.time.latest())).wait();
+        const aggregator_ = await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer, account1);
+        await (await aggregator_.feed(1, await helpers.time.latest())).wait();
         await expect(
-            priceOracle_.getLatestChainlinkPrice(await (await hre.ethers.getContract("USDC")).getAddress())
+            priceOracle_.getLatestChainlinkPrice(await (await getTypedContract(hre, CONTRACTS.USDC)).getAddress())
         ).to.be.revertedWith("PriceOracle: Sequencer is down");
     });
 
@@ -67,7 +68,7 @@ describe("PriceOracle", () => {
                     value: 10,
                 })
             ).wait();
-            const gasFee = receipt.gasUsed * receipt.gasPrice;
+            const gasFee = receipt!.gasUsed * receipt!.gasPrice;
             const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
             // check fee cost
             expect(balanceBefore - balanceAfter).to.deep.eq(gasFee + 10n);

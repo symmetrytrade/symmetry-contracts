@@ -1,15 +1,16 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, UNIT, div_D, getProxyContract, mul_D, normalized } from "../src/utils/utils";
+import { CONTRACTS, UNIT, deployDirectly, div_D, getTypedContract, mul_D, normalized } from "../src/utils/utils";
 import { DAY, HOUR } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { getConfig } from "../src/config";
+import { DebtInterestRateModel, Market } from "../typechain-types";
 
 describe("Debt", () => {
     let account1: ethers.Signer;
-    let market_: ethers.Contract;
-    let interestRateModel_: ethers.Contract;
+    let market_: Market;
+    let interestRateModel_: DebtInterestRateModel;
     let totalDebt: bigint;
     let debtRatio: bigint;
     let vertexDebtRatio: bigint;
@@ -24,23 +25,17 @@ describe("Debt", () => {
 
         const { getNamedAccounts } = hre;
         const { deployer } = await getNamedAccounts();
-        const { deploy } = deployments;
-        market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
+        market_ = await getTypedContract(hre, CONTRACTS.Market);
         const config = getConfig(hre.network.name);
         vertexDebtRatio = BigInt(config.marketGeneralConfig.vertexDebtRatio);
         vertexInterestRate = BigInt(config.marketGeneralConfig.vertexInterestRate);
         maxInterestRate = BigInt(config.marketGeneralConfig.maxInterestRate);
         minInterestRate = BigInt(config.marketGeneralConfig.minInterestRate);
         // deploy self-controlled interest rate model contract
-        interestRateModel_ = await getProxyContract(hre, CONTRACTS.DebtInterestRateModel, account1);
+        interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel, account1);
 
-        await deploy(CONTRACTS.DebtInterestRateModel.name, {
-            from: deployer,
-            contract: CONTRACTS.DebtInterestRateModel.contract,
-            args: [],
-            log: true,
-        });
-        interestRateModel_ = await hre.ethers.getContract(CONTRACTS.DebtInterestRateModel.name);
+        await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
+        interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel);
         await (await interestRateModel_.initialize(await market_.getAddress(), deployer)).wait();
         totalDebt = BigInt(normalized(123456789.1234567));
         debtRatio = BigInt(normalized(0.1)); // 10%

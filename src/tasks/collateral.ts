@@ -1,15 +1,13 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, getProxyContract, mustGetKey } from "../utils/utils";
+import { CONTRACTS, getTypedContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
 
 task("collateral:add", "add collateral")
     .addParam("collateral", "token name", undefined, types.string, false)
     .setAction(async (taskArgs, hre) => {
-        const { getNamedAccounts } = hre;
-        const { deployer } = await getNamedAccounts();
         const config = getConfig(hre.network.name);
-        const marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, deployer);
+        const marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker);
         const token = mustGetKey(config.addresses, taskArgs.collateral);
         await (await marginTracker_.addCollateralToken(token)).wait();
     });

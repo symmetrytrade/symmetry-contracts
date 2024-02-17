@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     DAY,
     WEEK,
@@ -14,6 +14,21 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    CouponStaking,
+    FaucetToken,
+    FeeTracker,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PositionManager,
+    PriceOracle,
+    SYM,
+    TradingFeeCoupon,
+    VolumeTracker,
+    VotingEscrow,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -33,20 +48,20 @@ describe("Coupon", () => {
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
-    let volumeTracker_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let coupon_: ethers.Contract;
-    let sym_: ethers.Contract;
+    let market_: Market;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
+    let volumeTracker_: VolumeTracker;
+    let votingEscrow_: VotingEscrow;
+    let coupon_: TradingFeeCoupon;
+    let sym_: SYM;
     let WETH: string;
-    let USDC_: ethers.Contract;
-    let feeTracker_: ethers.Contract;
-    let couponStaking_: ethers.Contract;
+    let USDC_: FaucetToken;
+    let feeTracker_: FeeTracker;
+    let couponStaking_: CouponStaking;
 
     before(async () => {
         deployer = (await hre.ethers.getSigners())[0];
@@ -54,20 +69,20 @@ describe("Coupon", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
-        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, deployer);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
-        feeTracker_ = await getProxyContract(hre, CONTRACTS.FeeTracker, account1);
-        volumeTracker_ = await getProxyContract(hre, CONTRACTS.VolumeTracker, account1);
-        votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
-        coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
-        couponStaking_ = await getProxyContract(hre, CONTRACTS.CouponStaking, deployer);
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
+        marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
+        feeTracker_ = await getTypedContract(hre, CONTRACTS.FeeTracker, account1);
+        volumeTracker_ = await getTypedContract(hre, CONTRACTS.VolumeTracker, account1);
+        votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
+        coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
+        couponStaking_ = await getTypedContract(hre, CONTRACTS.CouponStaking);
+        sym_ = await getTypedContract(hre, CONTRACTS.SYM);
         config = getConfig(hre.network.name);
 
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
@@ -145,14 +160,14 @@ describe("Coupon", () => {
 
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1001),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1001),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -199,14 +214,14 @@ describe("Coupon", () => {
         await increaseNextBlockTimestamp(DAY);
         // open eth long, 50000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(50),
-                normalized(1001),
-                usdcOf(1),
-                BigInt(await helpers.time.latest()) + DAY + 100n,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(50),
+                acceptablePrice: normalized(1001),
+                keeperFee: usdcOf(1),
+                expiry: BigInt(await helpers.time.latest()) + DAY + 100n,
+                reduceOnly: false,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -277,14 +292,14 @@ describe("Coupon", () => {
     it("trade with coupon", async () => {
         // open eth long, 1000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(1),
-                normalized(1010),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(1),
+                acceptablePrice: normalized(1010),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -306,14 +321,14 @@ describe("Coupon", () => {
 
         // close eth long, 1000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(-1),
-                normalized(999),
-                usdcOf(1),
-                (await helpers.time.latest()) + 100,
-                true,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(-1),
+                acceptablePrice: normalized(999),
+                keeperFee: usdcOf(1),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: true,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 

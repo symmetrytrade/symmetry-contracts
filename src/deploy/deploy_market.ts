@@ -1,32 +1,30 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getProxyContract } from "../utils/utils";
+import { CONTRACTS, SPENDER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
 import { getConfig } from "../config";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { getNamedAccounts } = hre;
-    const { deployer } = await getNamedAccounts();
     const config = getConfig(hre.network.name);
 
     await deployInBeaconProxy(hre, CONTRACTS.Market);
 
-    const market_ = await getProxyContract(hre, CONTRACTS.Market, deployer);
+    const market_ = await getTypedContract(hre, CONTRACTS.Market);
 
     // initialize
     console.log(`initializing ${CONTRACTS.Market.name}..`);
     const baseToken = config.addresses?.USDC
         ? config.addresses.USDC
-        : await (await hre.ethers.getContract(CONTRACTS.USDC.name)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.USDC)).getAddress();
     const WETH = config.addresses?.WETH
         ? config.addresses.WETH
-        : await (await hre.ethers.getContract(CONTRACTS.WETH.name)).getAddress();
-    const priceOracle = await (await hre.ethers.getContract(CONTRACTS.PriceOracle.name)).getAddress();
-    const marketSettings = await (await hre.ethers.getContract(CONTRACTS.MarketSettings.name)).getAddress();
+        : await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+    const priceOracle = await (await getTypedContract(hre, CONTRACTS.PriceOracle)).getAddress();
+    const marketSettings = await (await getTypedContract(hre, CONTRACTS.MarketSettings)).getAddress();
     if (!(await market_.initialized())) {
         await (await market_.initialize(baseToken, priceOracle, marketSettings, WETH)).wait();
     }
     // set coupon
-    const coupon_ = await getProxyContract(hre, CONTRACTS.TradingFeeCoupon, deployer);
+    const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     await (await market_.setCoupon(await coupon_.getAddress())).wait();
 
     // add spender role of coupon

@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
@@ -10,6 +10,15 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PositionManager,
+    PriceOracle,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -29,22 +38,20 @@ describe("Liquidation", () => {
     let account2: ethers.Signer;
     let account3: ethers.Signer;
     let account4: ethers.Signer;
-    let deployer: ethers.Signer;
     let liquidator: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
+    let market_: Market;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
     let WETH: string;
     let WBTC: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         account3 = (await hre.ethers.getSigners())[3];
@@ -52,15 +59,15 @@ describe("Liquidation", () => {
         liquidator = (await hre.ethers.getSigners())[5];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
-        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, account1);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
+        marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, account1);
         config = getConfig(hre.network.name);
 
         for (let i = 1; i <= 4; ++i) {
@@ -105,14 +112,14 @@ describe("Liquidation", () => {
 
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -122,14 +129,14 @@ describe("Liquidation", () => {
 
         // open btc long, 100 notional
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(0.01),
-                normalized(10000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(0.01),
+                acceptablePrice: normalized(10000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -189,14 +196,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -262,14 +269,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -335,14 +342,14 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

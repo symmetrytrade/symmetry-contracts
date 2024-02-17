@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, UNIT, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
@@ -10,6 +10,16 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LiquidityManager,
+    MarginTracker,
+    Market,
+    MarketSettings,
+    PerpTracker,
+    PositionManager,
+    PriceOracle,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -26,34 +36,32 @@ const pythPrices: { [key: string]: number } = {
 
 describe("Market", () => {
     let account1: ethers.Signer;
-    let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
-    let priceOracle_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
-    let marginTracker_: ethers.Contract;
+    let market_: Market;
+    let perpTracker_: PerpTracker;
+    let priceOracle_: PriceOracle;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let marketSettings_: MarketSettings;
+    let marginTracker_: MarginTracker;
     let WETH: string;
     let WBTC: string;
-    let USDC_: ethers.Contract;
+    let USDC_: FaucetToken;
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        WBTC = await (await hre.ethers.getContract("WBTC")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
-        priceOracle_ = await getProxyContract(hre, CONTRACTS.PriceOracle, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
-        marginTracker_ = await getProxyContract(hre, CONTRACTS.MarginTracker, account1);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
+        priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
+        marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, account1);
         config = getConfig(hre.network.name);
 
         await (await USDC_.transfer(await account1.getAddress(), usdcOf(100000000))).wait();
@@ -123,14 +131,14 @@ describe("Market", () => {
         expect(status.currentMargin).to.deep.eq(normalized(1470));
 
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(10),
-                normalized(1550),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(10),
+                acceptablePrice: normalized(1550),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -179,14 +187,14 @@ describe("Market", () => {
     it("trade BTC short revert", async () => {
         await increaseNextBlockTimestamp(5); // 5s
         await expect(
-            positionManager_.submitOrder([
-                WBTC,
-                normalized(-2),
-                normalized(15000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(-2),
+                acceptablePrice: normalized(15000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).to.be.revertedWith("PositionManager: leverage ratio too large");
         const orderId = await positionManager_.orderCnt();
 
@@ -208,14 +216,14 @@ describe("Market", () => {
     it("trade BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(-0.5),
-                normalized(15000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(-0.5),
+                acceptablePrice: normalized(15000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -265,14 +273,14 @@ describe("Market", () => {
     it("close BTC short", async () => {
         await increaseNextBlockTimestamp(10); // 10s
         await (
-            await positionManager_.submitOrder([
-                WBTC,
-                normalized(0.5),
-                normalized(25000),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                true,
-            ])
+            await positionManager_.submitOrder({
+                token: WBTC,
+                size: normalized(0.5),
+                acceptablePrice: normalized(25000),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: true,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

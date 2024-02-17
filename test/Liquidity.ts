@@ -1,6 +1,6 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getProxyContract, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, MAX_UINT256, UNIT, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
@@ -10,6 +10,15 @@ import {
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import {
+    FaucetToken,
+    LPToken,
+    LiquidityManager,
+    Market,
+    MarketSettings,
+    PerpTracker,
+    PositionManager,
+} from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
     Sequencer: 0,
@@ -26,30 +35,28 @@ const pythPrices: { [key: string]: number } = {
 
 describe("Liquidity", () => {
     let account1: ethers.Signer;
-    let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let market_: ethers.Contract;
-    let perpTracker_: ethers.Contract;
-    let positionManager_: ethers.Contract;
-    let liquidityManager_: ethers.Contract;
-    let lpToken_: ethers.Contract;
+    let market_: Market;
+    let perpTracker_: PerpTracker;
+    let positionManager_: PositionManager;
+    let liquidityManager_: LiquidityManager;
+    let lpToken_: LPToken;
     let WETH: string;
-    let USDC_: ethers.Contract;
-    let marketSettings_: ethers.Contract;
+    let USDC_: FaucetToken;
+    let marketSettings_: MarketSettings;
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await hre.ethers.getContract("WETH")).getAddress();
-        USDC_ = await hre.ethers.getContract("USDC", deployer);
-        market_ = await getProxyContract(hre, CONTRACTS.Market, account1);
-        lpToken_ = await getProxyContract(hre, CONTRACTS.LPToken, account1);
-        perpTracker_ = await getProxyContract(hre, CONTRACTS.PerpTracker, account1);
-        liquidityManager_ = await getProxyContract(hre, CONTRACTS.LiquidityManager, account1);
-        positionManager_ = await getProxyContract(hre, CONTRACTS.PositionManager, account1);
-        marketSettings_ = await getProxyContract(hre, CONTRACTS.MarketSettings, deployer);
+        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
+        market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
+        lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken, account1);
+        perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
+        liquidityManager_ = await getTypedContract(hre, CONTRACTS.LiquidityManager, account1);
+        positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
+        marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
         config = getConfig(hre.network.name);
 
         await (
@@ -112,14 +119,14 @@ describe("Liquidity", () => {
             await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
         ).wait();
         await (
-            await positionManager_.submitOrder([
-                WETH,
-                normalized(1),
-                normalized(1550),
-                usdcOf(0),
-                (await helpers.time.latest()) + 100,
-                false,
-            ])
+            await positionManager_.submitOrder({
+                token: WETH,
+                size: normalized(1),
+                acceptablePrice: normalized(1550),
+                keeperFee: usdcOf(0),
+                expiry: (await helpers.time.latest()) + 100,
+                reduceOnly: false,
+            })
         ).wait();
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

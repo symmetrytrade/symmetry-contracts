@@ -1,21 +1,22 @@
 import hre, { deployments } from "hardhat";
 import { expect } from "chai";
-import { CONTRACTS, MINTER_ROLE, getProxyContract, normalized } from "../src/utils/utils";
+import { CONTRACTS, MINTER_ROLE, getTypedContract, normalized } from "../src/utils/utils";
 import { WEEK, increaseNextBlockTimestamp, setPythAutoRefresh, startOfWeek } from "../src/utils/test_utils";
 import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { NetworkConfigs, getConfig } from "../src/config";
+import { LPToken, LiquidityGauge, SYM, VotingEscrow, VotingEscrowCallbackRelayer } from "../typechain-types";
 
 describe("tokenomics", () => {
     let account1: ethers.Signer;
     let account2: ethers.Signer;
     let deployer: ethers.Signer;
     let config: NetworkConfigs;
-    let lpToken_: ethers.Contract;
-    let liquidityGauge_: ethers.Contract;
-    let votingEscrow_: ethers.Contract;
-    let callbackRelayer_: ethers.Contract;
-    let sym_: ethers.Contract;
+    let lpToken_: LPToken;
+    let liquidityGauge_: LiquidityGauge;
+    let votingEscrow_: VotingEscrow;
+    let callbackRelayer_: VotingEscrowCallbackRelayer;
+    let sym_: SYM;
     let maxTime: bigint;
 
     async function userVestBalanceAt(account: ethers.Signer, ts: ethers.BigNumberish) {
@@ -35,11 +36,11 @@ describe("tokenomics", () => {
         account1 = (await hre.ethers.getSigners())[1];
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
-        callbackRelayer_ = await hre.ethers.getContract(CONTRACTS.VotingEscrowCallbackRelayer.name, deployer);
-        lpToken_ = await hre.ethers.getContract(CONTRACTS.LPToken.name, deployer);
-        sym_ = await hre.ethers.getContract(CONTRACTS.SYM.name, deployer);
-        liquidityGauge_ = await getProxyContract(hre, CONTRACTS.LiquidityGauge, account1);
-        votingEscrow_ = await getProxyContract(hre, CONTRACTS.VotingEscrow, account1);
+        callbackRelayer_ = await getTypedContract(hre, CONTRACTS.VotingEscrowCallbackRelayer);
+        lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken);
+        sym_ = await getTypedContract(hre, CONTRACTS.SYM);
+        liquidityGauge_ = await getTypedContract(hre, CONTRACTS.LiquidityGauge, account1);
+        votingEscrow_ = await getTypedContract(hre, CONTRACTS.VotingEscrow, account1);
         config = getConfig(hre.network.name);
         maxTime = BigInt(config.otherConfig.lockMaxTime);
 
