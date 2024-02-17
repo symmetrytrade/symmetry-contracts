@@ -56,7 +56,6 @@ describe("Position", () => {
     let WETH: string;
     let WBTC: string;
     let USDC_: FaucetToken;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     async function checkOrders(account: string, ids: ethers.BigNumberish[]) {
         const orders = await positionManager_.getUserOrders(account, 0);

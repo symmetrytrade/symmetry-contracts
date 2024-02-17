@@ -55,7 +55,6 @@ describe("Margin", () => {
     let lp: bigint;
     let userMargin: bigint;
     let baseMargin: bigint;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];
