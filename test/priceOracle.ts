@@ -1,5 +1,4 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import BigNumber from "bignumber.js";
 import { expect } from "chai";
 import { ethers } from "ethers";
 import hre, { deployments } from "hardhat";
@@ -10,7 +9,7 @@ import {
     tokens,
     updateChainlinkPrice,
 } from "../src/utils/test_utils";
-import { CONTRACTS, getTypedContract, UNIT } from "../src/utils/utils";
+import { CONTRACTS, getTypedContract, normalized, tokenOf, UNIT } from "../src/utils/utils";
 import { PriceOracle } from "../typechain-types";
 
 const chainlinkPrices: { [key: string]: number } = {
@@ -20,8 +19,8 @@ const chainlinkPrices: { [key: string]: number } = {
     WBTC: 20000,
 };
 
-const pythPrices: { [key: string]: number } = {
-    USDC: 0.998,
+const pythPrices: { [key: string]: string | number } = {
+    USDC: "0.998",
     WETH: 1499,
     WBTC: 19999,
 };
@@ -58,7 +57,7 @@ describe("PriceOracle", () => {
 
     it("pyth feed price", async () => {
         for (const token of tokens) {
-            const price = new BigNumber(pythPrices[token.symbol]).multipliedBy(10 ** -token.expo).toString(10);
+            const price = tokenOf(pythPrices[token.symbol], -token.expo);
             const publishTime = await latestBlockTimestamp(hre);
             const data = pythDataEncode(token.pythId, price, token.expo, publishTime);
             await expect(priceOracle_.updatePythPrice([data])).to.be.revertedWith("PriceOracle: insufficient fee");
@@ -77,7 +76,7 @@ describe("PriceOracle", () => {
             const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             const answer = await priceOracle_.getPythPrice(tokenAddress);
             expect(answer[0]).to.eq(publishTime);
-            expect(answer[1]).to.eq(new BigNumber(1e18).times(pythPrices[token.symbol]).toString(10));
+            expect(answer[1]).to.eq(normalized(pythPrices[token.symbol]));
         }
     });
 });
