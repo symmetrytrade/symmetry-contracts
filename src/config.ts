@@ -16,53 +16,53 @@ interface PythConfig {
 // to be loaded in MarketSetting contract
 interface MarketGeneralConfig {
     pythMaxAge: number;
-    maxPriceDivergence: string;
-    minMaintenanceMargin: string;
-    maintenanceMarginRatio: string;
+    maxPriceDivergence: bigint;
+    minMaintenanceMargin: bigint;
+    maintenanceMarginRatio: bigint;
     maxLeverageRatio: number;
-    liquidationFeeRatio: string;
-    minLiquidationFee: string;
-    maxLiquidationFee: string;
-    liquidationPenaltyRatio: string;
-    liquidationCouponRatio: string;
-    liquidityRedeemFee: string;
-    softLimitThreshold: string;
-    hardLimitThreshold: string;
+    liquidationFeeRatio: bigint;
+    minLiquidationFee: bigint;
+    maxLiquidationFee: bigint;
+    liquidationPenaltyRatio: bigint;
+    liquidationCouponRatio: bigint;
+    liquidityRedeemFee: bigint;
+    softLimitThreshold: bigint;
+    hardLimitThreshold: bigint;
     minOrderDelay: number;
-    minKeeperFee: string;
-    minMargin: string;
-    liquidityRange: string;
+    minKeeperFee: bigint;
+    minMargin: bigint;
+    liquidityRange: bigint;
     priceDelay: number;
-    maxFundingVelocity: string;
-    maxFinancingFeeRate: string;
-    perpTradingFee: string;
-    maxCouponDeductionRatio: string;
-    tokenOILimitRatio: string;
-    veSYMFeeIncentiveRatio: string;
-    treasuryFeeRatio: string;
-    oneDrawRequirement: string;
-    oneDrawReward: string;
-    minCouponValue: string;
-    baseConversionRatio: string;
-    maxDebtRatio: string;
-    vertexDebtRatio: string;
-    vertexInterestRate: string;
-    maxInterestRate: string;
-    minInterestRate: string;
-    settleThreshold: string;
-    collateralLiquidationPenalty: string;
-    collateralPenaltyToLp: string;
+    maxFundingVelocity: bigint;
+    maxFinancingFeeRate: bigint;
+    perpTradingFee: bigint;
+    maxCouponDeductionRatio: bigint;
+    tokenOILimitRatio: bigint;
+    veSYMFeeIncentiveRatio: bigint;
+    treasuryFeeRatio: bigint;
+    oneDrawRequirement: bigint;
+    oneDrawReward: bigint;
+    minCouponValue: bigint;
+    baseConversionRatio: bigint;
+    maxDebtRatio: bigint;
+    vertexDebtRatio: bigint;
+    vertexInterestRate: bigint;
+    maxInterestRate: bigint;
+    minInterestRate: bigint;
+    settleThreshold: bigint;
+    collateralLiquidationPenalty: bigint;
+    collateralPenaltyToLp: bigint;
 }
 
 // to be loaded in MarketSetting contract by market key
 interface MarketConfig {
-    proportionRatio: string;
+    proportionRatio: bigint;
 }
 
 interface MarginConfig {
-    conversionRatio: string;
-    floorPriceRatio: string;
-    collateralCap: string;
+    conversionRatio: bigint;
+    floorPriceRatio: bigint;
+    collateralCap: bigint;
 }
 
 // to be loaded in separate contracts
@@ -89,60 +89,60 @@ export interface NetworkConfigs {
 }
 
 export interface TradingFeeTier {
-    portion: string;
-    discount: string;
+    portion: bigint;
+    discount: bigint;
 }
 
 export interface TradingFeeRebateTier {
-    requirement: string;
-    rebateRatio: string;
+    requirement: bigint;
+    rebateRatio: bigint;
 }
 
 export interface Rate {
     startTime: number;
-    rate: string;
+    rate: bigint;
 }
 
 const DefaultConfig: NetworkConfigs = {
     gracePeriodTime: 0,
     marketGeneralConfig: {
         pythMaxAge: 180, // 3 minutes
-        maxPriceDivergence: normalized(1.005), // 0.5%
+        maxPriceDivergence: normalized("1.005"), // 0.5%
         minMaintenanceMargin: normalized(20), // 20u
-        maintenanceMarginRatio: normalized(0.02), // 2%
+        maintenanceMarginRatio: normalized("0.02"), // 2%
         maxLeverageRatio: 25, // 25x
-        liquidationFeeRatio: normalized(0.0035), // 0.35%
+        liquidationFeeRatio: normalized("0.0035"), // 0.35%
         minLiquidationFee: normalized(1), // 1u
         maxLiquidationFee: normalized(1000), // 1000u
-        liquidationPenaltyRatio: normalized(0.01), // 1%
+        liquidationPenaltyRatio: normalized("0.01"), // 1%
         liquidationCouponRatio: normalized(0), // 0%
-        liquidityRedeemFee: normalized(0.001), // 0.1%
-        softLimitThreshold: normalized(0.5), // 50% of lp net value
-        hardLimitThreshold: normalized(0.9), // 90% of lp net value
+        liquidityRedeemFee: normalized("0.001"), // 0.1%
+        softLimitThreshold: normalized("0.5"), // 50% of lp net value
+        hardLimitThreshold: normalized("0.9"), // 90% of lp net value
         minOrderDelay: 60, // 1 minute
         minKeeperFee: usdcOf(1), // 1 usd
         minMargin: normalized(50), // 50 usd
-        liquidityRange: normalized(0.5),
+        liquidityRange: normalized("0.5"),
         priceDelay: 10, // 10 seconds,
         maxFundingVelocity: normalized(300), // 30000% / day^2
-        maxFinancingFeeRate: normalized(0.09), // 9% per day
-        perpTradingFee: normalized(0.001), // 0.1%
+        maxFinancingFeeRate: normalized("0.09"), // 9% per day
+        perpTradingFee: normalized("0.001"), // 0.1%
         maxCouponDeductionRatio: normalized(1), // 100%
-        tokenOILimitRatio: normalized(0.7),
+        tokenOILimitRatio: normalized("0.7"),
         veSYMFeeIncentiveRatio: normalized(0), // 0%
         treasuryFeeRatio: normalized(0), // 0%
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
         minCouponValue: normalized(1), // 1 usd
-        baseConversionRatio: normalized(1.2), // 1.2
+        baseConversionRatio: normalized("1.2"), // 1.2
         maxDebtRatio: normalized(2), // 200%
-        vertexDebtRatio: normalized(0.4), // 40%
-        vertexInterestRate: normalized(0.25), // 25%
-        maxInterestRate: normalized(1.2), // 120%
-        minInterestRate: normalized(0.05), // 5%
+        vertexDebtRatio: normalized("0.4"), // 40%
+        vertexInterestRate: normalized("0.25"), // 25%
+        maxInterestRate: normalized("1.2"), // 120%
+        minInterestRate: normalized("0.05"), // 5%
         settleThreshold: usdcOf(10000), // 10000 USDC
-        collateralLiquidationPenalty: normalized(0.01), // 1%
-        collateralPenaltyToLp: normalized(0.5), // 50%
+        collateralLiquidationPenalty: normalized("0.01"), // 1%
+        collateralPenaltyToLp: normalized("0.5"), // 50%
     },
     marketConfig: {
         WBTC: {
@@ -156,16 +156,16 @@ const DefaultConfig: NetworkConfigs = {
         USDC: {
             conversionRatio: normalized(1),
             floorPriceRatio: normalized(1),
-            collateralCap: "0",
+            collateralCap: 0n,
         },
         WBTC: {
-            conversionRatio: normalized(0.9),
-            floorPriceRatio: normalized(0.99),
+            conversionRatio: normalized("0.9"),
+            floorPriceRatio: normalized("0.99"),
             collateralCap: normalized(100),
         },
         WETH: {
-            conversionRatio: normalized(0.9),
-            floorPriceRatio: normalized(0.985),
+            conversionRatio: normalized("0.9"),
+            floorPriceRatio: normalized("0.985"),
             collateralCap: normalized(1000),
         },
     },
@@ -174,15 +174,15 @@ const DefaultConfig: NetworkConfigs = {
         vestingWeeks: 12, // 12 weeks
         liquidityGaugeStartTime: 0, // 0 for now
         tradingFeeTiers: [
-            { portion: normalized(0.005), discount: normalized(0.1) },
-            { portion: normalized(0.001), discount: normalized(0.05) },
-            { portion: normalized(0.0001), discount: normalized(0.03) },
-            { portion: normalized(0.00001), discount: normalized(0.01) },
+            { portion: normalized("0.005"), discount: normalized("0.1") },
+            { portion: normalized("0.001"), discount: normalized("0.05") },
+            { portion: normalized("0.0001"), discount: normalized("0.03") },
+            { portion: normalized("0.00001"), discount: normalized("0.01") },
         ],
         tradingFeeRebateTiers: [
-            { requirement: normalized(25000000), rebateRatio: normalized(0.1) },
-            { requirement: normalized(5000000), rebateRatio: normalized(0.05) },
-            { requirement: normalized(100000), rebateRatio: normalized(0.01) },
+            { requirement: normalized(25000000), rebateRatio: normalized("0.1") },
+            { requirement: normalized(5000000), rebateRatio: normalized("0.05") },
+            { requirement: normalized(100000), rebateRatio: normalized("0.01") },
         ],
         symRate: [
             { startTime: 0, rate: normalized(1) },

@@ -32,76 +32,76 @@ export const ScrollConfig: NetworkConfigs = {
     gracePeriodTime: 0,
     marketGeneralConfig: {
         pythMaxAge: 60,
-        maxPriceDivergence: normalized(1.02),
+        maxPriceDivergence: normalized("1.02"),
         minMaintenanceMargin: normalized(20),
-        maintenanceMarginRatio: normalized(0.02),
+        maintenanceMarginRatio: normalized("0.02"),
         maxLeverageRatio: 25,
-        liquidationFeeRatio: normalized(0.0035),
+        liquidationFeeRatio: normalized("0.0035"),
         minLiquidationFee: normalized(5),
         maxLiquidationFee: normalized(1000),
-        liquidationPenaltyRatio: normalized(0.009),
-        liquidationCouponRatio: normalized(0.001),
-        liquidityRedeemFee: normalized(0.001),
-        softLimitThreshold: normalized(0.7),
-        hardLimitThreshold: normalized(0.9),
+        liquidationPenaltyRatio: normalized("0.009"),
+        liquidationCouponRatio: normalized("0.001"),
+        liquidityRedeemFee: normalized("0.001"),
+        softLimitThreshold: normalized("0.7"),
+        hardLimitThreshold: normalized("0.9"),
         minOrderDelay: 1,
-        minKeeperFee: "5000000",
+        minKeeperFee: usdcOf(5),
         minMargin: normalized(20),
-        liquidityRange: normalized(0.05),
+        liquidityRange: normalized("0.05"),
         priceDelay: 60,
-        maxFundingVelocity: normalized(0.0533),
-        maxFinancingFeeRate: normalized(0.09),
-        perpTradingFee: normalized(0.001),
-        maxCouponDeductionRatio: normalized(0.2),
-        tokenOILimitRatio: normalized(1.1),
+        maxFundingVelocity: normalized("0.0533"),
+        maxFinancingFeeRate: normalized("0.09"),
+        perpTradingFee: normalized("0.001"),
+        maxCouponDeductionRatio: normalized("0.2"),
+        tokenOILimitRatio: normalized("1.1"),
         veSYMFeeIncentiveRatio: normalized(0),
-        treasuryFeeRatio: normalized(0.3),
+        treasuryFeeRatio: normalized("0.3"),
         oneDrawRequirement: normalized(1000),
         oneDrawReward: normalized(5),
         minCouponValue: normalized(1),
-        baseConversionRatio: normalized(1.2),
+        baseConversionRatio: normalized("1.2"),
         maxDebtRatio: normalized(2), // 200%
-        vertexDebtRatio: normalized(0.4), // 40%
-        vertexInterestRate: normalized(0.25), // 25%
-        maxInterestRate: normalized(1.2), // 120%
-        minInterestRate: normalized(0.05), // 5%
+        vertexDebtRatio: normalized("0.4"), // 40%
+        vertexInterestRate: normalized("0.25"), // 25%
+        maxInterestRate: normalized("1.2"), // 120%
+        minInterestRate: normalized("0.05"), // 5%
         settleThreshold: usdcOf(10000), // 10000 USDC
-        collateralLiquidationPenalty: normalized(0.01), // 1%
-        collateralPenaltyToLp: normalized(0.5), // 50%
+        collateralLiquidationPenalty: normalized("0.01"), // 1%
+        collateralPenaltyToLp: normalized("0.5"), // 50%
     },
     marginConfig: {
         USDC: {
             conversionRatio: normalized(1),
             floorPriceRatio: normalized(1),
-            collateralCap: "0",
+            collateralCap: 0n,
         },
         WETH: {
-            conversionRatio: normalized(0.9),
-            floorPriceRatio: normalized(0.985),
-            collateralCap: "0",
+            conversionRatio: normalized("0.9"),
+            floorPriceRatio: normalized("0.985"),
+            collateralCap: 0n,
         },
         WBTC: {
-            conversionRatio: normalized(0.9),
-            floorPriceRatio: normalized(0.99),
-            collateralCap: "0",
+            conversionRatio: normalized("0.9"),
+            floorPriceRatio: normalized("0.99"),
+            collateralCap: 0n,
         },
         USDT: {
-            conversionRatio: normalized(0.95),
-            floorPriceRatio: normalized(0.995),
-            collateralCap: "0",
+            conversionRatio: normalized("0.95"),
+            floorPriceRatio: normalized("0.995"),
+            collateralCap: 0n,
         },
         WSTETH: {
-            conversionRatio: normalized(0.85),
-            floorPriceRatio: normalized(0.98),
-            collateralCap: "0",
+            conversionRatio: normalized("0.85"),
+            floorPriceRatio: normalized("0.98"),
+            collateralCap: 0n,
         },
     },
     marketConfig: {
         WBTC: {
-            proportionRatio: normalized(0.8), // 80%
+            proportionRatio: normalized("0.8"), // 80%
         },
         WETH: {
-            proportionRatio: normalized(0.75), // 75%
+            proportionRatio: normalized("0.75"), // 75%
         },
     },
     otherConfig: {
@@ -109,15 +109,15 @@ export const ScrollConfig: NetworkConfigs = {
         vestingWeeks: 12, // 12 weeks
         liquidityGaugeStartTime: 0, // 0 for now
         tradingFeeTiers: [
-            { portion: normalized(0.005), discount: normalized(0.1) },
-            { portion: normalized(0.001), discount: normalized(0.05) },
-            { portion: normalized(0.0001), discount: normalized(0.03) },
-            { portion: normalized(0.00001), discount: normalized(0.01) },
+            { portion: normalized("0.005"), discount: normalized("0.1") },
+            { portion: normalized("0.001"), discount: normalized("0.05") },
+            { portion: normalized("0.0001"), discount: normalized("0.03") },
+            { portion: normalized("0.00001"), discount: normalized("0.01") },
         ],
         tradingFeeRebateTiers: [
-            { requirement: normalized(25000000), rebateRatio: normalized(0.1) },
-            { requirement: normalized(5000000), rebateRatio: normalized(0.05) },
-            { requirement: normalized(100000), rebateRatio: normalized(0.01) },
+            { requirement: normalized(25000000), rebateRatio: normalized("0.1") },
+            { requirement: normalized(5000000), rebateRatio: normalized("0.05") },
+            { requirement: normalized(100000), rebateRatio: normalized("0.01") },
         ],
         symRate: [
             { startTime: 0, rate: normalized(0) },
