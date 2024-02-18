@@ -1,10 +1,10 @@
-import hre, { deployments } from "hardhat";
-import { expect } from "chai";
-import { CONTRACTS, UNIT, deployDirectly, div_D, getTypedContract, mul_D, normalized } from "../src/utils/utils";
-import { DAY, HOUR } from "../src/utils/test_utils";
-import { ethers } from "ethers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+import { ethers } from "ethers";
+import hre, { deployments } from "hardhat";
 import { getConfig } from "../src/config";
+import { DAY, HOUR } from "../src/utils/test_utils";
+import { CONTRACTS, deployDirectly, div_D, getTypedContract, mul_D, normalized, UNIT } from "../src/utils/utils";
 import { DebtInterestRateModel, Market } from "../typechain-types";
 
 describe("Debt", () => {

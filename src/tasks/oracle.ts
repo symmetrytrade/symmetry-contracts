@@ -1,7 +1,7 @@
+import BigNumber from "bignumber.js";
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, getTypedContract } from "../utils/utils";
-import BigNumber from "bignumber.js";
 
 task("oracle:price", "get price")
     .addParam("token", "token address", undefined, types.string, false)

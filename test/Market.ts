@@ -1,15 +1,15 @@
-import hre, { deployments } from "hardhat";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, UNIT, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
+import { ethers } from "ethers";
+import hre, { deployments } from "hardhat";
+import { getConfig, NetworkConfigs } from "../src/config";
 import {
     getPythUpdateData,
     increaseNextBlockTimestamp,
     setPythAutoRefresh,
     setupPrices,
 } from "../src/utils/test_utils";
-import { ethers } from "ethers";
-import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import { NetworkConfigs, getConfig } from "../src/config";
+import { CONTRACTS, getTypedContract, MAX_UINT256, normalized, UNIT, usdcOf } from "../src/utils/utils";
 import {
     FaucetToken,
     LiquidityManager,

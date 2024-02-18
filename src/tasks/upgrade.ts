@@ -1,8 +1,8 @@
-import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
+import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { getProxyInfo } from "./access";
 import { transact, validateError } from "../utils/utils";
+import { getProxyInfo } from "./access";
 
 task("upgrade", "upgrade contract")
     .addParam("name", "name of the proxy contract", undefined, types.string, false)

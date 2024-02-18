@@ -1,19 +1,19 @@
-import hre, { deployments } from "hardhat";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { CONTRACTS, MAX_UINT256, MINTER_ROLE, getTypedContract, normalized, usdcOf } from "../src/utils/utils";
+import { ethers } from "ethers";
+import hre, { deployments } from "hardhat";
+import { getConfig, NetworkConfigs } from "../src/config";
 import {
     DAY,
-    WEEK,
     getPythUpdateData,
     increaseNextBlockTimestamp,
     setPythAutoRefresh,
     setupPrices,
     startOfDay,
     startOfWeek,
+    WEEK,
 } from "../src/utils/test_utils";
-import { ethers } from "ethers";
-import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import { NetworkConfigs, getConfig } from "../src/config";
+import { CONTRACTS, getTypedContract, MAX_UINT256, MINTER_ROLE, normalized, usdcOf } from "../src/utils/utils";
 import {
     CouponStaking,
     FaucetToken,

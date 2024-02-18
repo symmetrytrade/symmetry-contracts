@@ -1,7 +1,7 @@
-import hre, { deployments } from "hardhat";
 import { expect } from "chai";
+import hre, { deployments } from "hardhat";
+import { getConfig, NetworkConfigs } from "../src/config";
 import { CONTRACTS, getTypedContract, perpDomainKey } from "../src/utils/utils";
-import { NetworkConfigs, getConfig } from "../src/config";
 import { MarketSettings } from "../typechain-types";
 
 describe("MarketSettings", () => {

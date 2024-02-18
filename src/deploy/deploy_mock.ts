@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { CONTRACTS, deployDirectly, getTypedContract, normalized } from "../utils/utils";
 import { chainlinkAggregators, tokens } from "../utils/test_utils";
+import { CONTRACTS, deployDirectly, getTypedContract, normalized } from "../utils/utils";
 
 const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { getNamedAccounts } = hre;

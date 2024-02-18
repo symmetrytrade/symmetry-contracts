@@ -1,7 +1,7 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, getTypedContract, mustGetKey } from "../utils/utils";
 import { getConfig } from "../config";
+import { CONTRACTS, getTypedContract, mustGetKey } from "../utils/utils";
 
 task("collateral:add", "add collateral")
     .addParam("collateral", "token name", undefined, types.string, false)

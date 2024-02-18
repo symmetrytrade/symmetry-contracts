@@ -1,15 +1,15 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { AccessControl, AccessControlEnumerable, UpgradeableBeacon } from "../../typechain-types";
 import {
     AnyContractMeta,
     CONTRACTS,
     DEFAULT_ADMIN_ROLE,
-    PAUSER_ROLE,
     getTypedContract,
+    PAUSER_ROLE,
     validateError,
 } from "../utils/utils";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { AccessControl, AccessControlEnumerable, UpgradeableBeacon } from "../../typechain-types";
 
 export async function getProxyInfo(hre: HardhatRuntimeEnvironment) {
     const proxied = new Set<string>();

@@ -1,6 +1,6 @@
 import "hardhat-deploy";
 import { task, types } from "hardhat/config";
-import { CONTRACTS, DEFAULT_ADMIN_ROLE, MINTER_ROLE, deployInBeaconProxy, getTypedContract } from "../utils/utils";
+import { CONTRACTS, DEFAULT_ADMIN_ROLE, deployInBeaconProxy, getTypedContract, MINTER_ROLE } from "../utils/utils";
 
 task("descriptor:deploy", "deploy NFT descriptor")
     .addParam("timelock", "timelock address", undefined, types.string, false)
