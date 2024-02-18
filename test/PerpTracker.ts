@@ -18,7 +18,7 @@ describe("PerpTracker", () => {
         WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
         WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
         // set market to deployer for test
-        await (await perpTracker_.setMarket(deployer)).wait();
+        await perpTracker_.setMarket(deployer);
     });
 
     async function swapOnAMM(
@@ -39,7 +39,7 @@ describe("PerpTracker", () => {
             lpNetValue: kLP,
         });
         assertDiffWithin(fillPrice, expectedFillPrice, "2000");
-        await (await perpTracker_.swapOnAMM({ token: WETH, skew, size, oraclePrice, lpNetValue: kLP })).wait();
+        await perpTracker_.swapOnAMM({ token: WETH, skew, size, oraclePrice, lpNetValue: kLP });
         const priceInfo = await perpTracker_.getPriceInfo(WETH);
         assertDiffWithin(priceInfo.longByMidPrice, expectedLongByMidPrice, "1");
         assertDiffWithin(priceInfo.shortByMidPrice, expectedShortByMidPrice, "1");
@@ -93,15 +93,15 @@ describe("PerpTracker", () => {
 
     it("listed tokens", async () => {
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength).to.deep.eq(2);
+        expect(tokenLength).to.eq(2);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WBTC);
         expect(await perpTracker_.marketTokensList(1)).to.be.eq(WETH);
     });
 
     it("remove tokens", async () => {
-        await (await perpTracker_.removeMarketToken(WBTC)).wait();
+        await perpTracker_.removeMarketToken(WBTC);
         const tokenLength = await perpTracker_.marketTokensLength();
-        expect(tokenLength).to.deep.eq(1);
+        expect(tokenLength).to.eq(1);
         expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH);
     });
 });

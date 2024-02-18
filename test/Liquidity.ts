@@ -59,17 +59,15 @@ describe("Liquidity", () => {
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
         config = getConfig(hre.network.name);
 
-        await (
-            await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)])
-        ).wait();
-        await (await USDC_.transfer(await account1.getAddress(), usdcOf(10000000))).wait();
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await USDC_.transfer(await account1.getAddress(), usdcOf(10000000));
         await setPythAutoRefresh(hre);
     });
 
     it("deposit&remove at zero skew", async () => {
         // deposit
         USDC_ = USDC_.connect(account1);
-        await (await USDC_.approve(await market_.getAddress(), MAX_UINT256)).wait();
+        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
         const amount = BigInt(usdcOf(100000));
         const minLp = 98000n * UNIT;
         await expect(
@@ -78,12 +76,12 @@ describe("Liquidity", () => {
         await expect(liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false))
             .to.emit(liquidityManager_, "AddLiquidity")
             .withArgs(await account1.getAddress(), amount, 0, normalized(98000), minLp);
-        expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
-        expect(await lpToken_.totalSupply()).to.deep.eq(minLp);
-        expect(await USDC_.balanceOf(await market_.getAddress())).to.deep.eq(amount);
+        expect(await lpToken_.balanceOf(await account1.getAddress())).to.eq(minLp);
+        expect(await lpToken_.totalSupply()).to.eq(minLp);
+        expect(await USDC_.balanceOf(await market_.getAddress())).to.eq(amount);
         let globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(normalized(98000));
-        expect(globalStatus.netOpenInterest).to.deep.eq(0);
+        expect(globalStatus.lpNetValue).to.eq(normalized(98000));
+        expect(globalStatus.netOpenInterest).to.eq(0);
         // remove
         await expect(
             liquidityManager_.removeLiquidity(minLp, amount + 1n, await account1.getAddress())
@@ -100,34 +98,28 @@ describe("Liquidity", () => {
                 outUsdc - outUsdc / 1000n
             );
         globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.deep.eq(
-            (((amount - (outUsdc - outUsdc / 1000n)) * 98n) / 100n) * 10n ** 12n
-        );
-        expect(globalStatus.netOpenInterest).to.deep.eq(0);
-        expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(0);
+        expect(globalStatus.lpNetValue).to.eq((((amount - (outUsdc - outUsdc / 1000n)) * 98n) / 100n) * 10n ** 12n);
+        expect(globalStatus.netOpenInterest).to.eq(0);
+        expect(await lpToken_.balanceOf(await account1.getAddress())).to.eq(0);
     });
 
     it("deposit&remove at non-zero skew", async () => {
         // first deposit
         const amount = BigInt(usdcOf(100000));
         const minLp = 98000n * UNIT;
-        await (await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false)).wait();
-        expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq(minLp);
+        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
+        expect(await lpToken_.balanceOf(await account1.getAddress())).to.eq(minLp);
 
         // trade
-        await (
-            await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash)
-        ).wait();
-        await (
-            await positionManager_.submitOrder({
-                token: WETH,
-                size: normalized(1),
-                acceptablePrice: normalized(1550),
-                keeperFee: usdcOf(0),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: false,
-            })
-        ).wait();
+        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash);
+        await positionManager_.submitOrder({
+            token: WETH,
+            size: normalized(1),
+            acceptablePrice: normalized(1550),
+            keeperFee: usdcOf(0),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+        });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -149,8 +141,8 @@ describe("Liquidity", () => {
                 orderId
             );
         const lpPosition = await perpTracker_.getLpPosition(WETH);
-        expect(lpPosition.longSize).to.deep.eq(0);
-        expect(lpPosition.shortSize).to.deep.eq(normalized(-1));
+        expect(lpPosition.longSize).to.eq(0);
+        expect(lpPosition.shortSize).to.eq(normalized(-1));
         // second deposit
         await increaseNextBlockTimestamp(5); // 5s
         await expect(liquidityManager_.addLiquidity(amount, 0, await account1.getAddress(), false))
@@ -164,7 +156,7 @@ describe("Liquidity", () => {
             );
         // first remove
         await increaseNextBlockTimestamp(5); // 5s
-        expect(await lpToken_.totalSupply()).to.deep.eq("193979372246678213029024");
+        expect(await lpToken_.totalSupply()).to.eq("193979372246678213029024");
         await expect(liquidityManager_.removeLiquidity("97947435790888919009027", 0, await account1.getAddress()))
             .to.emit(liquidityManager_, "RemoveLiquidity")
             .withArgs(
@@ -175,8 +167,8 @@ describe("Liquidity", () => {
                 "104335840814250165629",
                 "99905160829"
             );
-        expect(await lpToken_.totalSupply()).to.deep.eq("96031936455789294019997");
-        expect(await lpToken_.balanceOf(await account1.getAddress())).to.deep.eq("96031936455789294019997");
+        expect(await lpToken_.totalSupply()).to.eq("96031936455789294019997");
+        expect(await lpToken_.balanceOf(await account1.getAddress())).to.eq("96031936455789294019997");
         // second remove
         await increaseNextBlockTimestamp(5); // 5s
         await expect(
