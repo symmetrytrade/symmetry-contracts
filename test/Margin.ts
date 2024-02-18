@@ -209,7 +209,7 @@ describe("Margin", () => {
         baseMargin = BigInt(normalized(-500 * 200)) - interest * 10n ** 12n;
         expect(margin.baseMargin).to.eq(baseMargin);
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin - mul_D(interest * 10n ** 12n, BigInt(normalized(1.2)));
+        userMargin = userMargin - mul_D(interest * 10n ** 12n, BigInt(normalized("1.2")));
         expect(status.currentMargin).to.eq(userMargin);
         // accDebt
         expect(await marginTracker_.accDebt()).to.eq(0);

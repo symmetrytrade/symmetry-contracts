@@ -106,15 +106,18 @@ describe("Coupon", () => {
         // set slippage to zero
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized(0.1)]);
+        await marketSettings_.setIntVals(
+            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
+            [normalized("0.1")]
+        );
         // set liquidation coupon ratio to 10%
         await marketSettings_.setIntVals(
             [hre.ethers.encodeBytes32String("liquidationPenaltyRatio")],
-            [normalized(0.009)]
+            [normalized("0.009")]
         );
         await marketSettings_.setIntVals(
             [hre.ethers.encodeBytes32String("liquidationCouponRatio")],
-            [normalized(0.001)]
+            [normalized("0.001")]
         );
         // set debt interest rate to 0%
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
@@ -162,8 +165,8 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(50),
-                normalized(1000.95),
-                normalized(47.5),
+                normalized("1000.95"),
+                normalized("47.5"),
                 normalized(0),
                 orderId
             );
@@ -171,16 +174,18 @@ describe("Coupon", () => {
         const curWeek = startOfWeek(await helpers.time.latest());
         // check balances
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        expect(status.currentMargin).to.eq(normalized(10000 - 47.5 - 1));
+        expect(status.currentMargin).to.eq(normalized(10000) - normalized("47.5") - normalized(1));
         const globalStatus = await market_.globalStatus();
-        expect(globalStatus.lpNetValue).to.eq(normalized(1000000 + 42.75));
-        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.eq(usdcOf(4.75));
+        expect(globalStatus.lpNetValue).to.eq(normalized(1000000) + normalized("42.75"));
+        expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.eq(usdcOf("4.75"));
         expect(await marginTracker_.userCollaterals(await feeTracker_.getAddress(), await USDC_.getAddress())).to.eq(
-            usdcOf(4.75)
+            usdcOf("4.75")
         );
         // check volume
-        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.eq(normalized(50047.5));
-        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized(50047.5));
+        expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.eq(
+            normalized("50047.5")
+        );
+        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized("50047.5"));
         let ts = startOfDay(await helpers.time.latest());
         for (let i = 0; i < 10; ++i) {
             expect(await volumeTracker_.luckyCandidates(ts)).to.eq(1);
@@ -210,17 +215,17 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(50),
-                normalized(1000.95),
-                normalized(47.5),
+                normalized("1000.95"),
+                normalized("47.5"),
                 normalized(0),
                 orderId
             );
         // check volume
         curDay += DAY;
         expect(await volumeTracker_.userWeeklyVolume(await account1.getAddress(), curWeek)).to.eq(normalized(100095));
-        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized(50047.5));
+        expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay)).to.eq(normalized("50047.5"));
         expect(await volumeTracker_.userDailyVolume(await account1.getAddress(), curDay - DAY)).to.eq(
-            normalized(50047.5)
+            normalized("50047.5")
         );
         ts = curDay - DAY;
         for (let i = 0; i < 11; ++i) {
@@ -283,12 +288,12 @@ describe("Coupon", () => {
                 WETH,
                 normalized(1),
                 normalized(1000),
-                normalized(0.95),
-                normalized(0.95),
+                normalized("0.95"),
+                normalized("0.95"),
                 orderId
             );
 
-        expect(await coupon_.unspents(await account1.getAddress())).to.eq(normalized(0.05));
+        expect(await coupon_.unspents(await account1.getAddress())).to.eq(normalized("0.05"));
 
         // close eth long, 1000 notional
         await positionManager_.submitOrder({
@@ -309,9 +314,9 @@ describe("Coupon", () => {
                 await account1.getAddress(),
                 WETH,
                 normalized(-1),
-                normalized(999.1),
-                normalized(0.95),
-                normalized(0.05),
+                normalized("999.1"),
+                normalized("0.95"),
+                normalized("0.05"),
                 orderId
             );
         expect(await coupon_.unspents(await account1.getAddress())).to.eq(0);
@@ -333,14 +338,14 @@ describe("Coupon", () => {
                 WETH,
                 normalized(100),
                 normalized(91800),
-                normalized(321.3),
-                normalized(826.2),
+                normalized("321.3"),
+                normalized("826.2"),
                 1
             )
             .to.emit(positionManager_, "LiquidationFee")
-            .withArgs(await account1.getAddress(), normalized(91800), normalized(321.3), usdcOf(321.3))
+            .withArgs(await account1.getAddress(), normalized(91800), normalized("321.3"), usdcOf("321.3"))
             .to.emit(positionManager_, "LiquidationPenalty")
-            .withArgs(await account1.getAddress(), normalized(91800), normalized(826.2), usdcOf(826.2))
+            .withArgs(await account1.getAddress(), normalized(91800), normalized("826.2"), usdcOf("826.2"))
             .to.emit(coupon_, "PreMint")
             .withArgs(1, await account1.getAddress(), normalized(91), evmTime + WEEK);
         await coupon_.connect(account1).mintAndApply(1);

@@ -36,8 +36,8 @@ describe("Debt", () => {
         await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
         interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel);
         await interestRateModel_.initialize(await market_.getAddress(), deployer);
-        totalDebt = BigInt(normalized(123456789.1234567));
-        debtRatio = BigInt(normalized(0.1)); // 10%
+        totalDebt = BigInt(normalized("123456789.1234567"));
+        debtRatio = BigInt(normalized("0.1")); // 10%
         await interestRateModel_.update(totalDebt, debtRatio);
         await interestRateModel_.updateMaxInterestRate();
         updatedAt = BigInt(await helpers.time.latest());
@@ -46,7 +46,7 @@ describe("Debt", () => {
         // check status
         expect(await interestRateModel_.totalDebt()).to.eq(totalDebt);
         expect(await interestRateModel_.debtRatio()).to.eq(debtRatio);
-        expect(await interestRateModel_.maxInterestRate()).to.eq(normalized(1.2));
+        expect(await interestRateModel_.maxInterestRate()).to.eq(normalized("1.2"));
         expect(await interestRateModel_.updatedAt()).to.eq(updatedAt);
         expect(await interestRateModel_.nextInterest()).to.eq(0);
         // check interest in 10 days
@@ -59,7 +59,7 @@ describe("Debt", () => {
         expect(await interestRateModel_.nextInterest()).to.eq(nextInterest);
         await interestRateModel_.updateMaxInterestRate();
         updatedAt = BigInt(await helpers.time.latest());
-        debtRatio = BigInt(normalized(0.5));
+        debtRatio = BigInt(normalized("0.5"));
         await interestRateModel_.update(totalDebt, debtRatio);
     });
 
@@ -67,7 +67,7 @@ describe("Debt", () => {
         // check status
         expect(await interestRateModel_.totalDebt()).to.eq(totalDebt);
         expect(await interestRateModel_.debtRatio()).to.eq(debtRatio);
-        expect(await interestRateModel_.maxInterestRate()).to.eq(normalized(1.2));
+        expect(await interestRateModel_.maxInterestRate()).to.eq(normalized("1.2"));
         expect(await interestRateModel_.updatedAt()).to.eq(updatedAt);
         // validate function
         const validate = async (n: bigint) => {

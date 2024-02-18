@@ -78,11 +78,11 @@ describe("PerpTracker", () => {
         skew -= 600;
         // case 5: trade 1000 ETH, p_{mid}=2000, p'_{mid}=2100, p_{exec}=((2030-2000)*2030+(2100-2030)*2065)/100=2054.5
         // sell price is weighted average between p_{mid} to p'_{mid}
-        await swapOnAMM(normalized(skew), normalized(1000), normalized(2054.5), normalized(1), div(2000, 2100), 5);
+        await swapOnAMM(normalized(skew), normalized(1000), normalized("2054.5"), normalized(1), div(2000, 2100), 5);
         skew += 1000;
         // case 6: trade -2000 ETH, p_{mid}=2100, p'_{mid}=1900, p_{exec}=((2100-2050)*2050+(2050-1900)*1975)/200=1993.75
         // sell price is weighted average between p_{mid} to p'_{mid}
-        await swapOnAMM(normalized(skew), normalized(-2000), normalized(1993.75), div(2100, 1900), normalized(1), 5);
+        await swapOnAMM(normalized(skew), normalized(-2000), normalized("1993.75"), div(2100, 1900), normalized(1), 5);
         skew -= 2000;
     });
 

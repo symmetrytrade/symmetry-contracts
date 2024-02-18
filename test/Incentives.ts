@@ -100,7 +100,10 @@ describe("Incentives", () => {
         // set slippage to zero
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized(0.1)]);
+        await marketSettings_.setIntVals(
+            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
+            [normalized("0.1")]
+        );
         // allocate sym
         const maxTime = config.otherConfig.lockMaxTime;
         await sym_.grantRole(MINTER_ROLE, await deployer.getAddress());
