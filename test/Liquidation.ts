@@ -320,7 +320,7 @@ describe("Liquidation", () => {
 
         await positionManager_.executeOrder(orderId, pythUpdateData.updateData, { value: pythUpdateData.fee });
 
-        pythUpdateData = await getPythUpdateData(hre, { WETH: 900, USDC: 0.8 });
+        pythUpdateData = await getPythUpdateData(hre, { WETH: 900, USDC: "0.8" });
         await priceOracle_.updatePythPrice(pythUpdateData.updateData, {
             value: pythUpdateData.fee,
         });

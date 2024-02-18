@@ -21,15 +21,15 @@ import {
     PriceOracle,
 } from "../typechain-types";
 
-const chainlinkPrices: { [key: string]: number } = {
+const chainlinkPrices: { [key: string]: string | number } = {
     Sequencer: 0,
-    USDC: 0.98,
+    USDC: "0.98",
     WETH: 1500,
     WBTC: 20000,
 };
 
-const pythPrices: { [key: string]: number } = {
-    USDC: 0.98,
+const pythPrices: { [key: string]: string | number } = {
+    USDC: "0.98",
     WETH: 1499,
     WBTC: 20000,
 };
