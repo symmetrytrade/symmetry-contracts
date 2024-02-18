@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, DEFAULT_ADMIN_ROLE, deployInBeaconProxy, getTypedContract, MINTER_ROLE } from "../utils/utils";
 

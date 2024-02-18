@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { ADDR0, CONTRACTS, deployDirectly } from "../utils/utils";
 

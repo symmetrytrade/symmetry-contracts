@@ -1,5 +1,4 @@
 import { formatEther } from "ethers";
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { CONTRACTS, getTypedContract, normalized } from "../utils/utils";
 

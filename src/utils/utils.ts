@@ -1,6 +1,5 @@
 import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
 import { ContractFactory, ContractRunner, ethers, parseUnits } from "ethers";
-import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     ChainlinkMock__factory,

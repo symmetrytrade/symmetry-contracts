@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getConfig } from "../config";

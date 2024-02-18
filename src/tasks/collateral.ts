@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { getConfig } from "../config";
 import { CONTRACTS, getTypedContract, mustGetKey } from "../utils/utils";

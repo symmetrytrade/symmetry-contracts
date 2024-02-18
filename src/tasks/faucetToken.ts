@@ -1,4 +1,3 @@
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 
 task("faucet:deploy", "deploy faucet token")
