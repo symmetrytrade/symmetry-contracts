@@ -22,11 +22,11 @@ describe("PerpTracker", () => {
     });
 
     async function swapOnAMM(
-        skew: string,
-        size: string,
-        expectedFillPrice: string,
-        expectedLongByMidPrice: string,
-        expectedShortByMidPrice: string,
+        skew: ethers.BigNumberish,
+        size: ethers.BigNumberish,
+        expectedFillPrice: ethers.BigNumberish,
+        expectedLongByMidPrice: ethers.BigNumberish,
+        expectedShortByMidPrice: ethers.BigNumberish,
         nextBlockDelay: number
     ) {
         const oraclePrice = normalized(2000);
