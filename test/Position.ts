@@ -91,7 +91,7 @@ describe("Position", () => {
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await USDC_.approve(await market_.getAddress(), MAX_UINT256);
-        const amount = BigInt(usdcOf(1000000)); // 1M
+        const amount = usdcOf(1000000); // 1M
         const minLp = 100000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 

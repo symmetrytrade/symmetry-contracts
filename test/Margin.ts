@@ -206,10 +206,10 @@ describe("Margin", () => {
         // check account1
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = BigInt(normalized(-500 * 200)) - interest * 10n ** 12n;
+        baseMargin = normalized(-500 * 200) - interest * 10n ** 12n;
         expect(margin.baseMargin).to.eq(baseMargin);
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin - mul_D(interest * 10n ** 12n, BigInt(normalized("1.2")));
+        userMargin = userMargin - mul_D(interest * 10n ** 12n, normalized("1.2"));
         expect(status.currentMargin).to.eq(userMargin);
         // accDebt
         expect(await marginTracker_.accDebt()).to.eq(0);
@@ -232,7 +232,7 @@ describe("Margin", () => {
         // debt
         expect(await marginTracker_.accDebt()).to.eq(await marginTracker_.userAccDebts(await account1.getAddress()));
         expect(await marginTracker_.unsettledInterest()).to.eq(0);
-        let totalDebt = BigInt(usdcOf(500 * 200)) + interest;
+        let totalDebt = usdcOf(500 * 200) + interest;
         expect(await marginTracker_.totalDebt()).to.eq(totalDebt);
         expect(await interestRateModel_.totalDebt()).to.eq(totalDebt);
         // deposit USDC
@@ -246,14 +246,14 @@ describe("Margin", () => {
         // check account1
         margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = baseMargin + BigInt(normalized(5000));
+        baseMargin = baseMargin + normalized(5000);
         expect(margin.baseMargin).to.eq(baseMargin);
         status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin + BigInt(normalized(5000 * 1.2));
+        userMargin = userMargin + normalized(5000 * 1.2);
         expect(status.currentMargin).to.eq(userMargin);
         // debt
         expect(await marginTracker_.accDebt()).to.eq(await marginTracker_.userAccDebts(await account1.getAddress()));
-        totalDebt = totalDebt - BigInt(usdcOf(5000));
+        totalDebt = totalDebt - usdcOf(5000);
         expect(await marginTracker_.unsettledInterest()).to.eq(0);
         expect(await marginTracker_.totalDebt()).to.eq(totalDebt);
         expect(await interestRateModel_.totalDebt()).to.eq(totalDebt);
@@ -287,10 +287,10 @@ describe("Margin", () => {
         // check account1
         let margin = await marginTracker_.accountMargin(await account1.getAddress());
         expect(margin.otherMargin).to.eq(normalized(5 * 10000 * 0.9));
-        baseMargin = baseMargin - BigInt(normalized(350)) - BigInt(normalized(1000));
+        baseMargin = baseMargin - normalized(350) - normalized(1000);
         expect(margin.baseMargin).to.eq(baseMargin);
         let status = await market_.accountMarginStatus(await account1.getAddress());
-        userMargin = userMargin - BigInt(normalized((350 + 1000) * 1.2));
+        userMargin = userMargin - normalized((350 + 1000) * 1.2);
         expect(status.currentMargin).to.eq(userMargin);
         // liquidate collaterals
         const liquidatorBTC = await WBTC_.balanceOf(await liquidator.getAddress());
@@ -298,7 +298,7 @@ describe("Margin", () => {
         const marketUSDC = await USDC_.balanceOf(await market_.getAddress());
         const marketBTC = await WBTC_.balanceOf(await market_.getAddress());
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        const amount = BigInt(usdcOf(50000 * 0.99));
+        const amount = usdcOf(50000 * 0.99);
         const loss = -(baseMargin / 10n ** 12n + amount);
         await expect(
             marginTracker_.connect(liquidator).liquidate(await account1.getAddress(), await WBTC_.getAddress(), amount)
@@ -307,10 +307,10 @@ describe("Margin", () => {
             .withArgs(await account1.getAddress(), await WBTC_.getAddress(), normalized(5), amount, 0, 0, loss)
             .to.emit(marginTracker_, "DeficitLoss")
             .withArgs(await account1.getAddress(), loss, insurance, loss - insurance);
-        expect(await WBTC_.balanceOf(await liquidator.getAddress())).to.eq(liquidatorBTC + BigInt(normalized(5)));
+        expect(await WBTC_.balanceOf(await liquidator.getAddress())).to.eq(liquidatorBTC + normalized(5));
         expect(await USDC_.balanceOf(await liquidator.getAddress())).to.eq(liquidatorUSDC - amount);
         expect(await USDC_.balanceOf(await market_.getAddress())).to.eq(marketUSDC + amount);
-        expect(await WBTC_.balanceOf(await market_.getAddress())).to.eq(marketBTC - BigInt(normalized(5)));
+        expect(await WBTC_.balanceOf(await market_.getAddress())).to.eq(marketBTC - normalized(5));
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.eq(lp - (loss - insurance) * 10n ** 12n);
