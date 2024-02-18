@@ -6,7 +6,7 @@ import BigNumber from "bignumber.js";
 task("oracle:price", "get price")
     .addParam("token", "token address", undefined, types.string, false)
     .addParam("pyth", "must use pyth or not", false, types.boolean, true)
-    .setAction(async (taskArgs, hre) => {
+    .setAction(async (taskArgs: { token: string; pyth: boolean }, hre) => {
         const oracle = await getTypedContract(hre, CONTRACTS.PriceOracle);
         let price;
         if (taskArgs.pyth) {

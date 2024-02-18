@@ -49,7 +49,6 @@ describe("Liquidation", () => {
     let WETH: string;
     let WBTC: string;
     let USDC_: FaucetToken;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];

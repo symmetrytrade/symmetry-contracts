@@ -6,15 +6,19 @@ module.exports = {
     },
     extends: [
         "eslint:recommended",
-        "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/strict-type-checked",
         "plugin:prettier/recommended",
     ],
     overrides: [],
     parser: "@typescript-eslint/parser",
     parserOptions: {
         ecmaVersion: "latest",
+        project: true,
         sourceType: "module",
     },
     plugins: ["@typescript-eslint", "no-only-tests"],
-    rules: {},
+    rules: {
+        eqeqeq: "error",
+    },
+    ignorePatterns: [".eslintrc.js"],
 };

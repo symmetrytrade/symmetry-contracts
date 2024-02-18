@@ -19,9 +19,9 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // set chainlink
     const config = getConfig(hre.network.name);
 
-    const sequencerUptimeFeed = config.chainlink?.sequencerUptimeFeed
-        ? config.chainlink?.sequencerUptimeFeed
-        : await (await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer)).getAddress();
+    const sequencerUptimeFeed =
+        config.chainlink?.sequencerUptimeFeed ??
+        (await (await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer)).getAddress());
     console.log(`set chainlink ${hre.network.name} uptime feed..`);
     await (await oracle_.setChainlinkSequencerUptimeFeed(sequencerUptimeFeed, config.gracePeriodTime)).wait();
 
@@ -51,14 +51,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // set pyth
-    const pyth = config.pyth?.priceFeed
-        ? config.pyth?.priceFeed
-        : await (await getTypedContract(hre, CONTRACTS.Pyth)).getAddress();
+    const pyth = config.pyth?.priceFeed ?? (await (await getTypedContract(hre, CONTRACTS.Pyth)).getAddress());
     console.log(`set pyth pricefeed..`);
     await (await oracle_.setPythOracle(pyth)).wait();
 
     console.log(`set pyth asset ids..`);
-    if (hre.network.name == "hardhat") {
+    if (hre.network.name === "hardhat") {
         for (const token of tokens) {
             const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
             await (await oracle_.setPythIds([tokenAddress], [token.pythId])).wait();
@@ -70,7 +68,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         for (const [token, id] of Object.entries(assetIds)) {
             tokens.push(mustGetKey(config.addresses, token));
             ids.push(id);
-            if (tokens.length == 5) {
+            if (tokens.length === 5) {
                 await (await oracle_.setPythIds(tokens, ids)).wait();
                 tokens = [];
                 ids = [];

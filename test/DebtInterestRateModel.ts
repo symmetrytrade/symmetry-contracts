@@ -18,7 +18,6 @@ describe("Debt", () => {
     let maxInterestRate: bigint;
     let minInterestRate: bigint;
     let updatedAt: bigint;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
     before(async () => {
         await deployments.fixture();

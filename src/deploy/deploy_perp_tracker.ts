@@ -19,7 +19,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // set market tokens
-    for (const [market] of Object.entries(config.marketConfig)) {
+    for (const market of Object.keys(config.marketConfig)) {
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)

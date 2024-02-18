@@ -36,7 +36,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await market_.setOperator(await marginTracker_.getAddress(), true)).wait();
 
     // add tokens
-    for (const [collateral] of Object.entries(config.marginConfig)) {
+    for (const collateral of Object.keys(config.marginConfig)) {
         const token =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, collateral)
