@@ -21,15 +21,15 @@ import {
     PriceOracle,
 } from "../typechain-types";
 
-const chainlinkPrices: { [key: string]: number } = {
+const chainlinkPrices: { [key: string]: string | number } = {
     Sequencer: 0,
-    USDC: 0.98,
+    USDC: "0.98",
     WETH: 1500,
     WBTC: 20000,
 };
 
-const pythPrices: { [key: string]: number } = {
-    USDC: 0.98,
+const pythPrices: { [key: string]: string | number } = {
+    USDC: "0.98",
     WETH: 1499,
     WBTC: 20000,
 };
@@ -69,7 +69,7 @@ describe("Market", () => {
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await USDC_.approve(await market_.getAddress(), MAX_UINT256);
-        const amount = BigInt(usdcOf(1000000));
+        const amount = usdcOf(1000000);
         const minLp = 980000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 
@@ -209,7 +209,7 @@ describe("Market", () => {
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
             token: WBTC,
-            size: normalized(-0.5),
+            size: normalized("-0.5"),
             acceptablePrice: normalized(15000),
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
@@ -229,7 +229,7 @@ describe("Market", () => {
             .withArgs(
                 await account1.getAddress(),
                 WBTC,
-                normalized(-0.5),
+                normalized("-0.5"),
                 "19929034394156457628380", // avg price
                 "9974491688766995810", // trading fee
                 "0",
@@ -253,7 +253,7 @@ describe("Market", () => {
         expect(status.currentMargin).to.eq("1361796128287989695740");
         expect(status.positionNotional).to.eq("25000000000000000000000");
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
-        expect(lpPosition.longSize).to.eq(normalized(0.5));
+        expect(lpPosition.longSize).to.eq(normalized("0.5"));
         expect(lpPosition.shortSize).to.eq(0);
         const globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.eq("980108203871712010304260");
@@ -264,7 +264,7 @@ describe("Market", () => {
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
             token: WBTC,
-            size: normalized(0.5),
+            size: normalized("0.5"),
             acceptablePrice: normalized(25000),
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
@@ -284,7 +284,7 @@ describe("Market", () => {
             .withArgs(
                 await account1.getAddress(),
                 WBTC,
-                normalized(0.5),
+                normalized("0.5"),
                 "14986202042334606478395", // avg price
                 "7485615405761541697", // trading fee
                 "0",

@@ -13,7 +13,8 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     const config = getConfig(hre.network.name);
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
         const key = hre.ethers.encodeBytes32String(term);
-        const value = BigInt(rawValue as string | number);
+        type ValueType = (typeof config.marketGeneralConfig)[keyof typeof config.marketGeneralConfig];
+        const value = BigInt(rawValue as ValueType);
         const curVal = await settings_.getIntVals(key);
         if (curVal !== value) {
             console.log(`updating ${term} to ${value.toString()}`);
@@ -34,7 +35,8 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
                 : await (await hre.ethers.getContract(market)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = perpConfigKey(token, k);
-            const value = BigInt(v as string | number);
+            type ValueType = (typeof conf)[keyof typeof conf];
+            const value = BigInt(v as ValueType);
             const curVal = await settings_.getIntVals(key);
             if (curVal !== value) {
                 console.log(`updating ${k} of ${market} market to ${value.toString()}`);
@@ -57,7 +59,8 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
                 : await (await hre.ethers.getContract(collateral)).getAddress();
         for (const [k, v] of Object.entries(conf)) {
             const key = marginConfigKey(token, k);
-            const value = BigInt(v as string | number);
+            type ValueType = (typeof conf)[keyof typeof conf];
+            const value = BigInt(v as ValueType);
             const curVal = await settings_.getIntVals(key);
             if (curVal !== value) {
                 console.log(`updating ${k} of ${collateral} collateral to ${value.toString()}`);

@@ -65,7 +65,7 @@ describe("Funding", () => {
 
         await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256);
 
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized(0.2)]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized("0.2")]);
         // set financing fee rate, trading fee to zero
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
@@ -75,7 +75,10 @@ describe("Funding", () => {
         // set slippage to zero
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized(0.1)]);
+        await marketSettings_.setIntVals(
+            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
+            [normalized("0.1")]
+        );
         await setPythAutoRefresh(hre);
     });
 
@@ -109,12 +112,12 @@ describe("Funding", () => {
                 orderId
             );
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized(0.01));
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized("0.01"));
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized(0.01));
+        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized("0.01"));
         const fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.eq(normalized(0.01));
+        expect(fs[0]).to.eq(normalized("0.01"));
         expect(fs[1]).to.eq(normalized(5));
     });
     it("open ETH short, filp the skew", async () => {
@@ -147,7 +150,7 @@ describe("Funding", () => {
 
         expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq("-9990009990009990");
         let fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
-        expect(fs[0]).to.eq(normalized(0.02));
+        expect(fs[0]).to.eq(normalized("0.02"));
         expect(fs[1]).to.eq(normalized(20));
 
         await increaseNextBlockTimestamp(DAY);

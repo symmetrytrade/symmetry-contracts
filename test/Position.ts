@@ -91,7 +91,7 @@ describe("Position", () => {
         // add liquidity
         USDC_ = USDC_.connect(account1);
         await USDC_.approve(await market_.getAddress(), MAX_UINT256);
-        const amount = BigInt(usdcOf(1000000)); // 1M
+        const amount = usdcOf(1000000); // 1M
         const minLp = 100000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
 
@@ -404,7 +404,7 @@ describe("Position", () => {
         to_cancel.push(orderId);
 
         // decrease hard limit
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("hardLimitThreshold")], [normalized(0.8)]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("hardLimitThreshold")], [normalized("0.8")]);
 
         // account2 trade -5 btc and success
         positionManager_ = positionManager_.connect(account2);
@@ -486,7 +486,7 @@ describe("Position", () => {
 
         await positionManager_.submitOrder({
             token: WBTC,
-            size: normalized(24.99),
+            size: normalized("24.99"),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
@@ -510,7 +510,7 @@ describe("Position", () => {
         positionManager_ = positionManager_.connect(account2);
         await positionManager_.submitOrder({
             token: WBTC,
-            size: normalized(0.01),
+            size: normalized("0.01"),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,

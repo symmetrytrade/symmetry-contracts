@@ -1,6 +1,5 @@
 import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
-import { BigNumber } from "bignumber.js";
-import { ContractFactory, ContractRunner, ethers } from "ethers";
+import { ContractFactory, ContractRunner, ethers, parseUnits } from "ethers";
 import "hardhat-deploy";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
@@ -68,16 +67,22 @@ export function diff_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
     return diff >= 0 ? diff : -diff;
 }
 
-export function tokenOf(x: number, decimals: number) {
-    return new BigNumber(x).multipliedBy(10 ** decimals).toString(10);
+export function tokenOf(x: string | number, decimals: number) {
+    if (typeof x === "string") {
+        return parseUnits(x, decimals);
+    } else if (Number.isSafeInteger(x)) {
+        return BigInt(x) * 10n ** BigInt(decimals);
+    } else {
+        throw Error(`unsafe convertion from number ${x} to bigint`);
+    }
 }
 
-export function normalized(x: number) {
-    return new BigNumber(x).multipliedBy(Number(UNIT)).toString(10);
+export function normalized(x: string | number) {
+    return tokenOf(x, 18);
 }
 
-export function usdcOf(x: number) {
-    return new BigNumber(x).multipliedBy(1e6).toString(10);
+export function usdcOf(x: string | number) {
+    return tokenOf(x, 6);
 }
 
 export function mustGetKey<T>(obj: { [x: string]: T } | undefined, key: string) {

@@ -20,15 +20,15 @@ import {
     PositionManager,
 } from "../typechain-types";
 
-const chainlinkPrices: { [key: string]: number } = {
+const chainlinkPrices: { [key: string]: string | number } = {
     Sequencer: 0,
-    USDC: 0.98,
+    USDC: "0.98",
     WETH: 1500,
     WBTC: 20000,
 };
 
-const pythPrices: { [key: string]: number } = {
-    USDC: 0.98,
+const pythPrices: { [key: string]: string | number } = {
+    USDC: "0.98",
     WETH: 1500,
     WBTC: 20000,
 };
@@ -68,7 +68,7 @@ describe("Liquidity", () => {
         // deposit
         USDC_ = USDC_.connect(account1);
         await USDC_.approve(await market_.getAddress(), MAX_UINT256);
-        const amount = BigInt(usdcOf(100000));
+        const amount = usdcOf(100000);
         const minLp = 98000n * UNIT;
         await expect(
             liquidityManager_.addLiquidity(amount, minLp + 1n, await account1.getAddress(), false)
@@ -86,7 +86,7 @@ describe("Liquidity", () => {
         await expect(
             liquidityManager_.removeLiquidity(minLp, amount + 1n, await account1.getAddress())
         ).to.be.revertedWith("LiquidityManager: insufficient amountOut");
-        const outUsdc = BigInt(usdcOf(98000));
+        const outUsdc = usdcOf(98000);
         await expect(liquidityManager_.removeLiquidity(minLp, outUsdc - outUsdc / 1000n, await account1.getAddress()))
             .to.emit(liquidityManager_, "RemoveLiquidity")
             .withArgs(
@@ -105,7 +105,7 @@ describe("Liquidity", () => {
 
     it("deposit&remove at non-zero skew", async () => {
         // first deposit
-        const amount = BigInt(usdcOf(100000));
+        const amount = usdcOf(100000);
         const minLp = 98000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
         expect(await lpToken_.balanceOf(await account1.getAddress())).to.eq(minLp);

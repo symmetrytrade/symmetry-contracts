@@ -1,10 +1,9 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import BigNumber from "bignumber.js";
 import { ethers } from "ethers";
 import hardhat from "hardhat";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ChainlinkMock } from "../../typechain-types";
-import { CONTRACTS, getTypedContract } from "./utils";
+import { CONTRACTS, getTypedContract, tokenOf } from "./utils";
 
 const abiCoder = hardhat.ethers.AbiCoder.defaultAbiCoder();
 
@@ -39,7 +38,7 @@ export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
     return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber()))!.timestamp;
 }
 
-export function pythDataEncode(id: string, price: string, expo: number, publishTime: number) {
+export function pythDataEncode(id: string, price: ethers.BigNumberish, expo: number, publishTime: number) {
     return abiCoder.encode(["bytes32", "int64", "int32", "uint256"], [id, price, expo, publishTime]);
 }
 
@@ -81,22 +80,25 @@ export function getPythInfo(symbol: string) {
 export async function updateChainlinkPrice(
     hre: HardhatRuntimeEnvironment,
     symbol: string,
-    price: number,
+    price: string | number,
     sender: ethers.Signer
 ) {
     const name = `ChainlinkAggregator${symbol}`;
     const aggregator_: ChainlinkMock = await hre.ethers.getContract(name, sender);
-    const decimals = await aggregator_.decimals();
+    const decimals = Number(await aggregator_.decimals());
     const updateTime = await helpers.time.latest();
     await increaseNextBlockTimestamp(1);
-    await (await aggregator_.feed(new BigNumber(price).times(10 ** Number(decimals)).toString(10), updateTime)).wait();
+    await (await aggregator_.feed(tokenOf(price, decimals), updateTime)).wait();
 }
 
-export async function getPythUpdateData(hre: HardhatRuntimeEnvironment, pythPrices: { [key: string]: number }) {
+export async function getPythUpdateData(
+    hre: HardhatRuntimeEnvironment,
+    pythPrices: { [key: string]: string | number }
+) {
     const updateData = [];
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
-        const price = new BigNumber(value).multipliedBy(10 ** -info.expo).toString(10);
+        const price = tokenOf(value, -info.expo);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         updateData.push(data);
@@ -116,8 +118,8 @@ export async function setPythAutoRefresh(hre: HardhatRuntimeEnvironment) {
 
 export async function setupPrices(
     hre: HardhatRuntimeEnvironment,
-    chainlinkPrices: { [key: string]: number },
-    pythPrices: { [key: string]: number },
+    chainlinkPrices: { [key: string]: string | number },
+    pythPrices: { [key: string]: string | number },
     sender: ethers.Signer
 ) {
     for (const [key, value] of Object.entries(chainlinkPrices)) {
@@ -127,7 +129,7 @@ export async function setupPrices(
     const priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, sender);
     for (const [token, value] of Object.entries(pythPrices)) {
         const info = getPythInfo(token);
-        const price = new BigNumber(value).multipliedBy(10 ** -info.expo).toString(10);
+        const price = tokenOf(value, -info.expo);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
         const fee = await pyth_.getUpdateFee([data]);
