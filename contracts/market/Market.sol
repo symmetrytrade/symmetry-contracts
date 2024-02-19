@@ -383,7 +383,8 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
         (int lpNetValue, , ) = globalStatus();
         int skew = perpTracker_.currentSkew(_token);
         int fillPrice = perpTracker_.swapOnAMM(IPerpTracker.SwapParams(_token, skew, _size, _oraclePrice, lpNetValue));
-        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice);
+        bool isTaker = perpTracker_.currentSkew(_token).abs() > skew.abs();
+        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice, isTaker);
     }
 
     /**
@@ -436,7 +437,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
             _transferLiquidityOut(treasury, amount, true);
         }
         // Volume
-        VolumeTracker(volumeTracker).logTrade(_account, _volume);
+        VolumeTracker(volumeTracker).logTrade(_account, _volume, _fee);
     }
 
     /**

@@ -43,6 +43,8 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
 
     Tier[] public rebateTiers; // trading fee rebate tiers
 
+    mapping(address => mapping(uint => uint)) public userWeeklyFee;
+
     /*=== modifers ===*/
     modifier onlyMarket() {
         require(msg.sender == market, "PerpTracker: sender is not market");
@@ -76,9 +78,10 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
     }
 
     /*=== volume ===*/
-    function logTrade(address _account, uint _volume) external onlyMarket {
+    function logTrade(address _account, uint _volume, uint _fee) external onlyMarket {
         _addDailyVolume(_account, _volume);
         _addWeeklyVolume(_account, _volume);
+        _addWeeklyFee(_account, _fee);
     }
 
     function _addDailyVolume(address _account, uint _volume) internal {
@@ -112,6 +115,14 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         emit WeeklyVolumeUpdated(_account, t, vol);
     }
 
+    function _addWeeklyFee(address _account, uint _fee) internal {
+        uint t = _startOfWeek(block.timestamp);
+        uint fee = userWeeklyFee[_account][t] + _fee;
+        userWeeklyFee[_account][t] = fee;
+
+        emit WeeklyFeeUpdated(_account, t, fee);
+    }
+
     /*=== weekly trading fee coupon ===*/
     function _rebateRatio(uint _volume) internal view returns (uint) {
         uint len = rebateTiers.length;
@@ -135,13 +146,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         uint volume = userWeeklyVolume[msg.sender][_t];
         uint rebateRatio = _rebateRatio(volume);
         if (rebateRatio > 0) {
-            value =
-                (IMarketSettings(settings)
-                    .getIntVals(PERP_TRADING_FEE)
-                    .toUint256()
-                    .multiplyDecimal(volume)
-                    .multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) *
-                _UNSIGNED_UNIT;
+            value = (userWeeklyFee[msg.sender][_t].multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) * _UNSIGNED_UNIT;
             uint minValue = IMarketSettings(settings).getIntVals(MIN_COUPON_VALUE).toUint256();
             if (value > 0 && value >= minValue) {
                 ITradingFeeCoupon(coupon).mintCoupon(

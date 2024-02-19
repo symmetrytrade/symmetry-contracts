@@ -67,7 +67,8 @@ describe("Funding", () => {
         await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [normalized("0.2")]);
         // set financing fee rate, trading fee to zero
         await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
-        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTakerFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpMakerFee")], [0]);
         // for convenience of following test, set divergence to 200%
         await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
         await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [normalized(10000)]);
