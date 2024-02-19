@@ -117,7 +117,7 @@ export async function marginConfigKey(token: AddressLike, key: string) {
 
 // name: name to deploy in hre
 // factory: contract factory
-const CONTRACTS = {
+export const CONTRACTS = {
     PriceOracle: { name: "PriceOracle", factory: PriceOracle__factory },
     Market: { name: "Market", factory: Market__factory },
     MarketSettings: { name: "MarketSettings", factory: MarketSettings__factory },
@@ -188,13 +188,17 @@ type GetContractTypeFromContractMeta<F> = F extends ContractMeta<infer C> ? C : 
 
 type AnyContractType = GetContractTypeFromContractMeta<(typeof CONTRACTS)[keyof typeof CONTRACTS]>;
 
-type AnyContractMeta = ContractMeta<AnyContractType>;
+export type AnyContractMeta = ContractMeta<AnyContractType>;
 
 // Ensure at compile time that all values in `CONTRACTS` conform to the `ContractMeta` interface
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<unknown>>> = CONTRACTS;
 
-async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta<unknown>, args: unknown[] = []) {
+export async function deployDirectly(
+    hre: HardhatRuntimeEnvironment,
+    contract: ContractMeta<unknown>,
+    args: unknown[] = []
+) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     // deploy implementation
@@ -206,7 +210,7 @@ async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: Contract
     });
 }
 
-async function deployInBeaconProxy(
+export async function deployInBeaconProxy(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<unknown>,
     args: unknown[] = []
@@ -238,7 +242,7 @@ async function deployInBeaconProxy(
     });
 }
 
-async function getTypedContract<T>(
+export async function getTypedContract<T>(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<T>,
     signer?: Signer | string
@@ -263,5 +267,3 @@ export async function transact(contract: BaseContract, methodName: string, param
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);
     }
 }
-
-export { AnyContractMeta, deployDirectly, deployInBeaconProxy, getTypedContract, CONTRACTS };
