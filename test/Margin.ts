@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -36,10 +36,10 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("Margin", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let liquidator: ethers.Signer;
-    let keeper: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let liquidator: Signer;
+    let keeper: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let WBTC_: FaucetToken;
@@ -89,23 +89,23 @@ describe("Margin", () => {
         await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
         // set fee and slippage to zero for convenience
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [1000000]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set debt interest rate to 0%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(1000)]);
+        await marketSettings_.setIntVals([encodeBytes32String("minInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("vertexInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(1000)]);
         await setPythAutoRefresh(hre);
     });
 
     it("trade and generate negative margin", async () => {
         // deposit BTC
-        await positionManager_.depositMargin(WBTC_, normalized(5), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(WBTC_, normalized(5), ZeroHash);
         // check margin
         let margin = await marginTracker_.accountMargin(account1);
         expect(margin.otherMargin).to.eq(normalized(5 * 10000 * 0.9));
@@ -150,7 +150,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userCollaterals(keeper, USDC_)).to.eq(0);
         expect(await marginTracker_.totalDebt()).to.eq(0);
         // set keeper fee to 1 usdc
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
         await market_.connect(keeper).settle(account1, [WETH_, WBTC_]);
         const totalDebt = await marginTracker_.totalDebt();
@@ -179,19 +179,19 @@ describe("Margin", () => {
     it("pay debt, deposit USDC", async () => {
         // set debt interest rate to 0%
         await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("minInterestRate")],
+            [encodeBytes32String("minInterestRate")],
             [config.marketGeneralConfig.minInterestRate]
         );
         await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("maxInterestRate")],
+            [encodeBytes32String("maxInterestRate")],
             [config.marketGeneralConfig.maxInterestRate]
         );
         await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("vertexInterestRate")],
+            [encodeBytes32String("vertexInterestRate")],
             [config.marketGeneralConfig.vertexInterestRate]
         );
 
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [0]);
         await increaseNextBlockTimestamp(HOUR);
         await helpers.mine();
         const interest = await interestRateModel_.nextInterest();
@@ -235,7 +235,7 @@ describe("Margin", () => {
         expect(await interestRateModel_.totalDebt()).to.eq(totalDebt);
         // deposit USDC
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await positionManager_.depositMargin(USDC_, usdcOf(5000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(5000), ZeroHash);
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.eq(lp);
@@ -320,7 +320,7 @@ describe("Margin", () => {
     it("deposit&withdraw WETH", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit WETH
-        await positionManager_.depositMargin(WETH_, normalized(1), hre.ethers.ZeroHash, {
+        await positionManager_.depositMargin(WETH_, normalized(1), ZeroHash, {
             value: normalized(1),
         });
         expect(await marginTracker_.userCollaterals(account2, WETH_)).to.eq(normalized(1));

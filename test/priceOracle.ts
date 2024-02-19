@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { Signer } from "ethers";
 import hre, { deployments } from "hardhat";
 import {
     chainlinkAggregators,
@@ -27,7 +27,7 @@ const pythPrices: { [key: string]: string | number } = {
 
 describe("PriceOracle", () => {
     let priceOracle_: PriceOracle;
-    let account1: ethers.Signer;
+    let account1: Signer;
 
     before(async () => {
         account1 = (await hre.ethers.getSigners())[1];

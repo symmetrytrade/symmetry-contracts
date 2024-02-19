@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { BigNumberish } from "ethers";
 import hre, { deployments } from "hardhat";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import { CONTRACTS, div_D, getTypedContract, normalized, perpDomainKey } from "../src/utils/utils";
@@ -22,11 +22,11 @@ describe("PerpTracker", () => {
     });
 
     async function swapOnAMM(
-        skew: ethers.BigNumberish,
-        size: ethers.BigNumberish,
-        expectedFillPrice: ethers.BigNumberish,
-        expectedLongByMidPrice: ethers.BigNumberish,
-        expectedShortByMidPrice: ethers.BigNumberish,
+        skew: BigNumberish,
+        size: BigNumberish,
+        expectedFillPrice: BigNumberish,
+        expectedLongByMidPrice: BigNumberish,
+        expectedShortByMidPrice: BigNumberish,
         nextBlockDelay: number
     ) {
         const oraclePrice = normalized(2000);
@@ -47,7 +47,7 @@ describe("PerpTracker", () => {
         await helpers.mine();
     }
 
-    function assertDiffWithin(x: ethers.BigNumberish, y: ethers.BigNumberish, maxDiff: ethers.BigNumberish) {
+    function assertDiffWithin(x: BigNumberish, y: BigNumberish, maxDiff: BigNumberish) {
         expect(BigInt(x) - BigInt(y)).to.be.within(-BigInt(maxDiff), BigInt(maxDiff));
     }
 

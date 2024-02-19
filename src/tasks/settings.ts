@@ -1,3 +1,4 @@
+import { encodeBytes32String } from "ethers";
 import { task, types } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getConfig } from "../config";
@@ -11,7 +12,7 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     // set general config
     const config = getConfig(hre.network.name);
     for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-        const key = hre.ethers.encodeBytes32String(term);
+        const key = encodeBytes32String(term);
         type ValueType = (typeof config.marketGeneralConfig)[keyof typeof config.marketGeneralConfig];
         const value = BigInt(rawValue as ValueType);
         const curVal = await settings_.getIntVals(key);

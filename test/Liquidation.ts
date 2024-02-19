@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -34,11 +34,11 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("Liquidation", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let account3: ethers.Signer;
-    let account4: ethers.Signer;
-    let liquidator: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let account3: Signer;
+    let account4: Signer;
+    let liquidator: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let priceOracle_: PriceOracle;
@@ -81,23 +81,23 @@ describe("Liquidation", () => {
         await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
         // set fee and slippage to zero for convenience
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [1000000]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set debt interest rate to 0%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(1000)]);
+        await marketSettings_.setIntVals([encodeBytes32String("minInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("vertexInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(1000)]);
         await setPythAutoRefresh(hre);
     });
 
     it("liquidate and pay fee & penalty", async () => {
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000), ZeroHash);
 
         // open eth long, 10000 notional
         await positionManager_.submitOrder({
@@ -158,7 +158,7 @@ describe("Liquidation", () => {
     it("liquidate and pay fee, insufficient to pay all penalty", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000), ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -209,7 +209,7 @@ describe("Liquidation", () => {
     it("liquidate but insufficient to pay fee and penalty", async () => {
         positionManager_ = positionManager_.connect(account3);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000), ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
@@ -260,7 +260,7 @@ describe("Liquidation", () => {
     it("liquidate and generate deficit loss", async () => {
         positionManager_ = positionManager_.connect(account4);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000), ZeroHash);
 
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional

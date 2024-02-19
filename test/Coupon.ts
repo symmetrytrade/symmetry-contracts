@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -44,9 +44,9 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("Coupon", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let deployer: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let deployer: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let priceOracle_: PriceOracle;
@@ -98,31 +98,22 @@ describe("Coupon", () => {
         await USDC_.connect(account2).approve(market_, MAX_UINT256);
 
         // set financing&funding fee rate to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
         // for convenience of following test, set divergence to 200%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [normalized(10000)]);
         // set slippage to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
-            [normalized("0.1")]
-        );
+        await marketSettings_.setIntVals([encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized("0.1")]);
         // set liquidation coupon ratio to 10%
-        await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("liquidationPenaltyRatio")],
-            [normalized("0.009")]
-        );
-        await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("liquidationCouponRatio")],
-            [normalized("0.001")]
-        );
+        await marketSettings_.setIntVals([encodeBytes32String("liquidationPenaltyRatio")], [normalized("0.009")]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidationCouponRatio")], [normalized("0.001")]);
         // set debt interest rate to 0%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxInterestRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("vertexInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("minInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxInterestRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("vertexInterestRate")], [0]);
         // allocate sym
         const maxTime = config.otherConfig.lockMaxTime;
         await sym_.grantRole(MINTER_ROLE, deployer);
@@ -144,7 +135,7 @@ describe("Coupon", () => {
     it("trade with tiered trading fee discount", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(10000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(10000), ZeroHash);
 
         // open eth long, 50000 notional
         await positionManager_.submitOrder({
@@ -359,32 +350,17 @@ describe("Coupon", () => {
         await helpers.mine();
         await volumeTracker_.issueLuckyNumber(await helpers.time.latest());
         await expect(
-            volumeTracker_.drawLuckyNumberByAnnouncer(
-                await helpers.time.latest(),
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash
-            )
+            volumeTracker_.drawLuckyNumberByAnnouncer(await helpers.time.latest(), ZeroHash, ZeroHash, ZeroHash)
         ).to.be.revertedWith("VolumeTracker: forbid");
         volumeTracker_ = volumeTracker_.connect(deployer);
         await expect(
-            volumeTracker_.drawLuckyNumberByAnnouncer(
-                await helpers.time.latest(),
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash,
-                hre.ethers.ZeroHash
-            )
+            volumeTracker_.drawLuckyNumberByAnnouncer(await helpers.time.latest(), ZeroHash, ZeroHash, ZeroHash)
         ).to.be.revertedWith("VolumeTracker: too early");
         await helpers.mine(300);
         await expect(volumeTracker_.drawLuckyNumber(await helpers.time.latest())).to.be.revertedWith(
             "VolumeTracker: hash unavailable"
         );
-        await volumeTracker_.drawLuckyNumberByAnnouncer(
-            await helpers.time.latest(),
-            hre.ethers.ZeroHash,
-            hre.ethers.ZeroHash,
-            hre.ethers.ZeroHash
-        );
+        await volumeTracker_.drawLuckyNumberByAnnouncer(await helpers.time.latest(), ZeroHash, ZeroHash, ZeroHash);
         const t = startOfDay(await helpers.time.latest()) - DAY;
         expect(await volumeTracker_.luckyNumber(t)).to.eq(
             "0x46700b4d40ac5c35af2c22dda2787a91eb567b06c924a8fb8ae9a05b20c08c22"

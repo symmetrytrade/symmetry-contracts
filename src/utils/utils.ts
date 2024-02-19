@@ -1,5 +1,17 @@
 import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
-import { ContractFactory, ContractRunner, ethers, parseUnits } from "ethers";
+import {
+    AddressLike,
+    BaseContract,
+    BigNumberish,
+    ContractFactory,
+    ContractRunner,
+    encodeBytes32String,
+    ethers,
+    parseUnits,
+    resolveAddress,
+    Signer,
+    solidityPackedKeccak256,
+} from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     ChainlinkMock__factory,
@@ -37,8 +49,8 @@ export const MINTER_ROLE = ethers.id("MINTER_ROLE");
 export const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 export const SPENDER_ROLE = ethers.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.id("VESTING_ROLE");
-export const PERP_DOMAIN = ethers.encodeBytes32String("perpDomain");
-export const MARGIN_DOMAIN = ethers.encodeBytes32String("marginDomain");
+export const PERP_DOMAIN = encodeBytes32String("perpDomain");
+export const MARGIN_DOMAIN = encodeBytes32String("marginDomain");
 export const UNIT = 10n ** 18n;
 export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 export const ADDR0 = "0x0000000000000000000000000000000000000000";
@@ -53,15 +65,15 @@ export function validateError(e: unknown, msg: string) {
     }
 }
 
-export function mul_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function mul_D(x: BigNumberish, y: BigNumberish) {
     return (BigInt(x) * BigInt(y)) / UNIT;
 }
 
-export function div_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function div_D(x: BigNumberish, y: BigNumberish) {
     return (BigInt(x) * UNIT) / BigInt(y);
 }
 
-export function diff_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function diff_D(x: BigNumberish, y: BigNumberish) {
     const diff = BigInt(x) - BigInt(y);
     return diff >= 0 ? diff : -diff;
 }
@@ -89,26 +101,20 @@ export function mustGetKey<T>(obj: { [x: string]: T } | undefined, key: string) 
     return obj[key];
 }
 
-export async function perpDomainKey(market: ethers.AddressLike) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [await ethers.resolveAddress(market), PERP_DOMAIN]);
+export async function perpDomainKey(market: AddressLike) {
+    return solidityPackedKeccak256(["address", "bytes32"], [await resolveAddress(market), PERP_DOMAIN]);
 }
 
-export async function marginDomainKey(token: ethers.AddressLike) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [await ethers.resolveAddress(token), MARGIN_DOMAIN]);
+export async function marginDomainKey(token: AddressLike) {
+    return solidityPackedKeccak256(["address", "bytes32"], [await resolveAddress(token), MARGIN_DOMAIN]);
 }
 
-export async function perpConfigKey(market: ethers.AddressLike, key: string) {
-    return ethers.solidityPackedKeccak256(
-        ["bytes32", "bytes32"],
-        [await perpDomainKey(market), ethers.encodeBytes32String(key)]
-    );
+export async function perpConfigKey(market: AddressLike, key: string) {
+    return solidityPackedKeccak256(["bytes32", "bytes32"], [await perpDomainKey(market), encodeBytes32String(key)]);
 }
 
-export async function marginConfigKey(token: ethers.AddressLike, key: string) {
-    return ethers.solidityPackedKeccak256(
-        ["bytes32", "bytes32"],
-        [await marginDomainKey(token), ethers.encodeBytes32String(key)]
-    );
+export async function marginConfigKey(token: AddressLike, key: string) {
+    return solidityPackedKeccak256(["bytes32", "bytes32"], [await marginDomainKey(token), encodeBytes32String(key)]);
 }
 
 // name: name to deploy in hre
@@ -237,7 +243,7 @@ async function deployInBeaconProxy(
 async function getTypedContract<T>(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<T>,
-    signer?: ethers.Signer | string
+    signer?: Signer | string
 ) {
     const address = await (await hre.ethers.getContract(contract.name)).getAddress();
     if (signer === undefined) {
@@ -249,7 +255,7 @@ async function getTypedContract<T>(
     return contract.factory.connect(address, signer);
 }
 
-export async function transact(contract: ethers.BaseContract, methodName: string, params: unknown[], execute: boolean) {
+export async function transact(contract: BaseContract, methodName: string, params: unknown[], execute: boolean) {
     if (execute) {
         await (await contract.getFunction(methodName).send(...params)).wait();
     } else {

@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { AddressLike, encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -38,9 +38,9 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("Incentives", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let deployer: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let deployer: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let positionManager_: PositionManager;
@@ -92,18 +92,15 @@ describe("Incentives", () => {
         await liquidityGauge_.connect(account1).withdraw(normalized(1000));
 
         // set financing&funding fee rate to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
         // for convenience of following test, set divergence to 200%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [normalized(10000)]);
         // set slippage to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
-            [normalized("0.1")]
-        );
+        await marketSettings_.setIntVals([encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized("0.1")]);
         // allocate sym
         const maxTime = config.otherConfig.lockMaxTime;
         await sym_.grantRole(MINTER_ROLE, deployer);
@@ -139,7 +136,7 @@ describe("Incentives", () => {
             .withArgs(deployer, WETH_, normalized(50), normalized(1001), normalized(50), normalized(0), orderId);
     }
 
-    async function getClaimable(account: ethers.AddressLike, from: bigint, to: bigint) {
+    async function getClaimable(account: AddressLike, from: bigint, to: bigint) {
         let toClaim = 0n;
         for (let curWeek = from; curWeek <= to; curWeek += WEEK) {
             const incentives = await feeTracker_.tradingFeeIncentives(curWeek);
@@ -167,7 +164,7 @@ describe("Incentives", () => {
     it("week 1, claim 1 week", async () => {
         positionManager_ = positionManager_.connect(deployer);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000000), ZeroHash);
         await trade();
         const week1 = startOfWeek(await helpers.time.latest());
         await helpers.time.setNextBlockTimestamp(week1 + WEEK);

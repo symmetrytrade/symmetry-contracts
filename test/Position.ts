@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { AddressLike, BigNumberish, encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -42,10 +42,10 @@ const OrderStatus = {
 };
 
 describe("Position", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let account3: ethers.Signer;
-    let deployer: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let account3: Signer;
+    let deployer: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let perpTracker_: PerpTracker;
@@ -57,7 +57,7 @@ describe("Position", () => {
     let WBTC_: FaucetToken;
     let USDC_: FaucetToken;
 
-    async function checkOrders(account: ethers.AddressLike, ids: ethers.BigNumberish[]) {
+    async function checkOrders(account: AddressLike, ids: BigNumberish[]) {
         const orders = await positionManager_.getUserOrders(account, 0);
         expect(orders.length).to.eq(ids.length);
         for (let i = 0; i < ids.length; ++i) {
@@ -99,17 +99,17 @@ describe("Position", () => {
         await USDC_.connect(account3).approve(market_, MAX_UINT256);
 
         // set funding rate, fee and slippage to zero for convenience
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [1000000]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(10)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [1000000]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(10)]);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(1000000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1000000), ZeroHash);
 
-        await positionManager_.connect(account2).depositMargin(USDC_, usdcOf(1000000), hre.ethers.ZeroHash);
-        await positionManager_.connect(account3).depositMargin(USDC_, usdcOf(1000), hre.ethers.ZeroHash);
+        await positionManager_.connect(account2).depositMargin(USDC_, usdcOf(1000000), ZeroHash);
+        await positionManager_.connect(account3).depositMargin(USDC_, usdcOf(1000), ZeroHash);
         await setPythAutoRefresh(hre);
     });
     it("lp limit for token & user order list", async () => {
@@ -394,7 +394,7 @@ describe("Position", () => {
         to_cancel.push(orderId);
 
         // decrease hard limit
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("hardLimitThreshold")], [normalized("0.8")]);
+        await marketSettings_.setIntVals([encodeBytes32String("hardLimitThreshold")], [normalized("0.8")]);
 
         // account2 trade -5 btc and success
         positionManager_ = positionManager_.connect(account2);

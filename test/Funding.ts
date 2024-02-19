@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import { DAY, increaseNextBlockTimestamp, setPythAutoRefresh, setupPrices } from "../src/utils/test_utils";
@@ -28,8 +28,8 @@ const pythPrices: { [key: string]: number } = {
 };
 
 describe("Funding", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let perpTracker_: PerpTracker;
@@ -65,27 +65,24 @@ describe("Funding", () => {
 
         await USDC_.connect(account2).approve(market_, MAX_UINT256);
 
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized("0.2")]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [normalized("0.2")]);
         // set financing fee rate, trading fee to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFinancingFeeRate")], [0]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
         // for convenience of following test, set divergence to 200%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("pythMaxAge")], [normalized(10000)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
+        await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [normalized(10000)]);
         // set slippage to zero
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("liquidityRange")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
-        await marketSettings_.setIntVals(
-            [hre.ethers.encodeBytes32String("veSYMFeeIncentiveRatio")],
-            [normalized("0.1")]
-        );
+        await marketSettings_.setIntVals([encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized("0.1")]);
         await setPythAutoRefresh(hre);
     });
 
     it("open ETH long, keep it for 1 day", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await positionManager_.depositMargin(USDC_, usdcOf(10000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(10000), ZeroHash);
 
         // open eth long, 50000 notional
         await positionManager_.submitOrder({

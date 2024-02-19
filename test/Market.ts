@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -35,7 +35,7 @@ const pythPrices: { [key: string]: string | number } = {
 };
 
 describe("Market", () => {
-    let account1: ethers.Signer;
+    let account1: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let perpTracker_: PerpTracker;
@@ -73,7 +73,7 @@ describe("Market", () => {
         const minLp = 980000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
     });
 
     it("getPrice", async () => {
@@ -101,7 +101,7 @@ describe("Market", () => {
         await setupPrices(hre, {}, { WETH: 1500 }, account1);
 
         // for convenience of following test, set divergence to 200%
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
         await setPythAutoRefresh(hre);
     });
 
@@ -120,7 +120,7 @@ describe("Market", () => {
     });
 
     it("trade ETH long", async () => {
-        await positionManager_.depositMargin(USDC_, usdcOf(1500), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1500), ZeroHash);
         let status = await market_.accountMarginStatus(account1);
         expect(status.currentMargin).to.eq(normalized(1470));
 

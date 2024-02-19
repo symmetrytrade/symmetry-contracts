@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { BigNumberish, Signer } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import { increaseNextBlockTimestamp, setPythAutoRefresh, startOfWeek, WEEK } from "../src/utils/test_utils";
@@ -8,9 +8,9 @@ import { CONTRACTS, getTypedContract, MINTER_ROLE, normalized } from "../src/uti
 import { LiquidityGauge, LPToken, SYM, VotingEscrow, VotingEscrowCallbackRelayer } from "../typechain-types";
 
 describe("tokenomics", () => {
-    let account1: ethers.Signer;
-    let account2: ethers.Signer;
-    let deployer: ethers.Signer;
+    let account1: Signer;
+    let account2: Signer;
+    let deployer: Signer;
     let config: NetworkConfigs;
     let lpToken_: LPToken;
     let liquidityGauge_: LiquidityGauge;
@@ -19,7 +19,7 @@ describe("tokenomics", () => {
     let sym_: SYM;
     let maxTime: bigint;
 
-    async function userVestBalanceAt(account: ethers.Signer, ts: ethers.BigNumberish) {
+    async function userVestBalanceAt(account: Signer, ts: BigNumberish) {
         const n = await votingEscrow_.userVestEpoch(account);
         let ans = 0n;
         for (let i = 1n; i <= n; ++i) {

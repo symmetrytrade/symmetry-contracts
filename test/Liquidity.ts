@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { encodeBytes32String, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -34,7 +34,7 @@ const pythPrices: { [key: string]: string | number } = {
 };
 
 describe("Liquidity", () => {
-    let account1: ethers.Signer;
+    let account1: Signer;
     let config: NetworkConfigs;
     let market_: Market;
     let perpTracker_: PerpTracker;
@@ -59,7 +59,7 @@ describe("Liquidity", () => {
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
         config = getConfig(hre.network.name);
 
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         await USDC_.transfer(account1, usdcOf(10000000));
         await setPythAutoRefresh(hre);
     });
@@ -104,7 +104,7 @@ describe("Liquidity", () => {
         expect(await lpToken_.balanceOf(account1)).to.eq(minLp);
 
         // trade
-        await positionManager_.depositMargin(USDC_, usdcOf(1500), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(1500), ZeroHash);
         await positionManager_.submitOrder({
             token: WETH_,
             size: normalized(1),
