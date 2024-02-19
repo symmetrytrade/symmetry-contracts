@@ -47,7 +47,7 @@ export const chainlinkAggregators = [
     { name: "USDC", decimals: 6 },
     { name: "WETH", decimals: 20 },
     { name: "WBTC", decimals: 8 },
-];
+] as const;
 
 export const tokens = [
     {
@@ -70,7 +70,9 @@ export const tokens = [
     },
 ] as const;
 
-export function getPythInfo(symbol: string) {
+type TestTokenSymbol = (typeof tokens)[number]["symbol"];
+
+export function getPythInfo(symbol: TestTokenSymbol) {
     for (const token of tokens) {
         if (token.symbol === symbol) return token;
     }
@@ -93,11 +95,11 @@ export async function updateChainlinkPrice(
 
 export async function getPythUpdateData(
     hre: HardhatRuntimeEnvironment,
-    pythPrices: { [key: string]: string | number }
+    pythPrices: { [key in TestTokenSymbol]?: string | number }
 ) {
     const updateData = [];
     for (const [token, value] of Object.entries(pythPrices)) {
-        const info = getPythInfo(token);
+        const info = getPythInfo(token as keyof typeof pythPrices);
         const price = tokenOf(value, -info.expo);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
@@ -119,7 +121,7 @@ export async function setPythAutoRefresh(hre: HardhatRuntimeEnvironment) {
 export async function setupPrices(
     hre: HardhatRuntimeEnvironment,
     chainlinkPrices: { [key: string]: string | number },
-    pythPrices: { [key: string]: string | number },
+    pythPrices: { [key in TestTokenSymbol]?: string | number },
     sender: ethers.Signer
 ) {
     for (const [key, value] of Object.entries(chainlinkPrices)) {
@@ -128,7 +130,7 @@ export async function setupPrices(
     const pyth_ = await getTypedContract(hre, CONTRACTS.Pyth, sender);
     const priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, sender);
     for (const [token, value] of Object.entries(pythPrices)) {
-        const info = getPythInfo(token);
+        const info = getPythInfo(token as keyof typeof pythPrices);
         const price = tokenOf(value, -info.expo);
         const publishTime = await helpers.time.latest();
         const data = pythDataEncode(info.pythId, price, info.expo, publishTime);
