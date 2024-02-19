@@ -19,6 +19,10 @@ module.exports = {
     plugins: ["@typescript-eslint", "no-only-tests"],
     rules: {
         eqeqeq: "error",
+        "@typescript-eslint/consistent-type-imports": [
+            "error",
+            { prefer: "no-type-imports" },
+        ],
     },
     ignorePatterns: [".eslintrc.js"],
 };

@@ -5,7 +5,7 @@ import "hardhat-deploy";
 import "hardhat-deploy-ethers";
 import "hardhat-gas-reporter";
 import "hardhat-interface-generator";
-import type { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
+import { HardhatUserConfig, HttpNetworkUserConfig } from "hardhat/types";
 import "solidity-coverage";
 
 // environment configs
