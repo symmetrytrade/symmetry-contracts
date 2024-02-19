@@ -39,7 +39,7 @@ describe("PriceOracle", () => {
         const aggregator_ = await getTypedContract(hre, CONTRACTS.ChainlinkAggregatorSequencer, account1);
         await aggregator_.feed(1, await helpers.time.latest());
         await expect(
-            priceOracle_.getLatestChainlinkPrice(await (await getTypedContract(hre, CONTRACTS.USDC)).getAddress())
+            priceOracle_.getLatestChainlinkPrice(await getTypedContract(hre, CONTRACTS.USDC))
         ).to.be.revertedWith("PriceOracle: Sequencer is down");
     });
 
@@ -47,8 +47,8 @@ describe("PriceOracle", () => {
         for (const aggregator of chainlinkAggregators) {
             await updateChainlinkPrice(hre, aggregator.name, chainlinkPrices[aggregator.name], account1);
             if (aggregator.name !== "Sequencer") {
-                const tokenAddress = await (await hre.ethers.getContract(aggregator.name)).getAddress();
-                const answer = await priceOracle_.getLatestChainlinkPrice(tokenAddress);
+                const token_ = await hre.ethers.getContract(aggregator.name);
+                const answer = await priceOracle_.getLatestChainlinkPrice(token_);
                 expect(answer[0]).to.eq(1);
                 expect(answer[2]).to.eq(BigInt(chainlinkPrices[aggregator.name]) * UNIT);
             }
@@ -61,7 +61,7 @@ describe("PriceOracle", () => {
             const publishTime = await latestBlockTimestamp(hre);
             const data = pythDataEncode(token.pythId, price, token.expo, publishTime);
             await expect(priceOracle_.updatePythPrice([data])).to.be.revertedWith("PriceOracle: insufficient fee");
-            const balanceBefore = await hre.ethers.provider.getBalance(account1.getAddress());
+            const balanceBefore = await hre.ethers.provider.getBalance(account1);
             const receipt = await (
                 await priceOracle_.updatePythPrice([data], {
                     value: 10,
@@ -69,12 +69,12 @@ describe("PriceOracle", () => {
             ).wait();
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             const gasFee = receipt!.gasUsed * receipt!.gasPrice;
-            const balanceAfter = await hre.ethers.provider.getBalance(account1.getAddress());
+            const balanceAfter = await hre.ethers.provider.getBalance(account1);
             // check fee cost
             expect(balanceBefore - balanceAfter).to.eq(gasFee + 10n);
             // check answer
-            const tokenAddress = await (await hre.ethers.getContract(token.symbol)).getAddress();
-            const answer = await priceOracle_.getPythPrice(tokenAddress);
+            const token_ = await hre.ethers.getContract(token.symbol);
+            const answer = await priceOracle_.getPythPrice(token_);
             expect(answer[0]).to.eq(publishTime);
             expect(answer[1]).to.eq(normalized(pythPrices[token.symbol]));
         }

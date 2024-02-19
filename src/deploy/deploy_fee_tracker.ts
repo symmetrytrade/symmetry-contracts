@@ -17,25 +17,18 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker);
     const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await feeTracker_.initialized())) {
-        await (
-            await feeTracker_.initialize(
-                await market_.getAddress(),
-                await perpTracker_.getAddress(),
-                await coupon_.getAddress(),
-                await votingEscrow_.getAddress()
-            )
-        ).wait();
+        await (await feeTracker_.initialize(market_, perpTracker_, coupon_, votingEscrow_)).wait();
     }
 
     // set feeTracker for market
-    await (await market_.setFeeTracker(await feeTracker_.getAddress())).wait();
+    await (await market_.setFeeTracker(feeTracker_)).wait();
 
     // set fee tiers
     await (await feeTracker_.setTradingFeeTiers(config.otherConfig.tradingFeeTiers)).wait();
 
     // set coupon staking
     const couponStaking_ = await getTypedContract(hre, CONTRACTS.CouponStaking);
-    await (await feeTracker_.setCouponStaking(await couponStaking_.getAddress())).wait();
+    await (await feeTracker_.setCouponStaking(couponStaking_)).wait();
 };
 
 deploy.tags = [CONTRACTS.FeeTracker.name, "prod"];

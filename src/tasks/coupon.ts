@@ -14,13 +14,11 @@ task("descriptor:deploy", "deploy NFT descriptor")
 
         const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-            await (await coupon.setDescriptor(await descriptor.getAddress())).wait();
+            await (await coupon.setDescriptor(descriptor)).wait();
         } else {
             console.log(`to: ${await coupon.getAddress()}`);
             console.log(coupon.interface.getFunction("setDescriptor").format());
-            console.log(
-                `data: ${coupon.interface.encodeFunctionData("setDescriptor", [await descriptor.getAddress()])}`
-            );
+            console.log(`data: ${coupon.interface.encodeFunctionData("setDescriptor", [descriptor])}`);
         }
     });
 
@@ -36,11 +34,11 @@ task("couponStaking:deploy", "deploy coupon staking")
 
         const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
         const couponStaking = await getTypedContract(hre, CONTRACTS.CouponStaking);
-        await (await couponStaking.initialize(taskArgs.timelock, await coupon.getAddress())).wait();
+        await (await couponStaking.initialize(taskArgs.timelock, coupon)).wait();
 
         const feeTracker_ = await getTypedContract(hre, CONTRACTS.FeeTracker);
         if (await feeTracker_.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-            await (await feeTracker_.setCouponStaking(await couponStaking.getAddress())).wait();
+            await (await feeTracker_.setCouponStaking(couponStaking)).wait();
         }
     });
 
@@ -57,17 +55,12 @@ task("minter:deploy", "deploy token minter")
 
         const coupon = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
         if (await coupon.hasRole(DEFAULT_ADMIN_ROLE, deployer)) {
-            await (await coupon.grantRole(MINTER_ROLE, await tokenMinter.getAddress())).wait();
+            await (await coupon.grantRole(MINTER_ROLE, tokenMinter)).wait();
         } else {
             console.log(`to: ${await coupon.getAddress()}`);
             console.log(coupon.interface.getFunction("grantRole").format());
             console.log(MINTER_ROLE);
             console.log(await tokenMinter.getAddress());
-            console.log(
-                `data: ${coupon.interface.encodeFunctionData("grantRole", [
-                    MINTER_ROLE,
-                    await tokenMinter.getAddress(),
-                ])}`
-            );
+            console.log(`data: ${coupon.interface.encodeFunctionData("grantRole", [MINTER_ROLE, tokenMinter])}`);
         }
     });

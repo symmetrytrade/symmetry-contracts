@@ -28,12 +28,12 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
     }
     // set market specific config
     for (const [market, conf] of Object.entries(config.marketConfig)) {
-        const token =
+        const token_ =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, market)
-                : await (await hre.ethers.getContract(market)).getAddress();
+                : await hre.ethers.getContract(market);
         for (const [k, v] of Object.entries(conf)) {
-            const key = perpConfigKey(token, k);
+            const key = await perpConfigKey(token_, k);
             type ValueType = (typeof conf)[keyof typeof conf];
             const value = BigInt(v as ValueType);
             const curVal = await settings_.getIntVals(key);
@@ -52,12 +52,12 @@ export async function updateSettings(hre: HardhatRuntimeEnvironment, execute = t
 
     // set multi-collateral config
     for (const [collateral, conf] of Object.entries(config.marginConfig)) {
-        const token =
+        const token_ =
             hre.network.name !== "hardhat"
                 ? mustGetKey(config.addresses, collateral)
-                : await (await hre.ethers.getContract(collateral)).getAddress();
+                : await hre.ethers.getContract(collateral);
         for (const [k, v] of Object.entries(conf)) {
-            const key = marginConfigKey(token, k);
+            const key = await marginConfigKey(token_, k);
             type ValueType = (typeof conf)[keyof typeof conf];
             const value = BigInt(v as ValueType);
             const curVal = await settings_.getIntVals(key);

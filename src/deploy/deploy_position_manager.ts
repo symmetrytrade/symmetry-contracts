@@ -12,15 +12,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getTypedContract(hre, CONTRACTS.Market);
     const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await positionManager_.initialized())) {
-        await (await positionManager_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
+        await (await positionManager_.initialize(market_, coupon_)).wait();
     }
 
     // add operator
     console.log(`adding operator role for PositionManager to market..`);
-    await (await market_.setOperator(await positionManager_.getAddress(), true)).wait();
+    await (await market_.setOperator(positionManager_, true)).wait();
 
     // add minter role
-    await (await coupon_.grantRole(MINTER_ROLE, await positionManager_.getAddress())).wait();
+    await (await coupon_.grantRole(MINTER_ROLE, positionManager_)).wait();
 };
 
 deploy.tags = [CONTRACTS.PositionManager.name, "prod"];

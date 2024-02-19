@@ -26,10 +26,10 @@ describe("MarketSettings", () => {
 
     it("getIntValsByDomain", async () => {
         for (const [market, conf] of Object.entries(config.marketConfig)) {
-            const token = await (await hre.ethers.getContract(market)).getAddress();
+            const token_ = await hre.ethers.getContract(market);
             for (const [k, v] of Object.entries(conf)) {
                 const value = await marketSettings_.getIntValsByDomain(
-                    perpDomainKey(token),
+                    await perpDomainKey(token_),
                     hre.ethers.encodeBytes32String(k)
                 );
                 expect(value).to.eq(v);

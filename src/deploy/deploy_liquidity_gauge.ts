@@ -18,23 +18,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const SYM_ = await getTypedContract(hre, CONTRACTS.SYM);
     const startTime = config.otherConfig.liquidityGaugeStartTime || Math.floor(Date.now() / 1000);
     if (!(await liquidityGauge_.initialized())) {
-        await (
-            await liquidityGauge_.initialize(
-                await votingEscrow_.getAddress(),
-                await lpToken_.getAddress(),
-                await symRate_.getAddress(),
-                await SYM_.getAddress(),
-                startTime
-            )
-        ).wait();
+        await (await liquidityGauge_.initialize(votingEscrow_, lpToken_, symRate_, SYM_, startTime)).wait();
     }
 
     // add minter role of SYM
-    await (await SYM_.grantRole(MINTER_ROLE, await liquidityGauge_.getAddress())).wait();
+    await (await SYM_.grantRole(MINTER_ROLE, liquidityGauge_)).wait();
     // add vesting role of veSYM
-    await (await votingEscrow_.grantRole(VESTING_ROLE, await liquidityGauge_.getAddress())).wait();
+    await (await votingEscrow_.grantRole(VESTING_ROLE, liquidityGauge_)).wait();
     // set liquidity gauge for lp token
-    await (await lpToken_.setLiquidityGauge(await liquidityGauge_.getAddress())).wait();
+    await (await lpToken_.setLiquidityGauge(liquidityGauge_)).wait();
 };
 
 deploy.tags = [CONTRACTS.LiquidityGauge.name, "prod"];

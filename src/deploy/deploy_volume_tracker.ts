@@ -17,11 +17,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const market_ = await getTypedContract(hre, CONTRACTS.Market);
     const coupon_ = await getTypedContract(hre, CONTRACTS.TradingFeeCoupon);
     if (!(await volumeTracker_.initialized())) {
-        await (await volumeTracker_.initialize(await market_.getAddress(), await coupon_.getAddress())).wait();
+        await (await volumeTracker_.initialize(market_, coupon_)).wait();
     }
 
     // set volumeTracker for market
-    await (await market_.setVolumeTracker(await volumeTracker_.getAddress())).wait();
+    await (await market_.setVolumeTracker(volumeTracker_)).wait();
 
     // set lucky number announcer
     const announcer = config.otherConfig.luckyNumberAnnouncer ? config.otherConfig.luckyNumberAnnouncer : deployer;
@@ -31,7 +31,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await volumeTracker_.setRebateTiers(config.otherConfig.tradingFeeRebateTiers)).wait();
 
     // add minter role of coupon
-    await (await coupon_.grantRole(MINTER_ROLE, await volumeTracker_.getAddress())).wait();
+    await (await coupon_.grantRole(MINTER_ROLE, volumeTracker_)).wait();
 };
 
 deploy.tags = [CONTRACTS.VolumeTracker.name, "prod"];

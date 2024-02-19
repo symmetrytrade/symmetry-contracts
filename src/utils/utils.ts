@@ -89,25 +89,25 @@ export function mustGetKey<T>(obj: { [x: string]: T } | undefined, key: string) 
     return obj[key];
 }
 
-export function perpDomainKey(market: string) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
+export async function perpDomainKey(market: ethers.AddressLike) {
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [await ethers.resolveAddress(market), PERP_DOMAIN]);
 }
 
-export function marginDomainKey(token: string) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
+export async function marginDomainKey(token: ethers.AddressLike) {
+    return ethers.solidityPackedKeccak256(["address", "bytes32"], [await ethers.resolveAddress(token), MARGIN_DOMAIN]);
 }
 
-export function perpConfigKey(market: string, key: string) {
+export async function perpConfigKey(market: ethers.AddressLike, key: string) {
     return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
-        [perpDomainKey(market), ethers.encodeBytes32String(key)]
+        [await perpDomainKey(market), ethers.encodeBytes32String(key)]
     );
 }
 
-export function marginConfigKey(token: string, key: string) {
+export async function marginConfigKey(token: ethers.AddressLike, key: string) {
     return ethers.solidityPackedKeccak256(
         ["bytes32", "bytes32"],
-        [marginDomainKey(token), ethers.encodeBytes32String(key)]
+        [await marginDomainKey(token), ethers.encodeBytes32String(key)]
     );
 }
 

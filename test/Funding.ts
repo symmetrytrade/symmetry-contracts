@@ -53,17 +53,17 @@ describe("Funding", () => {
         positionManager_ = await getTypedContract(hre, CONTRACTS.PositionManager, account1);
         config = getConfig(hre.network.name);
 
-        await USDC_.transfer(await account1.getAddress(), usdcOf(100000000));
-        await USDC_.transfer(await account2.getAddress(), usdcOf(100000000));
+        await USDC_.transfer(account1, usdcOf(100000000));
+        await USDC_.transfer(account2, usdcOf(100000000));
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
+        await USDC_.approve(market_, MAX_UINT256);
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
-        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
+        await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
-        await USDC_.connect(account2).approve(await market_.getAddress(), MAX_UINT256);
+        await USDC_.connect(account2).approve(market_, MAX_UINT256);
 
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("maxFundingVelocity")], [normalized("0.2")]);
         // set financing fee rate, trading fee to zero
@@ -85,7 +85,7 @@ describe("Funding", () => {
     it("open ETH long, keep it for 1 day", async () => {
         positionManager_ = positionManager_.connect(account1);
         // deposit margins
-        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(10000), hre.ethers.ZeroHash);
+        await positionManager_.depositMargin(USDC_, usdcOf(10000), hre.ethers.ZeroHash);
 
         // open eth long, 50000 notional
         await positionManager_.submitOrder({
@@ -102,15 +102,7 @@ describe("Funding", () => {
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(
-                await account1.getAddress(),
-                WETH,
-                normalized(50),
-                normalized(1000),
-                normalized(0),
-                normalized(0),
-                orderId
-            );
+            .withArgs(account1, WETH, normalized(50), normalized(1000), normalized(0), normalized(0), orderId);
 
         expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized("0.01"));
         await increaseNextBlockTimestamp(DAY);
@@ -138,15 +130,7 @@ describe("Funding", () => {
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(
-                await account1.getAddress(),
-                WETH,
-                normalized(-100),
-                normalized(1000),
-                normalized(0),
-                normalized(0),
-                orderId
-            );
+            .withArgs(account1, WETH, normalized(-100), normalized(1000), normalized(0), normalized(0), orderId);
 
         expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq("-9990009990009990");
         let fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));

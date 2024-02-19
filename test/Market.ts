@@ -64,14 +64,14 @@ describe("Market", () => {
         marginTracker_ = await getTypedContract(hre, CONTRACTS.MarginTracker, account1);
         config = getConfig(hre.network.name);
 
-        await USDC_.transfer(await account1.getAddress(), usdcOf(100000000));
+        await USDC_.transfer(account1, usdcOf(100000000));
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await USDC_.approve(await market_.getAddress(), MAX_UINT256);
+        await USDC_.approve(market_, MAX_UINT256);
         const amount = usdcOf(1000000);
         const minLp = 980000n * UNIT;
-        await liquidityManager_.addLiquidity(amount, minLp, await account1.getAddress(), false);
+        await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [normalized(0)]);
     });
@@ -120,8 +120,8 @@ describe("Market", () => {
     });
 
     it("trade ETH long", async () => {
-        await positionManager_.depositMargin(await USDC_.getAddress(), usdcOf(1500), hre.ethers.ZeroHash);
-        let status = await market_.accountMarginStatus(await account1.getAddress());
+        await positionManager_.depositMargin(USDC_, usdcOf(1500), hre.ethers.ZeroHash);
+        let status = await market_.accountMarginStatus(account1);
         expect(status.currentMargin).to.eq(normalized(1470));
 
         await positionManager_.submitOrder({
@@ -144,7 +144,7 @@ describe("Market", () => {
         )
             .to.emit(market_, "Traded")
             .withArgs(
-                await account1.getAddress(),
+                account1,
                 WETH,
                 normalized(10),
                 "1507245535714285712845", // avg price
@@ -152,15 +152,12 @@ describe("Market", () => {
                 "0",
                 orderId
             );
-        const userCollaterals = await marginTracker_.userCollaterals(
-            await account1.getAddress(),
-            await USDC_.getAddress()
-        );
+        const userCollaterals = await marginTracker_.userCollaterals(account1, USDC_);
         expect(userCollaterals).to.eq(usdcOf(1500));
-        const position = await perpTracker_.getPosition(await account1.getAddress(), WETH);
+        const position = await perpTracker_.getPosition(account1, WETH);
         expect(position.accFunding).to.eq(0);
         expect(position.avgPrice).to.eq("1507245535714285712845");
-        status = await market_.accountMarginStatus(await account1.getAddress());
+        status = await market_.accountMarginStatus(account1);
         expect(status.currentMargin).to.eq("1397544642857142871550");
         expect(status.positionNotional).to.eq("15000000000000000000000");
         const lpPosition = await perpTracker_.getLpPosition(WETH);
@@ -227,7 +224,7 @@ describe("Market", () => {
         )
             .to.emit(market_, "Traded")
             .withArgs(
-                await account1.getAddress(),
+                account1,
                 WBTC,
                 normalized("-0.5"),
                 "19929034394156457628380", // avg price
@@ -235,12 +232,9 @@ describe("Market", () => {
                 "0",
                 orderId
             );
-        const userCollaterals = await marginTracker_.userCollaterals(
-            await account1.getAddress(),
-            await USDC_.getAddress()
-        );
+        const userCollaterals = await marginTracker_.userCollaterals(account1, USDC_);
         expect(userCollaterals).to.eq(usdcOf(1500));
-        const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
+        const position = await perpTracker_.getPosition(account1, WBTC);
         expect(position.accFunding).to.eq(0);
         expect(position.avgPrice).to.eq("19929034394156457628380");
         // funding of ETH position
@@ -249,7 +243,7 @@ describe("Market", () => {
         expect(fs[0]).to.eq("12754159074335926"); // next funding rate
         expect(fs[1]).to.eq("26571164738199000"); // acc funding
         // margin status
-        const status = await market_.accountMarginStatus(await account1.getAddress());
+        const status = await market_.accountMarginStatus(account1);
         expect(status.currentMargin).to.eq("1361796128287989695740");
         expect(status.positionNotional).to.eq("25000000000000000000000");
         const lpPosition = await perpTracker_.getLpPosition(WBTC);
@@ -282,7 +276,7 @@ describe("Market", () => {
         )
             .to.emit(market_, "Traded")
             .withArgs(
-                await account1.getAddress(),
+                account1,
                 WBTC,
                 normalized("0.5"),
                 "14986202042334606478395", // avg price
@@ -295,16 +289,13 @@ describe("Market", () => {
         const fs = await perpTracker_.nextAccFunding(WBTC, normalized(15000));
         expect(fs[0]).to.eq("-2479884920822164"); // next funding rate
         expect(fs[1]).to.eq("-15068745178605000"); // acc funding
-        const userCollaterals = await marginTracker_.userCollaterals(
-            await account1.getAddress(),
-            await USDC_.getAddress()
-        );
+        const userCollaterals = await marginTracker_.userCollaterals(account1, USDC_);
         expect(userCollaterals).to.eq("3971408641");
-        const position = await perpTracker_.getPosition(await account1.getAddress(), WBTC);
+        const position = await perpTracker_.getPosition(account1, WBTC);
         expect(position.accFunding).to.eq("0");
         expect(position.avgPrice).to.eq("0");
         // margin status
-        const status = await market_.accountMarginStatus(await account1.getAddress());
+        const status = await market_.accountMarginStatus(account1);
         expect(status.currentMargin).to.eq("3819081796986562836550");
         expect(status.positionNotional).to.eq(normalized(15000));
         const lpPosition = await perpTracker_.getLpPosition(WBTC);

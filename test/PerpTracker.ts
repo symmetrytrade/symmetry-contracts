@@ -91,7 +91,7 @@ describe("PerpTracker", () => {
 
     it("market key", async () => {
         const domainKey = await perpTracker_.domainKey(WETH);
-        expect(domainKey).to.be.eq(perpDomainKey(WETH));
+        expect(domainKey).to.be.eq(await perpDomainKey(WETH));
     });
 
     it("listed tokens", async () => {
