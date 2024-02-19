@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { encodeBytes32String, Signer, ZeroHash } from "ethers";
+import { encodeBytes32String, MaxUint256, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -10,7 +10,7 @@ import {
     setPythAutoRefresh,
     setupPrices,
 } from "../src/utils/test_utils";
-import { CONTRACTS, getTypedContract, MAX_UINT256, mul_D, normalized, UNIT, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, getTypedContract, mul_D, normalized, UNIT, usdcOf } from "../src/utils/utils";
 import {
     DebtInterestRateModel,
     FaucetToken,
@@ -77,9 +77,9 @@ describe("Margin", () => {
 
         for (let i = 1; i <= 4; ++i) {
             await USDC_.transfer((await hre.ethers.getSigners())[i], usdcOf(100000000));
-            await USDC_.connect((await hre.ethers.getSigners())[i]).approve(market_, MAX_UINT256);
+            await USDC_.connect((await hre.ethers.getSigners())[i]).approve(market_, MaxUint256);
             await WBTC_.transfer((await hre.ethers.getSigners())[i], normalized(1000));
-            await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(market_, MAX_UINT256);
+            await WBTC_.connect((await hre.ethers.getSigners())[i]).approve(market_, MaxUint256);
         }
 
         // add liquidity

@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { AddressLike, encodeBytes32String, Signer, ZeroHash } from "ethers";
+import { AddressLike, encodeBytes32String, MaxUint256, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -10,7 +10,7 @@ import {
     startOfWeek,
     WEEK,
 } from "../src/utils/test_utils";
-import { CONTRACTS, getTypedContract, MAX_UINT256, MINTER_ROLE, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, getTypedContract, MINTER_ROLE, normalized, usdcOf } from "../src/utils/utils";
 import {
     FaucetToken,
     FeeTracker,
@@ -78,11 +78,11 @@ describe("Incentives", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await USDC_.approve(market_, MAX_UINT256);
-        await lpToken_.approve(liquidityGauge_, MAX_UINT256);
+        await USDC_.approve(market_, MaxUint256);
+        await lpToken_.approve(liquidityGauge_, MaxUint256);
 
-        await USDC_.connect(account2).approve(market_, MAX_UINT256);
-        await USDC_.connect(deployer).approve(market_, MAX_UINT256);
+        await USDC_.connect(account2).approve(market_, MaxUint256);
+        await USDC_.connect(deployer).approve(market_, MaxUint256);
 
         await liquidityManager_.addLiquidity(usdcOf(1e10), 0, account1, false);
 

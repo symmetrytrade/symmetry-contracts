@@ -52,7 +52,6 @@ export const VESTING_ROLE = ethers.id("VESTING_ROLE");
 export const PERP_DOMAIN = encodeBytes32String("perpDomain");
 export const MARGIN_DOMAIN = encodeBytes32String("marginDomain");
 export const UNIT = 10n ** 18n;
-export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 
 export function validateError(e: unknown, msg: string) {
     if (e instanceof Error) {

@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { encodeBytes32String, Signer, ZeroHash } from "ethers";
+import { encodeBytes32String, MaxUint256, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -9,7 +9,7 @@ import {
     setPythAutoRefresh,
     setupPrices,
 } from "../src/utils/test_utils";
-import { CONTRACTS, getTypedContract, MAX_UINT256, normalized, UNIT, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, getTypedContract, normalized, UNIT, usdcOf } from "../src/utils/utils";
 import {
     FaucetToken,
     LiquidityManager,
@@ -68,7 +68,7 @@ describe("Market", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await USDC_.approve(market_, MAX_UINT256);
+        await USDC_.approve(market_, MaxUint256);
         const amount = usdcOf(1000000);
         const minLp = 980000n * UNIT;
         await liquidityManager_.addLiquidity(amount, minLp, account1, false);

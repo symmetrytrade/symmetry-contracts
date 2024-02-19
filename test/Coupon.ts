@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { encodeBytes32String, Signer, ZeroHash } from "ethers";
+import { encodeBytes32String, MaxUint256, Signer, ZeroHash } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import {
@@ -13,7 +13,7 @@ import {
     startOfWeek,
     WEEK,
 } from "../src/utils/test_utils";
-import { CONTRACTS, getTypedContract, MAX_UINT256, MINTER_ROLE, normalized, usdcOf } from "../src/utils/utils";
+import { CONTRACTS, getTypedContract, MINTER_ROLE, normalized, usdcOf } from "../src/utils/utils";
 import {
     CouponStaking,
     FaucetToken,
@@ -90,12 +90,12 @@ describe("Coupon", () => {
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
-        await USDC_.approve(market_, MAX_UINT256);
+        await USDC_.approve(market_, MaxUint256);
         const amount = usdcOf(1000000); // 1M
         const minLp = normalized(100000);
         await liquidityManager_.addLiquidity(amount, minLp, account1, false);
 
-        await USDC_.connect(account2).approve(market_, MAX_UINT256);
+        await USDC_.connect(account2).approve(market_, MaxUint256);
 
         // set financing&funding fee rate to zero
         await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
