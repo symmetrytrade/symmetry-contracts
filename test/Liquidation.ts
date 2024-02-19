@@ -46,8 +46,8 @@ describe("Liquidation", () => {
     let liquidityManager_: LiquidityManager;
     let marketSettings_: MarketSettings;
     let marginTracker_: MarginTracker;
-    let WETH: string;
-    let WBTC: string;
+    let WETH_: FaucetToken;
+    let WBTC_: FaucetToken;
     let USDC_: FaucetToken;
 
     before(async () => {
@@ -58,8 +58,8 @@ describe("Liquidation", () => {
         liquidator = (await hre.ethers.getSigners())[5];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
-        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
+        WBTC_ = await getTypedContract(hre, CONTRACTS.WBTC);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
@@ -101,7 +101,7 @@ describe("Liquidation", () => {
 
         // open eth long, 10000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(0),
@@ -116,7 +116,7 @@ describe("Liquidation", () => {
 
         // open btc long, 100 notional
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized("0.01"),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(0),
@@ -135,9 +135,9 @@ describe("Liquidation", () => {
         });
 
         // liquidate
-        await expect(positionManager_.connect(liquidator).liquidatePosition(account1, WETH, []))
+        await expect(positionManager_.connect(liquidator).liquidatePosition(account1, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account1, WETH, normalized(10), normalized(9180), normalized("32.13"), normalized("91.8"), 0)
+            .withArgs(account1, WETH_, normalized(10), normalized(9180), normalized("32.13"), normalized("91.8"), 0)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account1, normalized(9180), normalized("32.13"), usdcOf("32.13"))
             .to.emit(positionManager_, "LiquidationPenalty")
@@ -163,7 +163,7 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(0),
@@ -182,9 +182,9 @@ describe("Liquidation", () => {
         });
 
         // liquidate
-        await expect(positionManager_.connect(liquidator).liquidatePosition(account2, WETH, []))
+        await expect(positionManager_.connect(liquidator).liquidatePosition(account2, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account2, WETH, normalized(10), normalized(9100), normalized("31.85"), normalized(91), 0)
+            .withArgs(account2, WETH_, normalized(10), normalized(9100), normalized("31.85"), normalized(91), 0)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account2, normalized(9100), normalized("31.85"), usdcOf("31.85"))
             .to.emit(positionManager_, "LiquidationPenalty")
@@ -214,7 +214,7 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(0),
@@ -233,9 +233,9 @@ describe("Liquidation", () => {
         });
 
         // liquidate
-        await expect(positionManager_.connect(liquidator).liquidatePosition(account3, WETH, []))
+        await expect(positionManager_.connect(liquidator).liquidatePosition(account3, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account3, WETH, normalized(10), normalized(9010), normalized("31.535"), normalized("90.1"), 0)
+            .withArgs(account3, WETH_, normalized(10), normalized(9010), normalized("31.535"), normalized("90.1"), 0)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account3, normalized(9010), normalized("31.535"), usdcOf("31.535"))
             .to.emit(positionManager_, "LiquidationPenalty")
@@ -265,7 +265,7 @@ describe("Liquidation", () => {
         let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
         // open eth long, 10000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(0),
@@ -284,9 +284,9 @@ describe("Liquidation", () => {
         });
 
         // liquidate
-        await expect(positionManager_.connect(liquidator).liquidatePosition(account4, WETH, []))
+        await expect(positionManager_.connect(liquidator).liquidatePosition(account4, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account4, WETH, normalized(10), normalized(9000), normalized("31.5"), normalized(90), 0)
+            .withArgs(account4, WETH_, normalized(10), normalized(9000), normalized("31.5"), normalized(90), 0)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account4, normalized(9000), normalized("31.5"), usdcOf("39.375"))
             .to.emit(positionManager_, "LiquidationPenalty")

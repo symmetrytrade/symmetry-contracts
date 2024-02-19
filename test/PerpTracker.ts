@@ -4,19 +4,19 @@ import { ethers } from "ethers";
 import hre, { deployments } from "hardhat";
 import { increaseNextBlockTimestamp } from "../src/utils/test_utils";
 import { CONTRACTS, div_D, getTypedContract, normalized, perpDomainKey } from "../src/utils/utils";
-import { PerpTracker } from "../typechain-types";
+import { FaucetToken, PerpTracker } from "../typechain-types";
 
 describe("PerpTracker", () => {
     let perpTracker_: PerpTracker;
-    let WETH: string;
-    let WBTC: string;
+    let WETH_: FaucetToken;
+    let WBTC_: FaucetToken;
 
     before(async () => {
         await deployments.fixture();
         const { deployer } = await hre.getNamedAccounts();
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
-        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
+        WBTC_ = await getTypedContract(hre, CONTRACTS.WBTC);
         // set market to deployer for test
         await perpTracker_.setMarket(deployer);
     });
@@ -32,15 +32,15 @@ describe("PerpTracker", () => {
         const oraclePrice = normalized(2000);
         const kLP = normalized(10000 * 2000);
         const fillPrice = await perpTracker_.swapOnAMM.staticCall({
-            token: WETH,
+            token: WETH_,
             skew,
             size,
             oraclePrice,
             lpNetValue: kLP,
         });
         assertDiffWithin(fillPrice, expectedFillPrice, "2000");
-        await perpTracker_.swapOnAMM({ token: WETH, skew, size, oraclePrice, lpNetValue: kLP });
-        const priceInfo = await perpTracker_.getPriceInfo(WETH);
+        await perpTracker_.swapOnAMM({ token: WETH_, skew, size, oraclePrice, lpNetValue: kLP });
+        const priceInfo = await perpTracker_.getPriceInfo(WETH_);
         assertDiffWithin(priceInfo.longByMidPrice, expectedLongByMidPrice, "1");
         assertDiffWithin(priceInfo.shortByMidPrice, expectedShortByMidPrice, "1");
         await increaseNextBlockTimestamp(nextBlockDelay);
@@ -90,21 +90,21 @@ describe("PerpTracker", () => {
     });
 
     it("market key", async () => {
-        const domainKey = await perpTracker_.domainKey(WETH);
-        expect(domainKey).to.be.eq(await perpDomainKey(WETH));
+        const domainKey = await perpTracker_.domainKey(WETH_);
+        expect(domainKey).to.be.eq(await perpDomainKey(WETH_));
     });
 
     it("listed tokens", async () => {
         const tokenLength = await perpTracker_.marketTokensLength();
         expect(tokenLength).to.eq(2);
-        expect(await perpTracker_.marketTokensList(0)).to.be.eq(WBTC);
-        expect(await perpTracker_.marketTokensList(1)).to.be.eq(WETH);
+        expect(await perpTracker_.marketTokensList(0)).to.be.eq(WBTC_);
+        expect(await perpTracker_.marketTokensList(1)).to.be.eq(WETH_);
     });
 
     it("remove tokens", async () => {
-        await perpTracker_.removeMarketToken(WBTC);
+        await perpTracker_.removeMarketToken(WBTC_);
         const tokenLength = await perpTracker_.marketTokensLength();
         expect(tokenLength).to.eq(1);
-        expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH);
+        expect(await perpTracker_.marketTokensList(0)).to.be.eq(WETH_);
     });
 });

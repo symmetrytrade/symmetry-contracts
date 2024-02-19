@@ -41,7 +41,7 @@ describe("Liquidity", () => {
     let positionManager_: PositionManager;
     let liquidityManager_: LiquidityManager;
     let lpToken_: LPToken;
-    let WETH: string;
+    let WETH_: FaucetToken;
     let USDC_: FaucetToken;
     let marketSettings_: MarketSettings;
 
@@ -49,7 +49,7 @@ describe("Liquidity", () => {
         account1 = (await hre.ethers.getSigners())[1];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         lpToken_ = await getTypedContract(hre, CONTRACTS.LPToken, account1);
@@ -106,7 +106,7 @@ describe("Liquidity", () => {
         // trade
         await positionManager_.depositMargin(USDC_, usdcOf(1500), hre.ethers.ZeroHash);
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(1),
             acceptablePrice: normalized(1550),
             keeperFee: usdcOf(0),
@@ -126,14 +126,14 @@ describe("Liquidity", () => {
             .to.emit(market_, "Traded")
             .withArgs(
                 account1,
-                WETH,
+                WETH_,
                 normalized(1),
                 "1507127471365047026995", // avg price
                 "1505621849515531495", // trading fee
                 "0",
                 orderId
             );
-        const lpPosition = await perpTracker_.getLpPosition(WETH);
+        const lpPosition = await perpTracker_.getLpPosition(WETH_);
         expect(lpPosition.longSize).to.eq(0);
         expect(lpPosition.shortSize).to.eq(normalized(-1));
         // second deposit

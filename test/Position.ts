@@ -53,8 +53,8 @@ describe("Position", () => {
     let liquidityManager_: LiquidityManager;
     let marginTracker_: MarginTracker;
     let marketSettings_: MarketSettings;
-    let WETH: string;
-    let WBTC: string;
+    let WETH_: FaucetToken;
+    let WBTC_: FaucetToken;
     let USDC_: FaucetToken;
 
     async function checkOrders(account: ethers.AddressLike, ids: ethers.BigNumberish[]) {
@@ -73,8 +73,8 @@ describe("Position", () => {
         account3 = (await hre.ethers.getSigners())[3];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
-        WBTC = await (await getTypedContract(hre, CONTRACTS.WBTC)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
+        WBTC_ = await getTypedContract(hre, CONTRACTS.WBTC);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
@@ -114,7 +114,7 @@ describe("Position", () => {
     });
     it("lp limit for token & user order list", async () => {
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(701),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -132,7 +132,7 @@ describe("Position", () => {
         );
 
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-701),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -142,7 +142,7 @@ describe("Position", () => {
         orderId = (await positionManager_.orderCnt()) - 1n;
         await checkOrders(account1, [0, 1]);
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-701),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -175,7 +175,7 @@ describe("Position", () => {
     it("account1 open eth long", async () => {
         // trade eth long
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(600),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -188,15 +188,15 @@ describe("Position", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.emit(market_, "Traded").withArgs(
             account1,
-            WETH,
+            WETH_,
             normalized(600),
             normalized(1000), // avg price
             0, // trading fee
             0,
             orderId
         );
-        let tokenInfo = await perpTracker_.getTokenInfo(WETH);
-        let feeInfo = await perpTracker_.getFeeInfo(WETH);
+        let tokenInfo = await perpTracker_.getTokenInfo(WETH_);
+        let feeInfo = await perpTracker_.getFeeInfo(WETH_);
         expect(tokenInfo.lpNetValue).to.eq(normalized(1000000));
         expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
         expect(tokenInfo.skew).to.eq(normalized(600000));
@@ -204,10 +204,10 @@ describe("Position", () => {
         expect(feeInfo.accShortFinancingFee).to.eq(0);
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
-        await market_.updateInfoWithPrice(WETH, []);
+        await market_.updateInfoWithPrice(WETH_, []);
 
-        tokenInfo = await perpTracker_.getTokenInfo(WETH);
-        feeInfo = await perpTracker_.getFeeInfo(WETH);
+        tokenInfo = await perpTracker_.getTokenInfo(WETH_);
+        feeInfo = await perpTracker_.getFeeInfo(WETH_);
         expect(tokenInfo.lpNetValue).to.eq("1000000041666666666400000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
         expect(tokenInfo.skew).to.eq(normalized(600000));
@@ -216,10 +216,10 @@ describe("Position", () => {
 
         // check btc financing fee
         await increaseNextBlockTimestamp(1); // 1s
-        await market_.updateInfoWithPrice(WBTC, []);
+        await market_.updateInfoWithPrice(WBTC_, []);
 
-        tokenInfo = await perpTracker_.getTokenInfo(WBTC);
-        feeInfo = await perpTracker_.getFeeInfo(WBTC);
+        tokenInfo = await perpTracker_.getTokenInfo(WBTC_);
+        feeInfo = await perpTracker_.getFeeInfo(WBTC_);
         expect(tokenInfo.lpNetValue).to.eq("1000000083333321179800000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(600000));
         expect(tokenInfo.skew).to.eq(0);
@@ -231,7 +231,7 @@ describe("Position", () => {
         // trade btc short but exceed hard limit
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(-60),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -251,7 +251,7 @@ describe("Position", () => {
         // trade btc short
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(-20),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -264,15 +264,15 @@ describe("Position", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.emit(market_, "Traded").withArgs(
             account2,
-            WBTC,
+            WBTC_,
             normalized(-20),
             normalized(10000), // avg price
             0, // trading fee
             0,
             orderId
         );
-        let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
-        let feeInfo = await perpTracker_.getFeeInfo(WBTC);
+        let tokenInfo = await perpTracker_.getTokenInfo(WBTC_);
+        let feeInfo = await perpTracker_.getFeeInfo(WBTC_);
         expect(tokenInfo.lpNetValue).to.eq("1000005916664953124800000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
         expect(tokenInfo.skew).to.eq(normalized(-200000));
@@ -280,10 +280,10 @@ describe("Position", () => {
         expect(feeInfo.accShortFinancingFee).to.eq(0);
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
-        await market_.updateInfoWithPrice(WBTC, []);
+        await market_.updateInfoWithPrice(WBTC_, []);
 
-        tokenInfo = await perpTracker_.getTokenInfo(WBTC);
-        feeInfo = await perpTracker_.getFeeInfo(WBTC);
+        tokenInfo = await perpTracker_.getTokenInfo(WBTC_);
+        feeInfo = await perpTracker_.getFeeInfo(WBTC_);
         expect(tokenInfo.lpNetValue).to.eq("1000005972220195218400000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
         expect(tokenInfo.skew).to.eq(normalized(-200000));
@@ -292,10 +292,10 @@ describe("Position", () => {
 
         // check eth financing fee
         await increaseNextBlockTimestamp(1); // 1s
-        await market_.updateInfoWithPrice(WETH, []);
+        await market_.updateInfoWithPrice(WETH_, []);
 
-        tokenInfo = await perpTracker_.getTokenInfo(WETH);
-        feeInfo = await perpTracker_.getFeeInfo(WETH);
+        tokenInfo = await perpTracker_.getTokenInfo(WETH_);
+        feeInfo = await perpTracker_.getFeeInfo(WETH_);
         expect(tokenInfo.lpNetValue).to.eq("1000006027775434483400000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(800000));
         expect(tokenInfo.skew).to.eq(normalized(600000));
@@ -307,7 +307,7 @@ describe("Position", () => {
         // trade btc short
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(25),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -320,15 +320,15 @@ describe("Position", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.emit(market_, "Traded").withArgs(
             account1,
-            WBTC,
+            WBTC_,
             normalized(25),
             normalized(10000), // avg price
             0, // trading fee
             0,
             orderId
         );
-        let tokenInfo = await perpTracker_.getTokenInfo(WBTC);
-        let feeInfo = await perpTracker_.getFeeInfo(WBTC);
+        let tokenInfo = await perpTracker_.getTokenInfo(WBTC_);
+        let feeInfo = await perpTracker_.getFeeInfo(WBTC_);
         expect(tokenInfo.lpNetValue).to.eq("1000015749782977950800000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(850000));
         expect(tokenInfo.skew).to.eq(normalized(50000));
@@ -337,22 +337,22 @@ describe("Position", () => {
         // check financing fee rate
         await increaseNextBlockTimestamp(1); // 1s
 
-        await market_.updateInfoWithPrice(WBTC, []);
+        await market_.updateInfoWithPrice(WBTC_, []);
 
-        tokenInfo = await perpTracker_.getTokenInfo(WBTC);
-        feeInfo = await perpTracker_.getFeeInfo(WBTC);
+        tokenInfo = await perpTracker_.getTokenInfo(WBTC_);
+        feeInfo = await perpTracker_.getFeeInfo(WBTC_);
         expect(tokenInfo.lpNetValue).to.eq("1000015879843599230400000");
         expect(tokenInfo.netOpenInterest).to.eq(normalized(850000));
         expect(tokenInfo.skew).to.eq(normalized(50000));
         expect(feeInfo.accLongFinancingFee).to.eq("202535359240000");
         expect(feeInfo.accShortFinancingFee).to.eq("49998905245700000");
 
-        const lpPosition = await perpTracker_.getLpPosition(WBTC);
+        const lpPosition = await perpTracker_.getLpPosition(WBTC_);
         expect(lpPosition.unsettled).to.eq("999978104914000000");
     });
     it("hard limit", async () => {
-        const ethPosition = await perpTracker_.getNetPositionSize(WETH);
-        const btcPosition = await perpTracker_.getNetPositionSize(WBTC);
+        const ethPosition = await perpTracker_.getNetPositionSize(WETH_);
+        const btcPosition = await perpTracker_.getNetPositionSize(WBTC_);
         expect(ethPosition[0]).to.eq(normalized(600));
         expect(ethPosition[1]).to.eq(normalized(0));
         expect(btcPosition[0]).to.eq(normalized(25));
@@ -362,7 +362,7 @@ describe("Position", () => {
         const to_cancel = [];
         positionManager_ = positionManager_.connect(account2);
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-655),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -379,7 +379,7 @@ describe("Position", () => {
         // account1 trade 6 btc and revert
         positionManager_ = positionManager_.connect(account1);
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(6),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -399,7 +399,7 @@ describe("Position", () => {
         // account2 trade -5 btc and success
         positionManager_ = positionManager_.connect(account2);
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(-5),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -413,7 +413,7 @@ describe("Position", () => {
         // account2 trade -1 btc and revert
         positionManager_ = positionManager_.connect(account2);
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(-5),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -434,7 +434,7 @@ describe("Position", () => {
     it("cancel order", async () => {
         // trade eth long
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(600),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -464,7 +464,7 @@ describe("Position", () => {
     });
     it("withdraw margin", async () => {
         positionManager_ = positionManager_.connect(account2);
-        const position = await perpTracker_.getPosition(account2, WBTC);
+        const position = await perpTracker_.getPosition(account2, WBTC_);
         expect(position[0]).to.eq(normalized(-25));
 
         await expect(positionManager_.withdrawMargin(USDC_, usdcOf(990000))).to.be.revertedWith(
@@ -475,7 +475,7 @@ describe("Position", () => {
         positionManager_ = positionManager_.connect(account2);
 
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized("24.99"),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -499,7 +499,7 @@ describe("Position", () => {
         // close rest position
         positionManager_ = positionManager_.connect(account2);
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized("0.01"),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -522,7 +522,7 @@ describe("Position", () => {
         // trade btc short
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
-            token: WBTC,
+            token: WBTC_,
             size: normalized(-25),
             acceptablePrice: normalized(10000),
             keeperFee: usdcOf(1),
@@ -535,14 +535,14 @@ describe("Position", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, [])).to.emit(market_, "Traded").withArgs(
             account1,
-            WBTC,
+            WBTC_,
             normalized(-25),
             normalized(10000), // avg price
             0, // trading fee
             0,
             orderId
         );
-        const lpPosition = await perpTracker_.getLpPosition(WBTC);
+        const lpPosition = await perpTracker_.getLpPosition(WBTC_);
         expect(lpPosition.unsettled).to.eq(0);
     });
     it("submit order", async () => {
@@ -551,7 +551,7 @@ describe("Position", () => {
         positionManager_ = positionManager_.connect(account3);
 
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -564,7 +564,7 @@ describe("Position", () => {
 
         await expect(
             positionManager_.submitOrder({
-                token: WETH,
+                token: WETH_,
                 size: normalized(1),
                 acceptablePrice: normalized(1000),
                 keeperFee: usdcOf(1),
@@ -574,7 +574,7 @@ describe("Position", () => {
         ).to.be.revertedWith("PositionManager: invalid reduce only order");
 
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-9),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -587,7 +587,7 @@ describe("Position", () => {
 
         await expect(
             positionManager_.submitOrder({
-                token: WETH,
+                token: WETH_,
                 size: normalized(-9),
                 acceptablePrice: normalized(1000),
                 keeperFee: usdcOf(1),
@@ -598,7 +598,7 @@ describe("Position", () => {
 
         await expect(
             positionManager_.submitOrder({
-                token: WETH,
+                token: WETH_,
                 size: normalized(15),
                 acceptablePrice: normalized(1000),
                 keeperFee: usdcOf(1),
@@ -619,7 +619,7 @@ describe("Position", () => {
     });
     it("execution fail: leverage exceed", async () => {
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(10),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -642,7 +642,7 @@ describe("Position", () => {
     });
     it("execution fail: liquidatable, reduce only", async () => {
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-10),
             acceptablePrice: normalized(800),
             keeperFee: usdcOf(1),
@@ -656,7 +656,7 @@ describe("Position", () => {
         expect(status.positionNotional).to.eq(normalized(9600));
 
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(1),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -678,7 +678,7 @@ describe("Position", () => {
         expect(status.positionNotional).to.eq(normalized(9100));
         await checkOrders(account3, [reduceOnlyId]);
 
-        await positionManager_.liquidatePosition(account3, WETH, []);
+        await positionManager_.liquidatePosition(account3, WETH_, []);
         status = await market_.accountMarginStatus(account3);
         expect(status.mtm).to.eq(0);
         expect(status.currentMargin).to.eq(normalized(95 - 9100 * 0.01));

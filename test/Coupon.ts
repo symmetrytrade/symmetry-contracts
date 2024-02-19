@@ -58,7 +58,7 @@ describe("Coupon", () => {
     let votingEscrow_: VotingEscrow;
     let coupon_: TradingFeeCoupon;
     let sym_: SYM;
-    let WETH: string;
+    let WETH_: FaucetToken;
     let USDC_: FaucetToken;
     let feeTracker_: FeeTracker;
     let couponStaking_: CouponStaking;
@@ -69,7 +69,7 @@ describe("Coupon", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
@@ -148,7 +148,7 @@ describe("Coupon", () => {
 
         // open eth long, 50000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(50),
             acceptablePrice: normalized(1001),
             keeperFee: usdcOf(1),
@@ -163,7 +163,7 @@ describe("Coupon", () => {
             .to.emit(market_, "Traded")
             .withArgs(
                 account1,
-                WETH,
+                WETH_,
                 normalized(50),
                 normalized("1000.95"),
                 normalized("47.5"),
@@ -194,7 +194,7 @@ describe("Coupon", () => {
         await increaseNextBlockTimestamp(DAY);
         // open eth long, 50000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(50),
             acceptablePrice: normalized(1001),
             keeperFee: usdcOf(1),
@@ -209,7 +209,7 @@ describe("Coupon", () => {
             .to.emit(market_, "Traded")
             .withArgs(
                 account1,
-                WETH,
+                WETH_,
                 normalized(50),
                 normalized("1000.95"),
                 normalized("47.5"),
@@ -264,7 +264,7 @@ describe("Coupon", () => {
     it("trade with coupon", async () => {
         // open eth long, 1000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(1),
             acceptablePrice: normalized(1010),
             keeperFee: usdcOf(1),
@@ -277,13 +277,21 @@ describe("Coupon", () => {
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(account1, WETH, normalized(1), normalized(1000), normalized("0.95"), normalized("0.95"), orderId);
+            .withArgs(
+                account1,
+                WETH_,
+                normalized(1),
+                normalized(1000),
+                normalized("0.95"),
+                normalized("0.95"),
+                orderId
+            );
 
         expect(await coupon_.unspents(account1)).to.eq(normalized("0.05"));
 
         // close eth long, 1000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-1),
             acceptablePrice: normalized(999),
             keeperFee: usdcOf(1),
@@ -298,7 +306,7 @@ describe("Coupon", () => {
             .to.emit(market_, "Traded")
             .withArgs(
                 account1,
-                WETH,
+                WETH_,
                 normalized(-1),
                 normalized("999.1"),
                 normalized("0.95"),
@@ -317,9 +325,9 @@ describe("Coupon", () => {
         const evmTime = BigInt(await helpers.time.latest()) + 1n;
 
         // liquidate
-        await expect(positionManager_.connect(account2).liquidatePosition(account1, WETH, []))
+        await expect(positionManager_.connect(account2).liquidatePosition(account1, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account1, WETH, normalized(100), normalized(91800), normalized("321.3"), normalized("826.2"), 1)
+            .withArgs(account1, WETH_, normalized(100), normalized(91800), normalized("321.3"), normalized("826.2"), 1)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account1, normalized(91800), normalized("321.3"), usdcOf("321.3"))
             .to.emit(positionManager_, "LiquidationPenalty")

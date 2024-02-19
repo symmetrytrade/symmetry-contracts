@@ -49,7 +49,7 @@ describe("Margin", () => {
     let marketSettings_: MarketSettings;
     let marginTracker_: MarginTracker;
     let interestRateModel_: DebtInterestRateModel;
-    let WETH: string;
+    let WETH_: FaucetToken;
     let USDC_: FaucetToken;
     let debtRatio: bigint;
     let lp: bigint;
@@ -63,7 +63,7 @@ describe("Margin", () => {
         keeper = (await hre.ethers.getSigners())[6];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         WBTC_ = await getTypedContract(hre, CONTRACTS.WBTC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
@@ -116,7 +116,7 @@ describe("Margin", () => {
         expect(status.positionNotional).to.eq(0);
         // open eth long, 200000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(200),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(0),
@@ -152,7 +152,7 @@ describe("Margin", () => {
         // set keeper fee to 1 usdc
         await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("minKeeperFee")], [usdcOf(1)]);
         // settle
-        await market_.connect(keeper).settle(account1, [WETH, WBTC_]);
+        await market_.connect(keeper).settle(account1, [WETH_, WBTC_]);
         const totalDebt = await marginTracker_.totalDebt();
         expect(totalDebt).to.eq(usdcOf(200 * 500));
         expect(await marginTracker_.userCollaterals(keeper, USDC_)).to.eq(usdcOf(1));
@@ -215,7 +215,7 @@ describe("Margin", () => {
         expect(await marginTracker_.userAccDebts(account1)).to.eq(0);
         // settle debt
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
-        await market_.connect(keeper).settle(account1, [WETH, WBTC_]);
+        await market_.connect(keeper).settle(account1, [WETH_, WBTC_]);
         // check lp
         globalStatus = await market_.globalStatus();
         expect(globalStatus.lpNetValue).to.eq(lp);
@@ -259,9 +259,9 @@ describe("Margin", () => {
     it("liquidate, generate deficit loss", async () => {
         await helpers.time.setNextBlockTimestamp(await helpers.time.latest());
         // liquidate position
-        await expect(positionManager_.connect(liquidator).liquidatePosition(account1, WETH, []))
+        await expect(positionManager_.connect(liquidator).liquidatePosition(account1, WETH_, []))
             .to.emit(positionManager_, "Liquidated")
-            .withArgs(account1, WETH, normalized(200), normalized(200 * 500), normalized(350), normalized(1000), 0)
+            .withArgs(account1, WETH_, normalized(200), normalized(200 * 500), normalized(350), normalized(1000), 0)
             .to.emit(positionManager_, "LiquidationFee")
             .withArgs(account1, normalized(200 * 500), normalized(350), usdcOf(350))
             .to.emit(positionManager_, "LiquidationPenalty")
@@ -320,16 +320,16 @@ describe("Margin", () => {
     it("deposit&withdraw WETH", async () => {
         positionManager_ = positionManager_.connect(account2);
         // deposit WETH
-        await positionManager_.depositMargin(WETH, normalized(1), hre.ethers.ZeroHash, {
+        await positionManager_.depositMargin(WETH_, normalized(1), hre.ethers.ZeroHash, {
             value: normalized(1),
         });
-        expect(await marginTracker_.userCollaterals(account2, WETH)).to.eq(normalized(1));
+        expect(await marginTracker_.userCollaterals(account2, WETH_)).to.eq(normalized(1));
         // withdraw WETH
         const balanceBefore = await hre.ethers.provider.getBalance(account2);
         // set next block gas price to 0
         await helpers.setNextBlockBaseFeePerGas(0);
         await positionManager_.withdrawMarginETH(normalized(1), { gasPrice: 0 });
-        expect(await marginTracker_.userCollaterals(account2, WETH)).to.eq(0);
+        expect(await marginTracker_.userCollaterals(account2, WETH_)).to.eq(0);
         const balanceAfter = await hre.ethers.provider.getBalance(account2);
         expect(balanceAfter - balanceBefore).to.eq(normalized(1));
     });

@@ -50,7 +50,7 @@ describe("Incentives", () => {
     let marketSettings_: MarketSettings;
     let votingEscrow_: VotingEscrow;
     let sym_: SYM;
-    let WETH: string;
+    let WETH_: FaucetToken;
     let USDC_: FaucetToken;
     let feeTracker_: FeeTracker;
 
@@ -60,7 +60,7 @@ describe("Incentives", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         marketSettings_ = await getTypedContract(hre, CONTRACTS.MarketSettings);
@@ -125,7 +125,7 @@ describe("Incentives", () => {
 
     async function trade() {
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(50),
             acceptablePrice: normalized(1001),
             keeperFee: usdcOf(1),
@@ -136,7 +136,7 @@ describe("Incentives", () => {
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(deployer, WETH, normalized(50), normalized(1001), normalized(50), normalized(0), orderId);
+            .withArgs(deployer, WETH_, normalized(50), normalized(1001), normalized(50), normalized(0), orderId);
     }
 
     async function getClaimable(account: ethers.AddressLike, from: bigint, to: bigint) {

@@ -36,7 +36,7 @@ describe("Funding", () => {
     let positionManager_: PositionManager;
     let liquidityManager_: LiquidityManager;
     let marketSettings_: MarketSettings;
-    let WETH: string;
+    let WETH_: FaucetToken;
     let USDC_: FaucetToken;
 
     before(async () => {
@@ -44,7 +44,7 @@ describe("Funding", () => {
         account2 = (await hre.ethers.getSigners())[2];
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
-        WETH = await (await getTypedContract(hre, CONTRACTS.WETH)).getAddress();
+        WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
         USDC_ = await getTypedContract(hre, CONTRACTS.USDC);
         market_ = await getTypedContract(hre, CONTRACTS.Market, account1);
         perpTracker_ = await getTypedContract(hre, CONTRACTS.PerpTracker, account1);
@@ -89,7 +89,7 @@ describe("Funding", () => {
 
         // open eth long, 50000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(50),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -102,13 +102,13 @@ describe("Funding", () => {
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(account1, WETH, normalized(50), normalized(1000), normalized(0), normalized(0), orderId);
+            .withArgs(account1, WETH_, normalized(50), normalized(1000), normalized(0), normalized(0), orderId);
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized("0.01"));
+        expect(await perpTracker_.nextFundingVelocity(WETH_)).to.eq(normalized("0.01"));
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq(normalized("0.01"));
-        const fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
+        expect(await perpTracker_.nextFundingVelocity(WETH_)).to.eq(normalized("0.01"));
+        const fs = await perpTracker_.nextAccFunding(WETH_, normalized(1000));
         expect(fs[0]).to.eq(normalized("0.01"));
         expect(fs[1]).to.eq(normalized(5));
     });
@@ -117,7 +117,7 @@ describe("Funding", () => {
         await increaseNextBlockTimestamp(1);
         // open eth short, 100000 notional
         await positionManager_.submitOrder({
-            token: WETH,
+            token: WETH_,
             size: normalized(-100),
             acceptablePrice: normalized(1000),
             keeperFee: usdcOf(1),
@@ -130,22 +130,22 @@ describe("Funding", () => {
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(account1, WETH, normalized(-100), normalized(1000), normalized(0), normalized(0), orderId);
+            .withArgs(account1, WETH_, normalized(-100), normalized(1000), normalized(0), normalized(0), orderId);
 
-        expect(await perpTracker_.nextFundingVelocity(WETH)).to.eq("-9990009990009990");
-        let fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
+        expect(await perpTracker_.nextFundingVelocity(WETH_)).to.eq("-9990009990009990");
+        let fs = await perpTracker_.nextAccFunding(WETH_, normalized(1000));
         expect(fs[0]).to.eq(normalized("0.02"));
         expect(fs[1]).to.eq(normalized(20));
 
         await increaseNextBlockTimestamp(DAY);
 
         await helpers.mine(1);
-        fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
+        fs = await perpTracker_.nextAccFunding(WETH_, normalized(1000));
         expect(fs[0]).to.eq("19980019980020");
 
         await increaseNextBlockTimestamp(DAY);
         await helpers.mine(1);
-        fs = await perpTracker_.nextAccFunding(WETH, normalized(1000));
+        fs = await perpTracker_.nextAccFunding(WETH_, normalized(1000));
         expect(fs[0]).to.eq("-9980019980019979");
         expect(fs[1]).to.eq("25024980019980020000");
     });
