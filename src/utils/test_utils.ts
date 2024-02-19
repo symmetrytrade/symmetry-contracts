@@ -32,11 +32,6 @@ export function printValues(name: string, e: object) {
     console.log(`==== ${name} end  ====\n`);
 }
 
-export async function latestBlockTimestamp(hre: HardhatRuntimeEnvironment) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return (await hre.ethers.provider.getBlock(await hre.ethers.provider.getBlockNumber()))!.timestamp;
-}
-
 export function pythDataEncode(id: string, price: BigNumberish, expo: number, publishTime: number) {
     return abiCoder.encode(["bytes32", "int64", "int32", "uint256"], [id, price, expo, publishTime]);
 }

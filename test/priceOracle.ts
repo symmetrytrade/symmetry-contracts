@@ -2,13 +2,7 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { Signer } from "ethers";
 import hre, { deployments } from "hardhat";
-import {
-    chainlinkAggregators,
-    latestBlockTimestamp,
-    pythDataEncode,
-    tokens,
-    updateChainlinkPrice,
-} from "../src/utils/test_utils";
+import { chainlinkAggregators, pythDataEncode, tokens, updateChainlinkPrice } from "../src/utils/test_utils";
 import { CONTRACTS, getTypedContract, normalized, tokenOf, UNIT } from "../src/utils/utils";
 import { PriceOracle } from "../typechain-types";
 
@@ -58,7 +52,7 @@ describe("PriceOracle", () => {
     it("pyth feed price", async () => {
         for (const token of tokens) {
             const price = tokenOf(pythPrices[token.symbol], -token.expo);
-            const publishTime = await latestBlockTimestamp(hre);
+            const publishTime = await helpers.time.latest();
             const data = pythDataEncode(token.pythId, price, token.expo, publishTime);
             await expect(priceOracle_.updatePythPrice([data])).to.be.revertedWith("PriceOracle: insufficient fee");
             const balanceBefore = await hre.ethers.provider.getBalance(account1);
