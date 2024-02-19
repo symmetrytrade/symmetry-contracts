@@ -1,5 +1,6 @@
+import { ZeroAddress } from "ethers";
 import { task, types } from "hardhat/config";
-import { ADDR0, CONTRACTS, deployDirectly } from "../utils/utils";
+import { CONTRACTS, deployDirectly } from "../utils/utils";
 
 task("timelock:deploy", "deploy timelock contract")
     .addParam("delay", "min delay", undefined, types.int, false)
@@ -12,6 +13,6 @@ task("timelock:deploy", "deploy timelock contract")
             taskArgs.delay,
             [taskArgs.safe],
             [taskArgs.safe, deployer],
-            ADDR0,
+            ZeroAddress,
         ]);
     });
