@@ -263,7 +263,8 @@ export async function transact(contract: BaseContract, methodName: string, param
     } else {
         console.log(`to: ${await contract.getAddress()}`);
         console.log(`func: ${contract.interface.getFunction(methodName)?.format()}`);
-        console.log(`params: ${JSON.stringify(params)}`);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        console.log(`params: ${JSON.stringify(params, (_, v) => (typeof v === "bigint" ? v.toString() : v))}`);
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);
     }
 }

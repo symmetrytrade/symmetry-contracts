@@ -55,9 +55,7 @@ describe("Incentives", () => {
     let feeTracker_: FeeTracker;
 
     before(async () => {
-        deployer = (await hre.ethers.getSigners())[0];
-        account1 = (await hre.ethers.getSigners())[1];
-        account2 = (await hre.ethers.getSigners())[2];
+        [deployer, account1, account2] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);

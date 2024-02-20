@@ -51,11 +51,7 @@ describe("Liquidation", () => {
     let USDC_: FaucetToken;
 
     before(async () => {
-        account1 = (await hre.ethers.getSigners())[1];
-        account2 = (await hre.ethers.getSigners())[2];
-        account3 = (await hre.ethers.getSigners())[3];
-        account4 = (await hre.ethers.getSigners())[4];
-        liquidator = (await hre.ethers.getSigners())[5];
+        [, account1, account2, account3, account4, liquidator] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);

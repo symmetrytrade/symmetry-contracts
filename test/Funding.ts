@@ -40,8 +40,7 @@ describe("Funding", () => {
     let USDC_: FaucetToken;
 
     before(async () => {
-        account1 = (await hre.ethers.getSigners())[1];
-        account2 = (await hre.ethers.getSigners())[2];
+        [, account1, account2] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
