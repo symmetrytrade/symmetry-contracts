@@ -92,6 +92,7 @@ describe("Funding", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -120,6 +121,7 @@ describe("Funding", () => {
             keeperFee: usdcOf(1),
             expiry: evmTime + 2n * DAY,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

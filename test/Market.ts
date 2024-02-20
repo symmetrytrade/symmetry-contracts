@@ -134,6 +134,7 @@ describe("Market", () => {
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -186,6 +187,7 @@ describe("Market", () => {
                 keeperFee: usdcOf(0),
                 expiry: (await helpers.time.latest()) + 100,
                 reduceOnly: false,
+                stopLoss: false,
             })
         ).to.be.revertedWith("PositionManager: leverage ratio too large");
         const orderId = await positionManager_.orderCnt();
@@ -214,6 +216,7 @@ describe("Market", () => {
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -272,6 +275,7 @@ describe("Market", () => {
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: true,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
