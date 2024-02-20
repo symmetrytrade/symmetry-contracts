@@ -1,6 +1,6 @@
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers } from "ethers";
+import { Signer } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig } from "../src/config";
 import { DAY, HOUR } from "../src/utils/test_utils";
@@ -8,7 +8,7 @@ import { CONTRACTS, deployDirectly, div_D, getTypedContract, mul_D, normalized, 
 import { DebtInterestRateModel, Market } from "../typechain-types";
 
 describe("Debt", () => {
-    let account1: ethers.Signer;
+    let account1: Signer;
     let market_: Market;
     let interestRateModel_: DebtInterestRateModel;
     let totalDebt: bigint;
@@ -35,7 +35,7 @@ describe("Debt", () => {
 
         await deployDirectly(hre, CONTRACTS.DebtInterestRateModel);
         interestRateModel_ = await getTypedContract(hre, CONTRACTS.DebtInterestRateModel);
-        await interestRateModel_.initialize(await market_.getAddress(), deployer);
+        await interestRateModel_.initialize(market_, deployer);
         totalDebt = normalized("123456789.1234567");
         debtRatio = normalized("0.1"); // 10%
         await interestRateModel_.update(totalDebt, debtRatio);

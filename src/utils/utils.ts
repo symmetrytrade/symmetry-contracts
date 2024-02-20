@@ -1,6 +1,17 @@
 import { FACTORY_POSTFIX } from "@typechain/ethers-v6/dist/common";
-import { ContractFactory, ContractRunner, ethers, parseUnits } from "ethers";
-import "hardhat-deploy";
+import {
+    AddressLike,
+    BaseContract,
+    BigNumberish,
+    ContractFactory,
+    ContractRunner,
+    encodeBytes32String,
+    ethers,
+    parseUnits,
+    resolveAddress,
+    Signer,
+    solidityPackedKeccak256,
+} from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import {
     ChainlinkMock__factory,
@@ -38,11 +49,9 @@ export const MINTER_ROLE = ethers.id("MINTER_ROLE");
 export const PAUSER_ROLE = ethers.id("PAUSER_ROLE");
 export const SPENDER_ROLE = ethers.id("SPENDER_ROLE");
 export const VESTING_ROLE = ethers.id("VESTING_ROLE");
-export const PERP_DOMAIN = ethers.encodeBytes32String("perpDomain");
-export const MARGIN_DOMAIN = ethers.encodeBytes32String("marginDomain");
+export const PERP_DOMAIN = encodeBytes32String("perpDomain");
+export const MARGIN_DOMAIN = encodeBytes32String("marginDomain");
 export const UNIT = 10n ** 18n;
-export const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
-export const ADDR0 = "0x0000000000000000000000000000000000000000";
 
 export function validateError(e: unknown, msg: string) {
     if (e instanceof Error) {
@@ -54,15 +63,15 @@ export function validateError(e: unknown, msg: string) {
     }
 }
 
-export function mul_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function mul_D(x: BigNumberish, y: BigNumberish) {
     return (BigInt(x) * BigInt(y)) / UNIT;
 }
 
-export function div_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function div_D(x: BigNumberish, y: BigNumberish) {
     return (BigInt(x) * UNIT) / BigInt(y);
 }
 
-export function diff_D(x: ethers.BigNumberish, y: ethers.BigNumberish) {
+export function diff_D(x: BigNumberish, y: BigNumberish) {
     const diff = BigInt(x) - BigInt(y);
     return diff >= 0 ? diff : -diff;
 }
@@ -90,31 +99,25 @@ export function mustGetKey<T>(obj: { [x: string]: T } | undefined, key: string) 
     return obj[key];
 }
 
-export function perpDomainKey(market: string) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [market, PERP_DOMAIN]);
+export async function perpDomainKey(market: AddressLike) {
+    return solidityPackedKeccak256(["address", "bytes32"], [await resolveAddress(market), PERP_DOMAIN]);
 }
 
-export function marginDomainKey(token: string) {
-    return ethers.solidityPackedKeccak256(["address", "bytes32"], [token, MARGIN_DOMAIN]);
+export async function marginDomainKey(token: AddressLike) {
+    return solidityPackedKeccak256(["address", "bytes32"], [await resolveAddress(token), MARGIN_DOMAIN]);
 }
 
-export function perpConfigKey(market: string, key: string) {
-    return ethers.solidityPackedKeccak256(
-        ["bytes32", "bytes32"],
-        [perpDomainKey(market), ethers.encodeBytes32String(key)]
-    );
+export async function perpConfigKey(market: AddressLike, key: string) {
+    return solidityPackedKeccak256(["bytes32", "bytes32"], [await perpDomainKey(market), encodeBytes32String(key)]);
 }
 
-export function marginConfigKey(token: string, key: string) {
-    return ethers.solidityPackedKeccak256(
-        ["bytes32", "bytes32"],
-        [marginDomainKey(token), ethers.encodeBytes32String(key)]
-    );
+export async function marginConfigKey(token: AddressLike, key: string) {
+    return solidityPackedKeccak256(["bytes32", "bytes32"], [await marginDomainKey(token), encodeBytes32String(key)]);
 }
 
 // name: name to deploy in hre
 // factory: contract factory
-const CONTRACTS = {
+export const CONTRACTS = {
     PriceOracle: { name: "PriceOracle", factory: PriceOracle__factory },
     Market: { name: "Market", factory: Market__factory },
     MarketSettings: { name: "MarketSettings", factory: MarketSettings__factory },
@@ -185,13 +188,17 @@ type GetContractTypeFromContractMeta<F> = F extends ContractMeta<infer C> ? C : 
 
 type AnyContractType = GetContractTypeFromContractMeta<(typeof CONTRACTS)[keyof typeof CONTRACTS]>;
 
-type AnyContractMeta = ContractMeta<AnyContractType>;
+export type AnyContractMeta = ContractMeta<AnyContractType>;
 
 // Ensure at compile time that all values in `CONTRACTS` conform to the `ContractMeta` interface
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<unknown>>> = CONTRACTS;
 
-async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: ContractMeta<unknown>, args: unknown[] = []) {
+export async function deployDirectly(
+    hre: HardhatRuntimeEnvironment,
+    contract: ContractMeta<unknown>,
+    args: unknown[] = []
+) {
     const { deployments, getNamedAccounts } = hre;
     const { deployer } = await getNamedAccounts();
     // deploy implementation
@@ -203,7 +210,7 @@ async function deployDirectly(hre: HardhatRuntimeEnvironment, contract: Contract
     });
 }
 
-async function deployInBeaconProxy(
+export async function deployInBeaconProxy(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<unknown>,
     args: unknown[] = []
@@ -235,10 +242,10 @@ async function deployInBeaconProxy(
     });
 }
 
-async function getTypedContract<T>(
+export async function getTypedContract<T>(
     hre: HardhatRuntimeEnvironment,
     contract: ContractMeta<T>,
-    signer?: ethers.Signer | string
+    signer?: Signer | string
 ) {
     const address = await (await hre.ethers.getContract(contract.name)).getAddress();
     if (signer === undefined) {
@@ -250,7 +257,7 @@ async function getTypedContract<T>(
     return contract.factory.connect(address, signer);
 }
 
-export async function transact(contract: ethers.BaseContract, methodName: string, params: unknown[], execute: boolean) {
+export async function transact(contract: BaseContract, methodName: string, params: unknown[], execute: boolean) {
     if (execute) {
         await (await contract.getFunction(methodName).send(...params)).wait();
     } else {
@@ -260,5 +267,3 @@ export async function transact(contract: ethers.BaseContract, methodName: string
         console.log(`data: ${contract.interface.encodeFunctionData(methodName, params)}`);
     }
 }
-
-export { AnyContractMeta, deployDirectly, deployInBeaconProxy, getTypedContract, CONTRACTS };

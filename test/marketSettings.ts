@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { encodeBytes32String } from "ethers";
 import hre, { deployments } from "hardhat";
 import { getConfig, NetworkConfigs } from "../src/config";
 import { CONTRACTS, getTypedContract, perpDomainKey } from "../src/utils/utils";
@@ -18,7 +19,7 @@ describe("MarketSettings", () => {
     it("getUintVal", async () => {
         // set general config
         for (const [term, rawValue] of Object.entries(config.marketGeneralConfig)) {
-            const key = hre.ethers.encodeBytes32String(term);
+            const key = encodeBytes32String(term);
             const value = await marketSettings_.getIntVals(key);
             expect(value).to.eq(rawValue);
         }
@@ -26,11 +27,11 @@ describe("MarketSettings", () => {
 
     it("getIntValsByDomain", async () => {
         for (const [market, conf] of Object.entries(config.marketConfig)) {
-            const token = await (await hre.ethers.getContract(market)).getAddress();
+            const token_ = await hre.ethers.getContract(market);
             for (const [k, v] of Object.entries(conf)) {
                 const value = await marketSettings_.getIntValsByDomain(
-                    perpDomainKey(token),
-                    hre.ethers.encodeBytes32String(k)
+                    await perpDomainKey(token_),
+                    encodeBytes32String(k)
                 );
                 expect(value).to.eq(v);
             }

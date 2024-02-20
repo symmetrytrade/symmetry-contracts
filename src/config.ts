@@ -103,7 +103,7 @@ export interface Rate {
     rate: bigint;
 }
 
-const DefaultConfig: NetworkConfigs = {
+export const DefaultConfig: NetworkConfigs = {
     gracePeriodTime: 0,
     marketGeneralConfig: {
         pythMaxAge: 180, // 3 minutes
@@ -192,19 +192,17 @@ const DefaultConfig: NetworkConfigs = {
     },
 };
 
-const GlobalConfig: { [key: string]: NetworkConfigs } = {
+export const GlobalConfig: { [key: string]: NetworkConfigs } = {
     ArbGoerliTestnet: ArbGoerliTestnetConfig,
     ScrollSepolia: ScrollSepoliaConfig,
     Scroll: ScrollConfig,
     hardhat: DefaultConfig,
 };
 
-function getConfig(network: string) {
+export function getConfig(network: string) {
     if (network in GlobalConfig) return GlobalConfig[network];
     if (network === "hardhat") {
         return DefaultConfig;
     }
     throw new Error(`network ${network} non-exist`);
 }
-
-export { GlobalConfig, DefaultConfig, getConfig };

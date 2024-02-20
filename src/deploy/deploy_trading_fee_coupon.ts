@@ -13,7 +13,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const descriptor_ = await getTypedContract(hre, CONTRACTS.NFTDescriptor);
     // set descriptor
-    await (await coupon_.setDescriptor(await descriptor_.getAddress())).wait();
+    await (await coupon_.setDescriptor(descriptor_)).wait();
 };
 
 deploy.tags = [CONTRACTS.TradingFeeCoupon.name, "prod"];

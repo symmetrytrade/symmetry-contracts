@@ -1,5 +1,3 @@
-import "@openzeppelin/hardhat-upgrades";
-import "hardhat-deploy";
 import { task, types } from "hardhat/config";
 import { transact, validateError } from "../utils/utils";
 import { getProxyInfo } from "./access";

@@ -12,11 +12,11 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // initialize
     console.log(`initializing ${CONTRACTS.VotingEscrow.name}..`);
-    const baseToken = await (await getTypedContract(hre, CONTRACTS.SYM)).getAddress();
+    const baseToken_ = await getTypedContract(hre, CONTRACTS.SYM);
     if (!(await votingEscrow_.initialized())) {
         await (
             await votingEscrow_.initialize(
-                baseToken,
+                baseToken_,
                 config.otherConfig.lockMaxTime,
                 config.otherConfig.vestingWeeks,
                 "Vote-Escrowed Symmetry",
