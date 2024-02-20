@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+jobs:
+    tests:
+        name: Tests
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 18.x
+                  cache: yarn
+            - name: Install dependencies
+              run: yarn install --frozen-lockfile
+            - name: Build
+              run: yarn build
+            - name: Lint .sol files
+              run: yarn solhint 'contracts/**/*.sol' --max-warnings 0
+            - name: Lint .ts files
+              run: yarn eslint 'src/**/*.ts' 'test/**/*.ts' '*.ts' --max-warnings 0
+            - name: Run deployments
+              run: yarn hardhat --typecheck --network hardhat deploy
+            - name: Run unit tests
+              run: yarn hardhat --typecheck test
