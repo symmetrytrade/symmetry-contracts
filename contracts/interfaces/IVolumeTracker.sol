@@ -19,7 +19,6 @@ interface IVolumeTracker {
     /*=== events ===*/
 
     event WeeklyVolumeUpdated(address account, uint ts, uint volume);
-    event WeeklyFeeUpdated(address account, uint ts, uint fee);
     event WeeklyCouponClaimed(address account, uint ts);
 
     /*=== function ===*/
@@ -34,7 +33,7 @@ interface IVolumeTracker {
 
     function drawLuckyNumberByAnnouncer(uint _t, bytes32 h1, bytes32 h2, bytes32 h3) external;
 
-    function logTrade(address _account, uint _volume, uint _fee) external;
+    function logTrade(address _account, uint _volume) external;
 
     function market() external view returns (address);
 

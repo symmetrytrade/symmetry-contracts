@@ -105,6 +105,9 @@ describe("Coupon", () => {
         await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
         await marketSettings_.setIntVals([encodeBytes32String("veSYMFeeIncentiveRatio")], [normalized("0.1")]);
+        // set perp taker fee to 0.1%, maker fee to 0
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [0]);
         // set liquidation coupon ratio to 10%
         await marketSettings_.setIntVals([encodeBytes32String("liquidationPenaltyRatio")], [normalized("0.009")]);
         await marketSettings_.setIntVals([encodeBytes32String("liquidationCouponRatio")], [normalized("0.001")]);
@@ -290,6 +293,10 @@ describe("Coupon", () => {
         orderId = (await positionManager_.orderCnt()) - 1n;
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
+
+        // swap maker/taker fee, following trades are all maker
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [normalized("0.001")]);
+        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [0]);
 
         await expect(positionManager_.executeOrder(orderId, []))
             .to.emit(market_, "Traded")
