@@ -57,10 +57,7 @@ describe("Margin", () => {
     let baseMargin: bigint;
 
     before(async () => {
-        account1 = (await hre.ethers.getSigners())[1];
-        account2 = (await hre.ethers.getSigners())[2];
-        liquidator = (await hre.ethers.getSigners())[2];
-        keeper = (await hre.ethers.getSigners())[6];
+        [, account1, account2, liquidator, , , keeper] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
