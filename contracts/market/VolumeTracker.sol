@@ -137,7 +137,7 @@ contract VolumeTracker is IVolumeTracker, CommonContext, MarketSettingsContext, 
         if (rebateRatio > 0) {
             value =
                 (IMarketSettings(settings)
-                    .getIntVals(PERP_TRADING_FEE)
+                    .getIntVals(PERP_TAKER_FEE)
                     .toUint256()
                     .multiplyDecimal(volume)
                     .multiplyDecimal(rebateRatio) / _UNSIGNED_UNIT) *

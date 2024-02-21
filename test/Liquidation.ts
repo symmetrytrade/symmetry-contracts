@@ -80,7 +80,8 @@ describe("Liquidation", () => {
         await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
         await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
         await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
-        await marketSettings_.setIntVals([encodeBytes32String("perpTradingFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpMakerFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTakerFee")], [0]);
         await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [1000000]);
         await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set debt interest rate to 0%

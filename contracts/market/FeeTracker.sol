@@ -126,14 +126,15 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
     function getDiscountedPrice(
         address _account,
         int _sizeDelta,
-        int _price
+        int _price,
+        bool _isTaker
     ) external view returns (int execPrice, uint fee, uint couponUsed) {
         // deduct trading fee in the price
         // (p_{oracle}-p_{exec})*size=(p_{oracle}-p_{fill})*size-p_{fill}*|size|*k
         // p_{avg}=p_{fill} * (1 + k) for size > 0
         // p_{avg}=p_{fill} * (1 - k) for size < 0
         // where k is trading fee ratio
-        int k = IMarketSettings(settings).getIntVals(PERP_TRADING_FEE);
+        int k = IMarketSettings(settings).getIntVals(_isTaker ? PERP_TAKER_FEE : PERP_MAKER_FEE);
         // apply fee discount
         k = k.multiplyDecimal(_UNIT - tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "FeeTracker: trading fee ratio > 1");

@@ -35,7 +35,8 @@ interface MarketGeneralConfig {
     priceDelay: number;
     maxFundingVelocity: bigint;
     maxFinancingFeeRate: bigint;
-    perpTradingFee: bigint;
+    perpMakerFee: bigint;
+    perpTakerFee: bigint;
     maxCouponDeductionRatio: bigint;
     tokenOILimitRatio: bigint;
     veSYMFeeIncentiveRatio: bigint;
@@ -126,7 +127,8 @@ export const DefaultConfig: NetworkConfigs = {
         priceDelay: 10, // 10 seconds,
         maxFundingVelocity: normalized(300), // 30000% / day^2
         maxFinancingFeeRate: normalized("0.09"), // 9% per day
-        perpTradingFee: normalized("0.001"), // 0.1%
+        perpMakerFee: normalized("0.0008"), // 0.08%
+        perpTakerFee: normalized("0.001"), // 0.1%
         maxCouponDeductionRatio: normalized(1), // 100%
         tokenOILimitRatio: normalized("0.7"),
         veSYMFeeIncentiveRatio: normalized(0), // 0%
