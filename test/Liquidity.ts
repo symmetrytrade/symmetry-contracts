@@ -61,8 +61,8 @@ describe("Liquidity", () => {
 
         await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set perp taker fee to 0.1%, maker fee to 0, the trades are all taker in this tests
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpMakerFee")], [0]);
         await USDC_.transfer(account1, usdcOf(10000000));
         await setPythAutoRefresh(hre);
     });

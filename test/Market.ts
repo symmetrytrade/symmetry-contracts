@@ -75,8 +75,8 @@ describe("Market", () => {
 
         await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
         // set perp taker fee to 0.1%, maker fee to 0
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpMakerFee")], [0]);
     });
 
     it("getPrice", async () => {
@@ -259,8 +259,11 @@ describe("Market", () => {
 
     it("close BTC short", async () => {
         // swap maker/taker fee, following trades are all maker
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [normalized("0.001")]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [0]);
+        await increaseNextBlockTimestamp(0);
+        await marketSettings_.setIntVals(
+            [encodeBytes32String("perpMakerFee"), encodeBytes32String("perpTakerFee")],
+            [normalized("0.001"), 0]
+        );
         await increaseNextBlockTimestamp(10); // 10s
         await positionManager_.submitOrder({
             token: WBTC_,

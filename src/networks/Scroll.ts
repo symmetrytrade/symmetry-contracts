@@ -51,7 +51,7 @@ export const ScrollConfig: NetworkConfigs = {
         priceDelay: 60,
         maxFundingVelocity: normalized("0.0533"),
         maxFinancingFeeRate: normalized("0.09"),
-        perpMakerFee: normalized("0.001"),
+        perpMakerFee: normalized("0.0008"),
         perpTakerFee: normalized("0.001"),
         maxCouponDeductionRatio: normalized("0.2"),
         tokenOILimitRatio: normalized("1.1"),

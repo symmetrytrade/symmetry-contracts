@@ -96,8 +96,8 @@ describe("Incentives", () => {
         await marketSettings_.setIntVals([encodeBytes32String("maxPriceDivergence")], [normalized(2)]);
         await marketSettings_.setIntVals([encodeBytes32String("pythMaxAge")], [normalized(10000)]);
         // set perp taker fee to 0.1%, maker fee to 0, the trades are all taker in this tests
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
-        await marketSettings_.setIntVals([hre.ethers.encodeBytes32String("perpMakerFee")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpTakerFee")], [normalized("0.001")]);
+        await marketSettings_.setIntVals([encodeBytes32String("perpMakerFee")], [0]);
         // set slippage to zero
         await marketSettings_.setIntVals([encodeBytes32String("liquidityRange")], [0]);
         // set veSYM incentive ratio to 10%
