@@ -112,6 +112,7 @@ describe("Liquidity", () => {
             keeperFee: usdcOf(0),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 

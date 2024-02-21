@@ -45,6 +45,7 @@ describe("Position", () => {
     let account1: Signer;
     let account2: Signer;
     let account3: Signer;
+    let account4: Signer;
     let deployer: Signer;
     let config: NetworkConfigs;
     let market_: Market;
@@ -67,7 +68,7 @@ describe("Position", () => {
     }
 
     before(async () => {
-        [deployer, account1, account2, account3] = await hre.ethers.getSigners();
+        [deployer, account1, account2, account3, account4] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
@@ -84,6 +85,7 @@ describe("Position", () => {
         await USDC_.transfer(account1, usdcOf(100000000));
         await USDC_.transfer(account2, usdcOf(100000000));
         await USDC_.transfer(account3, usdcOf(100000000));
+        await USDC_.transfer(account4, usdcOf(100000000));
 
         // add liquidity
         USDC_ = USDC_.connect(account1);
@@ -94,6 +96,7 @@ describe("Position", () => {
 
         await USDC_.connect(account2).approve(market_, MaxUint256);
         await USDC_.connect(account3).approve(market_, MaxUint256);
+        await USDC_.connect(account4).approve(market_, MaxUint256);
 
         // set funding rate, fee and slippage to zero for convenience
         await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
@@ -108,6 +111,7 @@ describe("Position", () => {
 
         await positionManager_.connect(account2).depositMargin(USDC_, usdcOf(1000000), ZeroHash);
         await positionManager_.connect(account3).depositMargin(USDC_, usdcOf(1000), ZeroHash);
+        await positionManager_.connect(account4).depositMargin(USDC_, usdcOf(1000), ZeroHash);
         await setPythAutoRefresh(hre);
     });
     it("lp limit for token & user order list", async () => {
@@ -118,6 +122,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         expect(await positionManager_.pendingOrderNotional(account1)).to.eq(normalized(701000));
         let orderId = (await positionManager_.orderCnt()) - 1n;
@@ -136,6 +141,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         await checkOrders(account1, [0, 1]);
@@ -146,6 +152,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         await checkOrders(account1, [0, 1, 2]);
@@ -179,6 +186,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -235,6 +243,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -255,6 +264,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -311,6 +321,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -366,6 +377,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -383,6 +395,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -403,6 +416,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -417,6 +431,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         to_cancel.push(orderId);
@@ -438,6 +453,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 300,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
         await expect(positionManager_.connect(deployer).cancelOrder(orderId)).to.be.revertedWith(
@@ -479,6 +495,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -503,6 +520,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -526,6 +544,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: true,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -555,21 +574,11 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         let orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await positionManager_.connect(deployer).executeOrder(orderId, []);
-
-        await expect(
-            positionManager_.submitOrder({
-                token: WETH_,
-                size: normalized(1),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(1),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: true,
-            })
-        ).to.be.revertedWith("PositionManager: invalid reduce only order");
 
         await positionManager_.submitOrder({
             token: WETH_,
@@ -578,21 +587,11 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: true,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
         const to_cancel = [];
         to_cancel.push(orderId);
-
-        await expect(
-            positionManager_.submitOrder({
-                token: WETH_,
-                size: normalized(-9),
-                acceptablePrice: normalized(1000),
-                keeperFee: usdcOf(1),
-                expiry: (await helpers.time.latest()) + 100,
-                reduceOnly: true,
-            })
-        ).to.be.revertedWith("PositionManager: invalid reduce only order");
 
         await expect(
             positionManager_.submitOrder({
@@ -602,6 +601,7 @@ describe("Position", () => {
                 keeperFee: usdcOf(1),
                 expiry: (await helpers.time.latest()) + 100,
                 reduceOnly: false,
+                stopLoss: false,
             })
         ).to.be.revertedWith("PositionManager: leverage ratio too large");
 
@@ -623,6 +623,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -646,6 +647,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: true,
+            stopLoss: false,
         });
         const reduceOnlyId = (await positionManager_.orderCnt()) - 1n;
         let status = await market_.accountMarginStatus(account3);
@@ -660,6 +662,7 @@ describe("Position", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
@@ -689,6 +692,50 @@ describe("Position", () => {
         status = await market_.accountMarginStatus(account3);
         expect(status.mtm).to.eq(0);
         expect(status.currentMargin).to.eq(normalized(95 - 9100 * 0.01));
+        expect(status.positionNotional).to.eq(0);
+    });
+    it("stop loss", async () => {
+        positionManager_ = positionManager_.connect(account4);
+        await positionManager_.submitOrder({
+            token: WETH_,
+            size: normalized(10),
+            acceptablePrice: normalized(1000),
+            keeperFee: usdcOf(1),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: false,
+            stopLoss: false,
+        });
+        let orderId = (await positionManager_.orderCnt()) - 1n;
+        await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
+        let pythUpdateData = await getPythUpdateData(hre, { WETH: 1000 });
+        await positionManager_.connect(deployer).executeOrder(orderId, pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
+
+        let status = await market_.accountMarginStatus(account4);
+        expect(status.mtm).to.eq(normalized(220));
+        expect(status.currentMargin).to.eq(normalized(1000 - 1));
+        expect(status.positionNotional).to.eq(normalized(10000));
+
+        await positionManager_.submitOrder({
+            token: WETH_,
+            size: normalized(-10),
+            acceptablePrice: normalized(980),
+            keeperFee: usdcOf(1),
+            expiry: (await helpers.time.latest()) + 100,
+            reduceOnly: true,
+            stopLoss: true,
+        });
+        orderId = (await positionManager_.orderCnt()) - 1n;
+        await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
+        pythUpdateData = await getPythUpdateData(hre, { WETH: 950 });
+        await positionManager_.connect(deployer).executeOrder(orderId, pythUpdateData.updateData, {
+            value: pythUpdateData.fee,
+        });
+
+        status = await market_.accountMarginStatus(account4);
+        expect(status.mtm).to.eq(0);
+        expect(status.currentMargin).to.eq(normalized(1000 - 500 - 2));
         expect(status.positionNotional).to.eq(0);
     });
 });

@@ -59,6 +59,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         int keeperFee;
         uint expiry;
         bool reduceOnly;
+        bool stopLoss;
     }
 
     mapping(address => uint[]) private userPendingOrders;
@@ -72,16 +73,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     event MarginWithdraw(address indexed account, address token, uint amount);
     event OrderStatusChanged(address indexed account, uint orderId, OrderStatus status);
     event OrderExpiryChanged(address indexed account, uint orderId, uint expiry);
-    event NewOrder(
-        uint orderId,
-        address indexed account,
-        address token,
-        int size,
-        int acceptablePrice,
-        int keeperFee,
-        uint expiry,
-        bool reduceOnly
-    );
+    event NewOrder(uint orderId, address indexed account, OrderData data);
     // liquidationFee in USD, out amount in base token
     event LiquidationFee(address account, int notionalLiquidated, int liquidationFee, uint accountOut);
     // liquidationPenalty in USD, penaltyAmount in base token
@@ -181,18 +173,10 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     function _validateOrder(address _account, OrderData memory _orderData) internal {
         (int mtm, int currentMargin, int availableMargin, int notional) = IMarket(market).accountMarginStatus(_account);
         if (_orderData.reduceOnly) {
+            // update reduce only order size
+            reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()] += _orderData.size;
             // check liquidation
             require(mtm <= currentMargin, "PositionManager: account is liquidatable");
-            // check holding position
-            int positionSize = IPerpTracker(IMarket(market).perpTracker()).getPositionSize(_account, _orderData.token);
-            int reduceOnlySize = reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()];
-            reduceOnlySize += _orderData.size;
-            require(
-                positionSize.sign() != reduceOnlySize.sign() && positionSize.abs() >= reduceOnlySize.abs(),
-                "PositionManager: invalid reduce only order"
-            );
-            // update reduce only order size
-            reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()] = reduceOnlySize;
         } else {
             // check available margin
             int orderNotional = pendingOrderNotional[_account];
@@ -210,6 +194,9 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
      */
     function submitOrder(OrderData memory _orderData) external whenNotPaused {
         require(_orderData.size != 0, "PositionManager: zero size");
+        if (_orderData.stopLoss) {
+            require(_orderData.reduceOnly, "PositionManager: stoploss order must be reduce only");
+        }
         IMarket market_ = IMarket(market);
         require(
             IPerpTracker(market_.perpTracker()).marketTokensListed(_orderData.token),
@@ -238,16 +225,7 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
         orders[orderCnt++] = order;
         // update debt
         market_.updateDebt();
-        emit NewOrder(
-            orderCnt - 1,
-            msg.sender,
-            _orderData.token,
-            _orderData.size,
-            _orderData.acceptablePrice,
-            _orderData.keeperFee,
-            _orderData.expiry,
-            _orderData.reduceOnly
-        );
+        emit NewOrder(orderCnt - 1, msg.sender, _orderData);
     }
 
     function submitCancelOrder(uint _id) external {
@@ -390,11 +368,19 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
                 order.submitTime
             );
             // check price
-            require(
-                (execPrice <= order.data.acceptablePrice && order.data.size > 0) ||
-                    (execPrice >= order.data.acceptablePrice && order.data.size < 0),
-                "PositionManager: unacceptable execution price"
-            );
+            if (!order.data.stopLoss) {
+                require(
+                    (execPrice <= order.data.acceptablePrice && order.data.size > 0) ||
+                        (execPrice >= order.data.acceptablePrice && order.data.size < 0),
+                    "PositionManager: unacceptable execution price"
+                );
+            } else {
+                require(
+                    (execPrice >= order.data.acceptablePrice && order.data.size > 0) ||
+                        (execPrice <= order.data.acceptablePrice && order.data.size < 0),
+                    "PositionManager: unacceptable stoploss execution price"
+                );
+            }
             // check execution
             if (!_canExecute(order, int(fee - couponUsed))) {
                 orders[_id].status = OrderStatus.Failed;

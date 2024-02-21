@@ -126,6 +126,7 @@ describe("Incentives", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         const orderId = (await positionManager_.orderCnt()) - 1n;
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s

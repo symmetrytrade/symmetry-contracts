@@ -146,6 +146,7 @@ describe("Coupon", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -192,6 +193,7 @@ describe("Coupon", () => {
             keeperFee: usdcOf(1),
             expiry: BigInt(await helpers.time.latest()) + DAY + 100n,
             reduceOnly: false,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -262,6 +264,7 @@ describe("Coupon", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: false,
+            stopLoss: false,
         });
         let orderId = (await positionManager_.orderCnt()) - 1n;
 
@@ -289,6 +292,7 @@ describe("Coupon", () => {
             keeperFee: usdcOf(1),
             expiry: (await helpers.time.latest()) + 100,
             reduceOnly: true,
+            stopLoss: false,
         });
         orderId = (await positionManager_.orderCnt()) - 1n;
 
