@@ -13,33 +13,22 @@ import {
     solidityPackedKeccak256,
 } from "ethers";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-    ChainlinkMock__factory,
-    CouponStaking__factory,
-    DebtInterestRateModel__factory,
-    FaucetToken__factory,
-    FaucetWETH__factory,
-    FeeTracker__factory,
-    LiquidityGauge__factory,
-    LiquidityManager__factory,
-    LPToken__factory,
-    MarginTracker__factory,
-    MarketSettings__factory,
-    Market__factory,
-    NFTDescriptor__factory,
-    PerpTracker__factory,
-    PositionManager__factory,
-    PriceOracle__factory,
-    PythMock__factory,
-    SYMRate__factory,
-    SYM__factory,
-    TimelockController__factory,
-    TokenMinter__factory,
-    TradingFeeCoupon__factory,
-    VolumeTracker__factory,
-    VotingEscrowCallbackRelayer__factory,
-    VotingEscrow__factory,
-} from "../../typechain-types";
+
+// We use the Typechain factory class objects to fill the `CONTRACTS` mapping. These objects are used
+// by hardhat-deploy to locate compiled contract artifacts. However, an exception occurs if we import
+// from Typechain files before they are generated. To avoid this, we follow a two-step process:
+//
+// 1. We import the types at compile time to ensure type safety. Hardhat does not report an error even
+// if these files are not yet generated, as long as the "--typecheck" command-line argument is not used.
+import * as TypechainTypes from "../../typechain-types";
+// 2. We import the values at runtime and silently ignore any exceptions.
+let Factories = {} as typeof TypechainTypes;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    Factories = require("../../typechain-types") as typeof TypechainTypes;
+} catch (err) {
+    // ignore
+}
 
 // const ERC1967PROXY = "ERC1967Proxy";
 const UPGRADEABLE_BEACON = "UpgradeableBeacon";
@@ -115,74 +104,60 @@ export async function marginConfigKey(token: AddressLike, key: string) {
     return solidityPackedKeccak256(["bytes32", "bytes32"], [await marginDomainKey(token), encodeBytes32String(key)]);
 }
 
-// name: name to deploy in hre
-// factory: contract factory
-export const CONTRACTS = {
-    PriceOracle: { name: "PriceOracle", factory: PriceOracle__factory },
-    Market: { name: "Market", factory: Market__factory },
-    MarketSettings: { name: "MarketSettings", factory: MarketSettings__factory },
-    LiquidityManager: {
-        name: "LiquidityManager",
-        factory: LiquidityManager__factory,
-    },
-    PositionManager: {
-        name: "PositionManager",
-        factory: PositionManager__factory,
-    },
-    LPToken: { name: "LPToken", factory: LPToken__factory },
-    PerpTracker: { name: "PerpTracker", factory: PerpTracker__factory },
-    FeeTracker: { name: "FeeTracker", factory: FeeTracker__factory },
-    VolumeTracker: { name: "VolumeTracker", factory: VolumeTracker__factory },
-    MarginTracker: { name: "MarginTracker", factory: MarginTracker__factory },
-    VotingEscrow: { name: "VotingEscrow", factory: VotingEscrow__factory },
-    SYM: { name: "SYM", factory: SYM__factory },
-    TradingFeeCoupon: {
-        name: "TradingFeeCoupon",
-        factory: TradingFeeCoupon__factory,
-    },
-    LiquidityGauge: { name: "LiquidityGauge", factory: LiquidityGauge__factory },
-    VotingEscrowCallbackRelayer: {
-        name: "VotingEscrowCallbackRelayer",
-        factory: VotingEscrowCallbackRelayer__factory,
-    },
-    SYMRate: { name: "SYMRate", factory: SYMRate__factory },
-    Timelock: { name: "Timelock", factory: TimelockController__factory },
-    NFTDescriptor: { name: "NFTDescriptor", factory: NFTDescriptor__factory },
-    DebtInterestRateModel: { name: "DebtInterestRateModel", factory: DebtInterestRateModel__factory },
-    TokenMinter: { name: "TokenMinter", factory: TokenMinter__factory },
-    CouponStaking: { name: "CouponStaking", factory: CouponStaking__factory },
-    // for test env
-    USDC: { name: "USDC", factory: FaucetToken__factory },
-    WETH: { name: "WETH", factory: FaucetWETH__factory },
-    WBTC: { name: "WBTC", factory: FaucetToken__factory },
-    ChainlinkAggregatorSequencer: {
-        name: "ChainlinkAggregatorSequencer",
-        factory: ChainlinkMock__factory,
-    },
-    ChainlinkAggregatorUSDC: {
-        name: "ChainlinkAggregatorUSDC",
-        factory: ChainlinkMock__factory,
-    },
-    ChainlinkAggregatorWETH: {
-        name: "ChainlinkAggregatorWETH",
-        factory: ChainlinkMock__factory,
-    },
-    ChainlinkAggregatorWBTC: {
-        name: "ChainlinkAggregatorWBTC",
-        factory: ChainlinkMock__factory,
-    },
-    Pyth: { name: "Pyth", factory: PythMock__factory },
-} as const;
-
 interface TypechainFactory<T> {
     new (...args: ConstructorParameters<typeof ContractFactory>): ContractFactory;
     connect: (address: string, runner?: ContractRunner | null) => T;
 }
 
-interface ContractMeta<T> {
-    name: string;
+class ContractMeta<T> {
     factory: TypechainFactory<T>;
+    /** Deployment name */
+    name: string;
+
+    constructor(factory: TypechainFactory<T>, name?: string) {
+        this.factory = factory;
+        this.name = name ?? this.contractName();
+    }
+
+    contractName() {
+        // this.factory is undefined when the typechain files are not generated yet
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        return this.factory?.name.slice(0, -FACTORY_POSTFIX.length);
+    }
 }
+
+export const CONTRACTS = {
+    PriceOracle: new ContractMeta(Factories.PriceOracle__factory),
+    Market: new ContractMeta(Factories.Market__factory),
+    MarketSettings: new ContractMeta(Factories.MarketSettings__factory),
+    LiquidityManager: new ContractMeta(Factories.LiquidityManager__factory),
+    PositionManager: new ContractMeta(Factories.PositionManager__factory),
+    LPToken: new ContractMeta(Factories.LPToken__factory),
+    PerpTracker: new ContractMeta(Factories.PerpTracker__factory),
+    FeeTracker: new ContractMeta(Factories.FeeTracker__factory),
+    VolumeTracker: new ContractMeta(Factories.VolumeTracker__factory),
+    MarginTracker: new ContractMeta(Factories.MarginTracker__factory),
+    VotingEscrow: new ContractMeta(Factories.VotingEscrow__factory),
+    SYM: new ContractMeta(Factories.SYM__factory),
+    TradingFeeCoupon: new ContractMeta(Factories.TradingFeeCoupon__factory),
+    LiquidityGauge: new ContractMeta(Factories.LiquidityGauge__factory),
+    VotingEscrowCallbackRelayer: new ContractMeta(Factories.VotingEscrowCallbackRelayer__factory),
+    SYMRate: new ContractMeta(Factories.SYMRate__factory),
+    Timelock: new ContractMeta(Factories.TimelockController__factory, "Timelock"),
+    NFTDescriptor: new ContractMeta(Factories.NFTDescriptor__factory),
+    DebtInterestRateModel: new ContractMeta(Factories.DebtInterestRateModel__factory),
+    TokenMinter: new ContractMeta(Factories.TokenMinter__factory),
+    CouponStaking: new ContractMeta(Factories.CouponStaking__factory),
+    // for test env
+    USDC: new ContractMeta(Factories.FaucetToken__factory, "USDC"),
+    WETH: new ContractMeta(Factories.FaucetWETH__factory, "WETH"),
+    WBTC: new ContractMeta(Factories.FaucetToken__factory, "WBTC"),
+    ChainlinkAggregatorSequencer: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorSequencer"),
+    ChainlinkAggregatorUSDC: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorUSDC"),
+    ChainlinkAggregatorWETH: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorWETH"),
+    ChainlinkAggregatorWBTC: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorWBTC"),
+    Pyth: new ContractMeta(Factories.PythMock__factory, "Pyth"),
+} as const;
 
 type GetContractTypeFromContractMeta<F> = F extends ContractMeta<infer C> ? C : never;
 
@@ -192,7 +167,7 @@ export type AnyContractMeta = ContractMeta<AnyContractType>;
 
 // Ensure at compile time that all values in `CONTRACTS` conform to the `ContractMeta` interface
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<unknown>>> = CONTRACTS;
+const CONTRACTS_TYPE_CHECK: Readonly<Record<string, ContractMeta<BaseContract>>> = CONTRACTS;
 
 export async function deployDirectly(
     hre: HardhatRuntimeEnvironment,
@@ -204,7 +179,7 @@ export async function deployDirectly(
     // deploy implementation
     await deployments.deploy(contract.name, {
         from: deployer,
-        contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
+        contract: contract.contractName(),
         args: args,
         log: true,
     });
@@ -220,7 +195,7 @@ export async function deployInBeaconProxy(
     // deploy implementation
     await deployments.deploy(`${contract.name}Impl`, {
         from: deployer,
-        contract: contract.factory.name.slice(0, -FACTORY_POSTFIX.length),
+        contract: contract.contractName(),
         args: args,
         log: true,
     });
