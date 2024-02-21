@@ -173,6 +173,8 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     function _validateOrder(address _account, OrderData memory _orderData) internal {
         (int mtm, int currentMargin, int availableMargin, int notional) = IMarket(market).accountMarginStatus(_account);
         if (_orderData.reduceOnly) {
+            // update reduce only order size
+            reduceOnlyOrderSize[_account][_orderData.token][_orderData.size.sign()] += _orderData.size;
             // check liquidation
             require(mtm <= currentMargin, "PositionManager: account is liquidatable");
         } else {
