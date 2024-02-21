@@ -134,12 +134,7 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
         // p_{avg}=p_{fill} * (1 + k) for size > 0
         // p_{avg}=p_{fill} * (1 - k) for size < 0
         // where k is trading fee ratio
-        int k;
-        if (_isTaker) {
-            k = IMarketSettings(settings).getIntVals(PERP_TAKER_FEE);
-        } else {
-            k = IMarketSettings(settings).getIntVals(PERP_MAKER_FEE);
-        }
+        int k = IMarketSettings(settings).getIntVals(_isTaker ? PERP_TAKER_FEE : PERP_MAKER_FEE);
         // apply fee discount
         k = k.multiplyDecimal(_UNIT - tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "FeeTracker: trading fee ratio > 1");
