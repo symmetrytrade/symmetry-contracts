@@ -74,6 +74,17 @@ contract PositionManager is CommonContext, MarketSettingsContext, AccessControlE
     event OrderStatusChanged(address indexed account, uint orderId, OrderStatus status);
     event OrderExpiryChanged(address indexed account, uint orderId, uint expiry);
     event NewOrder(uint orderId, address indexed account, OrderData data);
+    // legacy events
+    event NewOrder(
+        uint orderId,
+        address indexed account,
+        address token,
+        int size,
+        int acceptablePrice,
+        int keeperFee,
+        uint expiry,
+        bool reduceOnly
+    );
     // liquidationFee in USD, out amount in base token
     event LiquidationFee(address account, int notionalLiquidated, int liquidationFee, uint accountOut);
     // liquidationPenalty in USD, penaltyAmount in base token
