@@ -1,19 +1,33 @@
-# Installation
+# Symmetry Trade
+
+[![Tests](https://github.com/symmetrytrade/symmetry-contracts/actions/workflows/tests.yml/badge.svg)](https://github.com/symmetrytrade/symmetry-contracts/actions/workflows/tests.yml)
+
+This repository contains the smart contracts source code for Symmetry Trade.
+
+## Installation
+
 ```bash
 yarn
 ```
-# Compile
+
+## Compile
+
 ```bash
 yarn build
 ```
-# Preparation
+
+## Preparation
+
 Set `DEPLOYER_KEY` in `.env` file.
-# Deploy
+
+## Deploy
+
 ```bash
 yarn deploy <network>
 ```
-# Export
+
+## Export
+
 ```bash
 yarn hardhat --network <network> export --export <export_file_path>
 ```
-
