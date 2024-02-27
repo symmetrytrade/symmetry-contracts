@@ -18,7 +18,7 @@ task("oracle:price", "get price")
         console.log(`price: ${formatEther(price)}`);
     });
 
-task("oracle:update", "get price feeds").setAction(async (_taskArgs, hre) => {
+task("oracle:update", "update price feeds").setAction(async (_taskArgs, hre) => {
     const oracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle);
 
     // set chainlink

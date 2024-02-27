@@ -8,7 +8,7 @@ export const ScrollConfig: NetworkConfigs = {
         WETH: "0x5300000000000000000000000000000000000004",
         WBTC: "0x3c1bca5a656e69edcd0d4e36bebb3fcdaca60cf1",
         WSTETH: "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32",
-        SOL: "0x536f6c616e610000000000000000000000000000", // encodeBytes32String("Solana")[:42]
+        SOL: "0x534f4c0000000000000000000000000000000000", // encodeBytes32String("SOL")[:42]
     },
     chainlink: {
         sequencerUptimeFeed: "0x0000000000000000000000000000000000000000",
