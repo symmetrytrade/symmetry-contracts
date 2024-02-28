@@ -27,6 +27,7 @@ import "./src/tasks/collateral";
 import "./src/tasks/coupon";
 import "./src/tasks/faucetToken";
 import "./src/tasks/oracle";
+import "./src/tasks/perp";
 import "./src/tasks/settings";
 import "./src/tasks/timelock";
 import "./src/tasks/upgrade";

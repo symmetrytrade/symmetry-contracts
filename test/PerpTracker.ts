@@ -45,6 +45,7 @@ describe("PerpTracker", () => {
         assertDiffWithin(priceInfo.shortByMidPrice, expectedShortByMidPrice, "1");
         await increaseNextBlockTimestamp(nextBlockDelay);
         await helpers.mine();
+        await increaseNextBlockTimestamp(0);
     }
 
     function assertDiffWithin(x: BigNumberish, y: BigNumberish, maxDiff: BigNumberish) {

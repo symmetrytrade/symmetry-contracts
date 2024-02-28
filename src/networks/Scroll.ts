@@ -8,6 +8,7 @@ export const ScrollConfig: NetworkConfigs = {
         WETH: "0x5300000000000000000000000000000000000004",
         WBTC: "0x3c1bca5a656e69edcd0d4e36bebb3fcdaca60cf1",
         WSTETH: "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32",
+        SOL: "0x534f4c0000000000000000000000000000000000", // encodeBytes32String("SOL")[:42]
     },
     chainlink: {
         sequencerUptimeFeed: "0x0000000000000000000000000000000000000000",
@@ -16,7 +17,8 @@ export const ScrollConfig: NetworkConfigs = {
             USDT: "0xf376A91Ae078927eb3686D6010a6f1482424954E",
             WETH: "0x6bF14CB0A831078629D993FDeBcB182b21A8774C",
             WBTC: "0xCaca6BFdeDA537236Ee406437D2F8a400026C589",
-            WSTETH: "0xE61Da4C909F7d86797a0D06Db63c34f76c9bCBDC",
+            WSTETH: "0x439a2b573C8Ecd215990Fc25b4F547E89CF67b79",
+            SOL: "0xDf3F55B6bd57084DD4a72a41853C0a2487CB757F",
         },
     },
     pyth: {
@@ -27,6 +29,7 @@ export const ScrollConfig: NetworkConfigs = {
             WETH: "0xff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace",
             WBTC: "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43",
             WSTETH: "0x6df640f3b8963d8f8358f791f352b8364513f6ab1cca5ed3f1f7b5448980e784",
+            SOL: "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d",
         },
     },
     gracePeriodTime: 0,
@@ -103,6 +106,9 @@ export const ScrollConfig: NetworkConfigs = {
         },
         WETH: {
             proportionRatio: normalized("0.75"), // 75%
+        },
+        SOL: {
+            proportionRatio: normalized("0.4"), // 40%
         },
     },
     otherConfig: {
