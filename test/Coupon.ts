@@ -154,15 +154,7 @@ describe("Coupon", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(
-                account1,
-                WETH_,
-                normalized(50),
-                normalized("1000.95"),
-                normalized("47.5"),
-                normalized(0),
-                orderId
-            );
+            .withArgs(account1, WETH_, normalized(50), normalized("1000"), normalized("47.5"), normalized(0), orderId);
         let curDay = startOfDay(await helpers.time.latest());
         const curWeek = startOfWeek(await helpers.time.latest());
         // check balances
@@ -173,8 +165,8 @@ describe("Coupon", () => {
         expect(await feeTracker_.tradingFeeIncentives(curWeek)).to.eq(usdcOf("4.75"));
         expect(await marginTracker_.userCollaterals(feeTracker_, USDC_)).to.eq(usdcOf("4.75"));
         // check volume
-        expect(await volumeTracker_.userWeeklyVolume(account1, curWeek)).to.eq(normalized("50047.5"));
-        expect(await volumeTracker_.userDailyVolume(account1, curDay)).to.eq(normalized("50047.5"));
+        expect(await volumeTracker_.userWeeklyVolume(account1, curWeek)).to.eq(normalized("50000"));
+        expect(await volumeTracker_.userDailyVolume(account1, curDay)).to.eq(normalized("50000"));
         let ts = startOfDay(await helpers.time.latest());
         for (let i = 0; i < 10; ++i) {
             expect(await volumeTracker_.luckyCandidates(ts)).to.eq(1);
@@ -201,20 +193,12 @@ describe("Coupon", () => {
 
         await expect(positionManager_.connect(deployer).executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(
-                account1,
-                WETH_,
-                normalized(50),
-                normalized("1000.95"),
-                normalized("47.5"),
-                normalized(0),
-                orderId
-            );
+            .withArgs(account1, WETH_, normalized(50), normalized("1000"), normalized("47.5"), normalized(0), orderId);
         // check volume
         curDay += DAY;
-        expect(await volumeTracker_.userWeeklyVolume(account1, curWeek)).to.eq(normalized(100095));
-        expect(await volumeTracker_.userDailyVolume(account1, curDay)).to.eq(normalized("50047.5"));
-        expect(await volumeTracker_.userDailyVolume(account1, curDay - DAY)).to.eq(normalized("50047.5"));
+        expect(await volumeTracker_.userWeeklyVolume(account1, curWeek)).to.eq(normalized(100000));
+        expect(await volumeTracker_.userDailyVolume(account1, curDay)).to.eq(normalized("50000"));
+        expect(await volumeTracker_.userDailyVolume(account1, curDay - DAY)).to.eq(normalized("50000"));
         ts = curDay - DAY;
         for (let i = 0; i < 11; ++i) {
             expect(await volumeTracker_.luckyCandidates(ts)).to.eq(1);
@@ -308,7 +292,7 @@ describe("Coupon", () => {
                 account1,
                 WETH_,
                 normalized(-1),
-                normalized("999.1"),
+                normalized("1000"),
                 normalized("0.95"),
                 normalized("0.05"),
                 orderId

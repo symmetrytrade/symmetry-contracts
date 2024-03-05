@@ -34,6 +34,7 @@ const pythPrices: { [key: string]: string | number } = {
 };
 
 describe("Liquidity", () => {
+    let deployer: Signer;
     let account1: Signer;
     let config: NetworkConfigs;
     let market_: Market;
@@ -46,7 +47,7 @@ describe("Liquidity", () => {
     let marketSettings_: MarketSettings;
 
     before(async () => {
-        account1 = (await hre.ethers.getSigners())[1];
+        [deployer, account1] = await hre.ethers.getSigners();
         await deployments.fixture();
         await setupPrices(hre, chainlinkPrices, pythPrices, account1);
         WETH_ = await getTypedContract(hre, CONTRACTS.WETH);
@@ -60,6 +61,8 @@ describe("Liquidity", () => {
         config = getConfig(hre.network.name);
 
         await marketSettings_.setIntVals([encodeBytes32String("minKeeperFee")], [normalized(0)]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFundingVelocity")], [0]);
+        await marketSettings_.setIntVals([encodeBytes32String("maxFinancingFeeRate")], [0]);
         await USDC_.transfer(account1, usdcOf(10000000));
         await setPythAutoRefresh(hre);
     });
@@ -118,7 +121,10 @@ describe("Liquidity", () => {
 
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
 
+        const oldGlobalStatus = await market_.globalStatus();
         const pythUpdateData = await getPythUpdateData(hre, { WETH: 1500 });
+        const avgPrice = 1505621849515531495500n;
+        const fee = avgPrice / 1000n;
         await expect(
             positionManager_.executeOrder(orderId, pythUpdateData.updateData, {
                 value: pythUpdateData.fee,
@@ -129,8 +135,8 @@ describe("Liquidity", () => {
                 account1,
                 WETH_,
                 normalized(1),
-                "1507127471365047026995", // avg price
-                "1505621849515531495", // trading fee
+                avgPrice, // avg price
+                fee, // trading fee
                 "0",
                 orderId
             );
@@ -138,25 +144,41 @@ describe("Liquidity", () => {
         expect(lpPosition.longSize).to.eq(0);
         expect(lpPosition.shortSize).to.eq(normalized(-1));
         // second deposit
+        let newLpNetValue =
+            oldGlobalStatus[0] +
+            avgPrice -
+            1500n * UNIT +
+            (((fee * 1000000n) / normalized("0.98")) * normalized("0.98")) / 1000000n;
+        const mintAmount = ((await lpToken_.totalSupply()) * normalized(98000)) / newLpNetValue;
         await increaseNextBlockTimestamp(5); // 5s
         await expect(liquidityManager_.addLiquidity(amount, 0, account1, false))
             .to.emit(liquidityManager_, "AddLiquidity")
-            .withArgs(account1, amount, "100063167482660718548495", normalized(98000), "95979372246678213029024");
+            .withArgs(account1, amount, newLpNetValue, normalized(98000), mintAmount);
+        newLpNetValue += normalized(98000);
         // first remove
-        await increaseNextBlockTimestamp(5); // 5s
-        expect(await lpToken_.totalSupply()).to.eq("193979372246678213029024");
-        await expect(liquidityManager_.removeLiquidity("97947435790888919009027", 0, account1))
+        await increaseNextBlockTimestamp(60); // 60s
+        const totalSupply = await lpToken_.totalSupply();
+        const toRemove = totalSupply - normalized(96000);
+        const redeemValue = (newLpNetValue * toRemove) / totalSupply;
+        const tradeAmount = (normalized(1) * redeemValue) / newLpNetValue;
+        const priceOracle_ = await getTypedContract(hre, CONTRACTS.PriceOracle, account1);
+        const oraclePrice = await priceOracle_.getPrice(WETH_);
+        await perpTracker_.connect(deployer).setMarket(account1);
+        const fillPrice = await perpTracker_.swapOnAMM.staticCall({
+            token: WETH_,
+            skew: normalized(1) - tradeAmount,
+            size: tradeAmount,
+            oraclePrice: oraclePrice,
+            lpNetValue: newLpNetValue - redeemValue,
+        });
+        await perpTracker_.connect(deployer).setMarket(await market_.getAddress());
+        let redeemFee = ((fillPrice - oraclePrice) * tradeAmount) / UNIT;
+        redeemFee += ((redeemValue - redeemFee) * normalized("0.001")) / UNIT;
+        const redeemed = ((redeemValue - redeemFee) * 1000000n) / normalized(1);
+        await expect(liquidityManager_.removeLiquidity(toRemove, 0, account1))
             .to.emit(liquidityManager_, "RemoveLiquidity")
-            .withArgs(
-                account1,
-                "97947435790888919009027",
-                "198063167516547733117495",
-                "100009496670589133786639",
-                "104335840814250165629",
-                "99905160829"
-            );
-        expect(await lpToken_.totalSupply()).to.eq("96031936455789294019997");
-        expect(await lpToken_.balanceOf(account1)).to.eq("96031936455789294019997");
+            .withArgs(account1, toRemove, newLpNetValue, redeemValue, redeemFee, redeemed);
+        expect(await lpToken_.balanceOf(account1)).to.eq(normalized(96000));
         // second remove
         await increaseNextBlockTimestamp(5); // 5s
         await expect(liquidityManager_.removeLiquidity(normalized(96000), 0, account1)).to.be.revertedWith(

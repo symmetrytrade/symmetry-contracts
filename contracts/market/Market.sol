@@ -238,13 +238,17 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
         insuranceBalance += amount;
     }
 
+    function _deductFeeToLiquidity(address _account, int _amount) internal {
+        IMarginTracker(marginTracker).modifyMargin(_account, baseToken, -_amount);
+        liquidityBalance += _amount;
+    }
+
     /**
      * @param _account account to pay the fee
      * @param _amount fee to pay in base token
      */
     function deductFeeToLiquidity(address _account, int _amount) external onlyOperator {
-        IMarginTracker(marginTracker).modifyMargin(_account, baseToken, -_amount);
-        liquidityBalance += _amount;
+        _deductFeeToLiquidity(_account, _amount);
     }
 
     function _computeMargin(int _pnl, int _baseMargin, int _otherMargin) internal view returns (int margin) {
@@ -382,9 +386,9 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
 
         (int lpNetValue, , ) = globalStatus();
         int skew = perpTracker_.currentSkew(_token);
-        int fillPrice = perpTracker_.swapOnAMM(IPerpTracker.SwapParams(_token, skew, _size, _oraclePrice, lpNetValue));
+        execPrice = perpTracker_.swapOnAMM(IPerpTracker.SwapParams(_token, skew, _size, _oraclePrice, lpNetValue));
         bool isTaker = (skew + _size).abs() >= skew.abs();
-        (execPrice, fee, couponUsed) = IFeeTracker(feeTracker).getDiscountedPrice(_account, _size, fillPrice, isTaker);
+        (fee, couponUsed) = IFeeTracker(feeTracker).getTradingFee(_account, _size, execPrice, isTaker);
     }
 
     /**
@@ -471,6 +475,11 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
             liquidityBalance -= amount;
             // update LP position
             perpTracker_.settleTradeForLp(_params.token, _params.execPrice, oldSize, newSize, -marginDelta);
+            // send fee to lp
+            if (_params.fee > _params.couponUsed && _params.fee > 0) {
+                amount = usdToBaseToken((_params.fee - _params.couponUsed).toInt256(), false);
+                _deductFeeToLiquidity(_params.account, amount);
+            }
         }
 
         // log

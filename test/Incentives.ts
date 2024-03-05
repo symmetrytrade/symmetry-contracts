@@ -132,7 +132,7 @@ describe("Incentives", () => {
         await increaseNextBlockTimestamp(config.marketGeneralConfig.minOrderDelay); // 60s
         await expect(positionManager_.connect(deployer).executeOrder(orderId, []))
             .to.emit(market_, "Traded")
-            .withArgs(deployer, WETH_, normalized(50), normalized(1001), normalized(50), normalized(0), orderId);
+            .withArgs(deployer, WETH_, normalized(50), normalized(1000), normalized(50), normalized(0), orderId);
     }
 
     async function getClaimable(account: AddressLike, from: bigint, to: bigint) {
