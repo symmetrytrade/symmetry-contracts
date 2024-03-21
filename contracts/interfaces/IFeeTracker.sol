@@ -40,7 +40,7 @@ interface IFeeTracker {
         int _sizeDelta,
         int _price,
         bool _isTaker
-    ) external view returns (uint, uint);
+    ) external view returns (uint fee, uint couponUsed);
 
     function distributeIncentives(uint _fee) external;
 

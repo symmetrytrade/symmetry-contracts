@@ -476,7 +476,7 @@ contract Market is IMarket, CommonContext, MarketSettingsContext, AccessControlE
             // update LP position
             perpTracker_.settleTradeForLp(_params.token, _params.execPrice, oldSize, newSize, -marginDelta);
             // send fee to lp
-            if (_params.fee > _params.couponUsed && _params.fee > 0) {
+            if (_params.fee > _params.couponUsed) {
                 amount = usdToBaseToken((_params.fee - _params.couponUsed).toInt256(), false);
                 _deductFeeToLiquidity(_params.account, amount);
             }
