@@ -157,6 +157,7 @@ export const CONTRACTS = {
     ChainlinkAggregatorWETH: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorWETH"),
     ChainlinkAggregatorWBTC: new ContractMeta(Factories.ChainlinkMock__factory, "ChainlinkAggregatorWBTC"),
     Pyth: new ContractMeta(Factories.PythMock__factory, "Pyth"),
+    BS: new ContractMeta(Factories.BS__factory, "BS"),
 } as const;
 
 type GetContractTypeFromContractMeta<F> = F extends ContractMeta<infer C> ? C : never;
