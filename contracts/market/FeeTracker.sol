@@ -123,36 +123,22 @@ contract FeeTracker is IFeeTracker, CommonContext, MarketSettingsContext, Access
 
     /*=== perp trading fee ===*/
 
-    function getDiscountedPrice(
+    function getTradingFee(
         address _account,
         int _sizeDelta,
         int _price,
         bool _isTaker
-    ) external view returns (int execPrice, uint fee, uint couponUsed) {
-        // deduct trading fee in the price
-        // (p_{oracle}-p_{exec})*size=(p_{oracle}-p_{fill})*size-p_{fill}*|size|*k
-        // p_{avg}=p_{fill} * (1 + k) for size > 0
-        // p_{avg}=p_{fill} * (1 - k) for size < 0
-        // where k is trading fee ratio
+    ) external view returns (uint fee, uint couponUsed) {
         int k = IMarketSettings(settings).getIntVals(_isTaker ? PERP_TAKER_FEE : PERP_MAKER_FEE);
         // apply fee discount
         k = k.multiplyDecimal(_UNIT - tradingFeeDiscount(_account).toInt256());
         require(k < _UNIT, "FeeTracker: trading fee ratio > 1");
-        if (_sizeDelta > 0) {
-            execPrice = _price.multiplyDecimal(_UNIT + k);
-        } else {
-            execPrice = _price.multiplyDecimal(_UNIT - k);
-        }
         fee = _price.multiplyDecimal(_sizeDelta.abs()).multiplyDecimal(k).toUint256();
         // use coupons
         ITradingFeeCoupon coupon_ = ITradingFeeCoupon(coupon);
 
         couponUsed = IMarketSettings(settings).getIntVals(MAX_COUPON_DEDUCTION_RATIO).toUint256().multiplyDecimal(fee);
         couponUsed = coupon_.unspents(_account).min(couponUsed);
-        // apply couponUsed to execPrice
-        // (p_oracle - p_exec_new) * size = (p_oracle - p_exec_old) * size + coupon_used
-        // p_exec_new = p_exec_old - coupon_used / size
-        execPrice -= couponUsed.toInt256().divideDecimal(_sizeDelta);
     }
 
     function liquidationPenalty(int notional) external view returns (int) {

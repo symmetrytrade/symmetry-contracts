@@ -108,6 +108,7 @@ contract LiquidityManager is MarketSettingsContext, AccessControlEnumerable, Pau
         require(lpNetValue > 0, "LiquidityManager: lp bankrupted");
         LPToken lpToken_ = LPToken(lpToken);
         int redeemValue = (lpNetValue * _amount.toInt256()) / lpToken_.totalSupply().toInt256(); // must be non-negative
+        require(lpNetValue - netOpenInterest >= redeemValue, "LiquidityManager: insufficient free lp");
         int redeemFee = 0;
         {
             // redeem trade
@@ -119,7 +120,6 @@ contract LiquidityManager is MarketSettingsContext, AccessControlEnumerable, Pau
             // TODO: where the fee goes?
         }
         require(redeemValue > redeemFee, "LiquidityManager: non-positive redeem value");
-        require(lpNetValue - netOpenInterest >= redeemValue, "LiquidityManager: insufficient free lp");
         // burn lp
         lpToken_.burn(_account, _amount);
         // withdraw token
