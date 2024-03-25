@@ -65,9 +65,11 @@ contract BS {
         int spotPrice = 3000e8;
         int strikePrice = 3500e8;
         int ir = 1e8;
-        int t = 1;
-        int vol = 5e8;
+        int t = 822e4;
+        int vol = 50e6;
         for (uint i = 0; i < _times; ++i) {
+            spotPrice += 100e8;
+            vol += 1e6;
             blackScholes(spotPrice, strikePrice, ir, t, vol);
         }
     }
