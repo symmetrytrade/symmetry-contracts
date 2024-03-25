@@ -36,7 +36,7 @@ contract BS {
     }
 
     /**
-     * @dev compute the option price, all inputs and output are int with 18 decimals
+     * @dev compute the option price, all inputs and output are int with 8 decimals
      * @param _spotPrice spot price
      * @param _strikePrice strike price
      * @param _ir risk-free interest rate
@@ -46,11 +46,11 @@ contract BS {
     function blackScholes(int _spotPrice, int _strikePrice, int _ir, int _t, int _vol) public view returns (int) {
         return
             _blackScholes(
-                _to64x64(_spotPrice, 18),
-                _to64x64(_strikePrice, 18),
-                _to64x64(_ir, 18),
-                _to64x64(_t, 18),
-                _to64x64(_vol, 18)
+                _to64x64(_spotPrice, 8),
+                _to64x64(_strikePrice, 8),
+                _to64x64(_ir, 8),
+                _to64x64(_t, 8),
+                _to64x64(_vol, 8)
             ).toInt();
     }
 
@@ -62,11 +62,11 @@ contract BS {
     }
 
     function run(uint _times) public view {
-        int spotPrice = 3000e18;
-        int strikePrice = 3500e18;
-        int ir = 1e16;
+        int spotPrice = 3000e8;
+        int strikePrice = 3500e8;
+        int ir = 1e8;
         int t = 1;
-        int vol = 5e17;
+        int vol = 5e8;
         for (uint i = 0; i < _times; ++i) {
             blackScholes(spotPrice, strikePrice, ir, t, vol);
         }

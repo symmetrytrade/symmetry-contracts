@@ -11,6 +11,6 @@ describe("experiments", () => {
 
     it("test", async () => {
         bs_ = await getTypedContract(hre, CONTRACTS.BS);
-        await bs_.run.send(100);
+        await bs_.run.send(30);
     });
 });
