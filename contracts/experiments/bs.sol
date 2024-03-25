@@ -60,4 +60,15 @@ contract BS {
         int128 d2 = d1 - volXSqrtT;
         return normCdf(d1).mul(_st).sub(normCdf(d2).mul(_k.mul(ABDKMath64x64.exp(_r.mul(_t).neg()))));
     }
+
+    function run(uint _times) public view {
+        int spotPrice = 3000e18;
+        int strikePrice = 3500e18;
+        int ir = 1e16;
+        int t = 1;
+        int vol = 5e17;
+        for (uint i = 0; i < _times; ++i) {
+            blackScholes(spotPrice, strikePrice, ir, t, vol);
+        }
+    }
 }

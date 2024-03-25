@@ -11,6 +11,6 @@ describe("experiments", () => {
 
     it("test", async () => {
         bs_ = await getTypedContract(hre, CONTRACTS.BS);
-        console.log(await bs_.PI.staticCall());
+        await bs_.run.send(100);
     });
 });
