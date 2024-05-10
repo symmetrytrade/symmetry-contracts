@@ -1,3 +1,4 @@
+import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 import "hardhat-abi-exporter";
@@ -43,6 +44,16 @@ const config: HardhatUserConfig = {
         compilers: [
             {
                 version: "0.8.16",
+                settings: {
+                    evmVersion: "london",
+                    optimizer: {
+                        enabled: true,
+                        runs: 200,
+                    },
+                },
+            },
+            {
+                version: "0.8.19",
                 settings: {
                     evmVersion: "london",
                     optimizer: {
