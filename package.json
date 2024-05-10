@@ -28,6 +28,7 @@
         "@types/node": ">=16.0.0",
         "@typescript-eslint/eslint-plugin": "^6.21.0",
         "@typescript-eslint/parser": "^6.21.0",
+        "canvas-contracts": "https://github.com/scroll-tech/canvas-contracts#6361dd035db4d2ad2176f2f65f827f65e3c2b741",
         "chai": "^4.3.7",
         "dotenv": "^16.0.3",
         "eslint": "^8.34.0",
